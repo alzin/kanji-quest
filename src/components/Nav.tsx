@@ -33,7 +33,7 @@ export function Nav() {
             </Link>
           ))}
           <div className="ml-1 flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold">
-            <span className="text-primary">🔥</span>
+            <span className="font-serif text-primary">火</span>
             {streak}
             <span className="ml-1 text-gold">●</span>
             {save.coins}

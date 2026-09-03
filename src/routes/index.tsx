@@ -83,7 +83,7 @@ function Home() {
             </p>
             <div className="mt-4 flex items-center gap-4 text-sm">
               <span className="flex items-center gap-1.5 font-bold">
-                <span className="text-primary">🔥</span> {streak} day streak
+                <span className="font-serif text-primary">火</span> {streak} day streak
               </span>
               <span className="font-bold"><span className="text-gold">●</span> {save.coins} mon</span>
               <span className="text-muted-foreground">{save.runsCompleted} runs</span>
