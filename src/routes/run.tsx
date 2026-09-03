@@ -9,9 +9,11 @@ import {
 import { CHAPTER_NAMES, CHAPTER_COUNT } from "@/data/n5";
 
 export const Route = createFileRoute("/run")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    gate: typeof s.gate === "string" && /^\d+$/.test(s.gate) ? Math.min(CHAPTER_COUNT, Math.max(1, parseInt(s.gate))) : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>) => {
+    const g = s["gate"];
+    const n = typeof g === "number" ? g : typeof g === "string" && /^\d+$/.test(g) ? parseInt(g) : NaN;
+    return { gate: Number.isFinite(n) ? Math.min(CHAPTER_COUNT, Math.max(1, n)) : undefined };
+  },
   head: () => ({
     meta: [
       { title: "Run — Kanji Dash" },
@@ -36,7 +38,7 @@ function RunPage() {
   const [lesson, setLesson] = useState<Question | null>(null);
   const [results, setResults] = useState<null | { correct: number; wrong: number; bestCombo: number }>(null);
 
-  const title = gate ? `${CHAPTER_NAMES[gate].name} — Checkpoint` : "Daily run";
+  const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : "Daily run";
 
   if (questions.length === 0 && !results) {
     return (

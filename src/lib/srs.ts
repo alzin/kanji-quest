@@ -151,18 +151,20 @@ function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    const tmp = a[i]!;
+    a[i] = a[j]!;
+    a[j] = tmp;
   }
   return a;
 }
 
 function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
 function readingOf(k: Kanji): string {
-  const kun = k.kun !== "—" ? k.kun.split(",")[0].replace(/[()]/g, "") : "";
-  const on = k.on !== "—" ? k.on.split(",")[0].trim() : "";
+  const kun = k.kun !== "—" ? (k.kun.split(",")[0] ?? "").replace(/[()]/g, "") : "";
+  const on = k.on !== "—" ? (k.on.split(",")[0] ?? "").trim() : "";
   return kun || on;
 }
 
@@ -206,7 +208,7 @@ export function buildRunQueue(s: SaveData): Question[] {
     const p = s.progress[k.c];
     return p && p.mastery > 0 && p.mastery < 3 && p.due <= now && isChapterUnlocked(s, k.ch);
   });
-  seen.sort((a, b) => s.progress[a.c].due - s.progress[b.c].due);
+  seen.sort((a, b) => getCard(s, a.c).due - getCard(s, b.c).due);
   const reviews = seen.slice(0, MAX_REVIEWS);
 
   const fresh = allKanji.filter((k) => !s.progress[k.c] && isChapterUnlocked(s, k.ch));

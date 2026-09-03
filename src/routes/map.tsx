@@ -61,7 +61,7 @@ function MapPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h2 className="font-serif text-lg font-bold">
-                        {CHAPTER_NAMES[ch].name} <span className="ml-1 text-sm text-muted-foreground">{CHAPTER_NAMES[ch].jp}</span>
+                        {CHAPTER_NAMES[ch]!.name} <span className="ml-1 text-sm text-muted-foreground">{CHAPTER_NAMES[ch]!.jp}</span>
                       </h2>
                       <span className="text-xs font-bold text-muted-foreground">{count} kanji</span>
                     </div>
@@ -73,7 +73,7 @@ function MapPage() {
                       {unlocked && !cleared && (
                         <Link
                           to="/run"
-                          search={{ gate: String(ch) }}
+                          search={{ gate: ch }}
                           className="rounded-md bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground shadow-sm transition-transform hover:scale-105"
                         >
                           Checkpoint gate

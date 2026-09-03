@@ -37,7 +37,7 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
     octx.fillText(kanji.c, SIZE / 2, SIZE / 2 + SIZE * 0.03);
     const data = octx.getImageData(0, 0, SIZE, SIZE).data;
     const mask = new Uint8Array(SIZE * SIZE);
-    for (let i = 0; i < SIZE * SIZE; i++) mask[i] = data[i * 4 + 3] > 100 ? 1 : 0;
+    for (let i = 0; i < SIZE * SIZE; i++) mask[i] = (data[i * 4 + 3] ?? 0) > 100 ? 1 : 0;
     return mask;
   };
 
@@ -61,14 +61,14 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
           for (let dx = -R; dx <= R && !hit; dx += 2) {
             const nx = x + dx, ny = y + dy;
             if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE) continue;
-            if (drawn[(ny * SIZE + nx) * 4 + 3] > 60) hit = true;
+            if ((drawn[(ny * SIZE + nx) * 4 + 3] ?? 0) > 60) hit = true;
           }
         }
         if (hit) covered++;
       }
     }
     for (let i = 0; i < SIZE * SIZE; i += 4) {
-      if (drawn[i * 4 + 3] > 60) {
+      if ((drawn[i * 4 + 3] ?? 0) > 60) {
         drawnCount++;
         if (!target[i]) stray++;
       }

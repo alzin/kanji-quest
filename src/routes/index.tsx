@@ -54,6 +54,7 @@ function Home() {
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 to="/run"
+                search={{}}
                 className="rounded-lg bg-primary px-6 py-3 font-serif text-lg font-bold text-primary-foreground shadow transition-transform hover:scale-[1.03]"
               >
                 Start today's run

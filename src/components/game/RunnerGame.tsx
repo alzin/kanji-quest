@@ -64,14 +64,15 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     window.addEventListener("resize", resize);
 
     const spawnGate = (qi: number, startX: number): Gate | null => {
-      if (qi >= questions.length) return null;
       const q = questions[qi];
+      if (!q) return null;
       const order = [0, 1, 2].sort(() => Math.random() - 0.5);
       const laneChoices: (string | null)[] = [null, null, null];
       let correctLane = 0;
       order.forEach((lane, i) => {
-        laneChoices[lane] = q.choices[i];
-        if (q.choices[i] === q.answer) correctLane = lane;
+        const choice = q.choices[i] ?? null;
+        laneChoices[lane] = choice;
+        if (choice === q.answer) correctLane = lane;
       });
       return { q, x: startX, correctLane, laneChoices, resolved: -1 };
     };
