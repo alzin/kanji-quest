@@ -18,7 +18,7 @@ type Gate = {
 
 const LANES = 3;
 const GATE_SPACING = 560;
-const SPEED = 300; // px/s
+const SPEED = 150; // px/s
 
 export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,9 +91,12 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       s.targetLane = Math.max(0, Math.min(LANES - 1, s.targetLane + dir));
     };
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); setPaused((p) => !p); return; }
       if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") { e.preventDefault(); moveLane(-1); }
       if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { e.preventDefault(); moveLane(1); }
     };
+    const onBlur = () => setPaused(true);
+    window.addEventListener("blur", onBlur);
     const onPointer = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       const y = (e.clientY - r.top) / r.height;
@@ -320,6 +323,21 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         ctx.strokeRect(0, 0, W, H);
       }
 
+      // pause overlay
+      if (pausedRef.current && !s.done) {
+        ctx.fillStyle = "rgba(0,0,0,0.45)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#f3ead8";
+        ctx.font = `bold ${H * 0.07}px serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("一時停止", W / 2, H / 2 - H * 0.06);
+        ctx.font = `${H * 0.03}px sans-serif`;
+        ctx.fillText("Press Esc to resume", W / 2, H / 2 + H * 0.04);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+      }
+
       raf = requestAnimationFrame(frame);
     };
 
@@ -328,6 +346,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", onBlur);
       canvas.removeEventListener("pointerdown", onPointer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,7 +378,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
         <div className="rounded-full bg-ink/70 px-4 py-1.5 text-xs font-bold text-paper">
-          ↑ ↓ / W S to change lane · tap a lane on touch
+          ↑ ↓ / W S to change lane · tap a lane on touch · Esc to pause
         </div>
       </div>
     </div>
