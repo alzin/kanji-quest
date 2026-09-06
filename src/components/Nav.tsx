@@ -1,44 +1,51 @@
 import { Link } from "@tanstack/react-router";
 import { useSave, streakCount } from "@/lib/srs";
+import { AppIcon } from "@/components/AppIcon";
 
 const links = [
-  { to: "/", label: "Home", jp: "家" },
-  { to: "/map", label: "Map", jp: "図" },
-  { to: "/practice", label: "Dojo", jp: "道" },
-  { to: "/collection", label: "Kanji", jp: "字" },
+  { to: "/", label: "Home", icon: "home" },
+  { to: "/map", label: "Map", icon: "map" },
+  { to: "/practice", label: "Dojo", icon: "brush" },
+  { to: "/collection", label: "Kanji", icon: "kanji" },
 ] as const;
 
 export function Nav() {
   const save = useSave();
   const streak = streakCount(save);
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-paper/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-2 sm:px-4">
-        <Link to="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-serif text-lg font-bold text-primary-foreground shadow-sm">
+    <header className="app-header">
+      <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-3 px-4">
+        <Link to="/" className="flex min-h-11 shrink-0 items-center gap-2.5" aria-label="Kanji Dash home">
+          <span className="flex h-9 w-9 -rotate-6 items-center justify-center rounded-xl bg-primary font-serif text-xl font-bold text-primary-foreground shadow-sm" aria-hidden="true">
             走
           </span>
-          <span className="hidden font-serif text-lg font-bold tracking-tight sm:inline">Kanji Dash</span>
+          <span className="font-serif text-lg font-bold tracking-tight">Kanji Dash</span>
         </Link>
-        <nav className="flex min-w-0 items-center gap-0.5 sm:gap-2">
+        <nav className="app-navigation" aria-label="Main navigation">
           {links.map((l) => (
             <Link
               key={l.to}
               to={l.to}
+              preload="intent"
               activeOptions={{ exact: l.to === "/" }}
-              className="rounded-md px-1.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-3 sm:py-1.5 sm:text-sm"
-              activeProps={{ className: "bg-secondary text-foreground" }}
+              className="app-tab"
+              activeProps={{ "aria-current": "page" }}
             >
-              {l.label}
+              <span className="app-tab-icon"><AppIcon name={l.icon} /></span>
+              <span>{l.label}</span>
             </Link>
           ))}
-          <div className="ml-1 hidden items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold sm:flex">
-            <span className="font-serif text-primary">火</span>
-            {streak}
-            <span className="ml-1 text-gold">●</span>
-            {save.coins}
-          </div>
         </nav>
+        <div className="flex shrink-0 items-center gap-2 text-xs font-bold tabular-nums">
+          <span className="flex min-h-9 items-center gap-1 rounded-full bg-primary/8 px-2 text-primary" aria-label={`${streak} day streak`}>
+            <AppIcon name="flame" className="h-4 w-4" />
+            {streak}
+          </span>
+          <span className="flex min-h-9 items-center gap-1 rounded-full bg-gold/12 px-2" aria-label={`${save.coins} mon coins`}>
+            <AppIcon name="coin" className="h-4 w-4 text-gold" />
+            {Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(save.coins)}
+          </span>
+        </div>
       </div>
     </header>
   );

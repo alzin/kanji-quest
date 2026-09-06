@@ -34,32 +34,36 @@ function PracticePage() {
   const kanji = candidates[Math.min(idx, candidates.length - 1)];
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-shell min-h-screen bg-paper">
       <Nav />
       <main className="mx-auto max-w-4xl px-4 pb-16">
-        <h1 className="mt-8 font-serif text-3xl font-bold">Stroke Dojo</h1>
-        <p className="mt-1 text-muted-foreground">
-          Trace the guide with your finger or mouse. Cover at least 70% of the ink to stamp it.
+        <h1 className="mt-4 font-serif text-2xl font-bold sm:mt-8 sm:text-3xl">Stroke Dojo</h1>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Trace the guide. Aim for 70% coverage.
         </p>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="mt-3 grid items-start gap-4 sm:mt-6 sm:gap-6 md:grid-cols-2">
+          <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
             {kanji ? (
               <>
                 <StrokePractice key={kanji.c} kanji={kanji} />
-                <div className="mt-4 flex items-center justify-between">
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 sm:mt-4 sm:pt-3">
                   <button
+                    type="button"
+                    aria-label="Previous kanji"
                     onClick={() => setIdx((i) => Math.max(0, i - 1))}
                     disabled={idx === 0}
-                    className="rounded-md border border-border px-4 py-2 font-bold disabled:opacity-40"
+                    className="min-h-11 rounded-lg border border-border px-3 py-2 text-sm font-bold transition-colors hover:bg-secondary active:bg-secondary disabled:opacity-40 sm:px-4"
                   >
-                    ← Prev
+                    ← Previous
                   </button>
-                  <span className="text-sm text-muted-foreground">{Math.min(idx, candidates.length - 1) + 1} / {candidates.length}</span>
+                  <span aria-live="polite" aria-atomic="true" className="shrink-0 text-xs tabular-nums text-muted-foreground">{Math.min(idx, candidates.length - 1) + 1} / {candidates.length}</span>
                   <button
+                    type="button"
+                    aria-label="Next kanji"
                     onClick={() => setIdx((i) => Math.min(candidates.length - 1, i + 1))}
                     disabled={idx >= candidates.length - 1}
-                    className="rounded-md border border-border px-4 py-2 font-bold disabled:opacity-40"
+                    className="min-h-11 rounded-lg border border-border px-3 py-2 text-sm font-bold transition-colors hover:bg-secondary active:bg-secondary disabled:opacity-40 sm:px-4"
                   >
                     Next →
                   </button>
