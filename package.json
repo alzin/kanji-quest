@@ -4,6 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "test": "playwright test --config playwright.unit.config.ts",
     "dev": "vite dev --host 0.0.0.0",
     "build": "vite build",
     "build:pages": "vite build --mode pages",

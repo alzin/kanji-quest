@@ -13,7 +13,7 @@ export const chaptersA: Kanji[] = [
     { w: "四つ", r: "yottsu", m: "four (things)" }, { w: "四月", r: "shigatsu", m: "April" }] },
   { c: "五", m: "five", on: "ゴ", kun: "いつ(つ)", rad: "二 (two)", mn: "Lines crossing to count — a hand holds five fingers.", strokes: 4, ch: 1, vocab: [
     { w: "五つ", r: "itsutsu", m: "five (things)" }, { w: "五月", r: "gogatsu", m: "May" }] },
-  { c: "六", m: "six", on: "ロク", kun: "むっ(つ)", rad: "八 (eight)", mn: "A hat on a table with two legs — six strokes of luck.", strokes: 4, ch: 1, vocab: [
+  { c: "六", m: "six", on: "ロク", kun: "むっ(つ)", rad: "八 (eight)", mn: "A hat on a table with two legs — a lucky table for six.", strokes: 4, ch: 1, vocab: [
     { w: "六つ", r: "muttsu", m: "six (things)" }, { w: "六月", r: "rokugatsu", m: "June" }] },
   { c: "七", m: "seven", on: "シチ", kun: "なな(つ)", rad: "一 (one)", mn: "A cross sliced by a hook — lucky number seven.", strokes: 2, ch: 1, vocab: [
     { w: "七つ", r: "nanatsu", m: "seven (things)" }, { w: "七月", r: "shichigatsu", m: "July" }] },

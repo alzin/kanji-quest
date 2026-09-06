@@ -1,120 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import type { Question } from "@/lib/srs";
+import {
+  advanceRunner, createRunnerState, getDecisionX, getGameLayout, getPreviewX,
+  getRunnerRemaining, getRunnerStats, RUNNER_HEARTS, RUNNER_LANES as LANES,
+  type GameLayout, type RunnerGate as Gate, type RunnerStats,
+} from "./runner-math";
 
 type Props = {
   questions: Question[];
   onAnswer: (q: Question, correct: boolean) => void; // grade + maybe lesson flash
-  onFinish: (stats: { correct: number; wrong: number; bestCombo: number }) => void;
+  onFinish: (stats: RunnerStats) => void;
   title: string;
 };
 
-type Gate = {
-  q: Question;
-  x: number; // world px of the gate center
-  correctLane: number;
-  laneChoices: (string | null)[]; // per lane
-  resolved: -1 | 0 | 1; // -1 pending, 0 wrong, 1 correct
-};
-
-const LANES = 3;
-const GATE_SPACING = 560;
-const SPEED = 150; // px/s
-
-type GameLayout = {
-  compact: boolean;
-  laneTop: number;
-  laneBottom: number;
-  laneSpan: number;
-  questionTop: number;
-  questionHeight: number;
-  signWidth: number;
-  signHeight: number;
-  playerX: number;
-};
-
-function getDecisionX(layout: GameLayout) {
-  return layout.compact ? layout.playerX + layout.signWidth / 2 : layout.playerX;
-}
-
-function getPreviewX(width: number, layout: GameLayout) {
-  return layout.compact ? width - layout.signWidth / 2 - 10 : width;
-}
-
-function getGateSpeed(width: number, layout: GameLayout) {
-  if (!layout.compact) return SPEED;
-  const runway = Math.max(1, getPreviewX(width, layout) - getDecisionX(layout));
-  return Math.min(SPEED, runway / 3);
-}
-
-function getGateSpacing(width: number, layout: GameLayout) {
-  return layout.compact ? getGateSpeed(width, layout) * 3 : GATE_SPACING;
-}
-
-function getGameLayout(width: number, height: number): GameLayout {
-  const compact = width < 640 || height < 500;
-  const landscape = width > height;
-
-  if (!compact) {
-    const laneTop = height * 0.24;
-    const laneBottom = height * 0.86;
-    return {
-      compact,
-      laneTop,
-      laneBottom,
-      laneSpan: laneBottom - laneTop,
-      questionTop: height * 0.03,
-      questionHeight: height * 0.16,
-      signWidth: 190,
-      signHeight: 52,
-      playerX: width * 0.22,
-    };
-  }
-
-  const questionTop = landscape ? 68 : height < 650 ? 76 : 90;
-  const questionHeight = landscape ? 50 : 72;
-  const laneTop = questionTop + questionHeight + (landscape ? 8 : 14);
-  const laneBottom = Math.max(laneTop + 108, height - (landscape ? 38 : 62));
-  const laneSpan = laneBottom - laneTop;
-  const signWidth = Math.min(132, Math.max(116, width * 0.34), width - 24);
-  const signHeight = Math.min(48, Math.max(36, laneSpan / LANES - 10));
-
-  return {
-    compact,
-    laneTop,
-    laneBottom,
-    laneSpan,
-    questionTop,
-    questionHeight,
-    signWidth,
-    signHeight,
-    playerX: Math.max(54, width * 0.2),
-  };
-}
-
 export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hud, setHud] = useState({ hearts: 3, combo: 0, score: 0, left: questions.length });
+  const [hud, setHud] = useState({ hearts: RUNNER_HEARTS, combo: 0, score: 0, left: questions.length });
   const [paused, setPaused] = useState(false);
-  const stateRef = useRef({
-    lane: 1,
-    targetLane: 1,
-    hearts: 3,
-    combo: 0,
-    bestCombo: 0,
-    score: 0,
-    dist: 0,
-    qi: 0,
-    gates: [] as Gate[],
-    done: false,
-    flash: 0, // red flash timer
-    bump: 0, // correct answer glow
-  });
   const pausedRef = useRef(false);
-  pausedRef.current = paused;
+  const lessonPausedRef = useRef(false);
+  const frameTimeRef = useRef<number | null>(null);
+  const updatePaused = (value: boolean) => {
+    // Hidden tabs may suspend animation frames; never charge that gap on resume.
+    frameTimeRef.current = performance.now();
+    pausedRef.current = lessonPausedRef.current || value;
+    setPaused(pausedRef.current);
+  };
 
   // external pause (lesson flash)
   useEffect(() => {
-    (window as any).__kanjiDashPause = (p: boolean) => setPaused(p);
+    (window as any).__kanjiDashPause = (p: boolean) => {
+      lessonPausedRef.current = p;
+      updatePaused(p);
+    };
     return () => {
       delete (window as any).__kanjiDashPause;
     };
@@ -123,9 +41,11 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
-    const s = stateRef.current;
+    const initialBounds = canvas.getBoundingClientRect();
+    const s = createRunnerState(questions, Math.max(1, initialBounds.width), Math.max(1, initialBounds.height));
+    setHud({ hearts: s.hearts, combo: s.combo, score: s.score, left: questions.length });
     let raf = 0;
-    let last = performance.now();
+    frameTimeRef.current = performance.now();
     let pixelRatio = window.devicePixelRatio || 1;
     let previousWidth = 0;
     let previousHeight = 0;
@@ -136,7 +56,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       const height = Math.max(1, r.height);
 
       // Preserve each gate's progress toward the player when a phone rotates.
-      if (previousWidth > 0 && Math.abs(width - previousWidth) > 0.5 && s.gates.length) {
+      if (previousWidth > 0 && (Math.abs(width - previousWidth) > 0.5 || Math.abs(height - previousHeight) > 0.5) && s.gates.length) {
         const previousLayout = getGameLayout(previousWidth, previousHeight);
         const nextLayout = getGameLayout(width, height);
         const previousDecisionX = getDecisionX(previousLayout);
@@ -164,44 +84,17 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(canvas);
 
-    const spawnGate = (qi: number, startX: number): Gate | null => {
-      const q = questions[qi];
-      if (!q) return null;
-      const order = [0, 1, 2].sort(() => Math.random() - 0.5);
-      const laneChoices: (string | null)[] = [null, null, null];
-      let correctLane = 0;
-      order.forEach((lane, i) => {
-        const choice = q.choices[i] ?? null;
-        laneChoices[lane] = choice;
-        if (choice === q.answer) correctLane = lane;
-      });
-      return { q, x: startX, correctLane, laneChoices, resolved: -1 };
-    };
-
-    s.gates = [];
-    const initialLayout = getGameLayout(previousWidth, previousHeight);
-    const initialSpacing = getGateSpacing(previousWidth, initialLayout);
-    let nextX = initialLayout.compact
-      ? getPreviewX(previousWidth, initialLayout)
-      : 700;
-    for (let i = 0; i < 3; i++) {
-      const g = spawnGate(s.qi, nextX);
-      if (g) s.gates.push(g);
-      s.qi++;
-      nextX += initialSpacing;
-    }
-
     const moveLane = (dir: number) => {
       s.targetLane = Math.max(0, Math.min(LANES - 1, s.targetLane + dir));
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); setPaused((p) => !p); return; }
+      if (e.key === "Escape") { e.preventDefault(); updatePaused(!pausedRef.current); return; }
       if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") { e.preventDefault(); moveLane(-1); }
       if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { e.preventDefault(); moveLane(1); }
     };
-    const onBlur = () => setPaused(true);
+    const onBlur = () => updatePaused(true);
     const onVisibilityChange = () => {
-      if (document.hidden) setPaused(true);
+      if (document.hidden) updatePaused(true);
     };
     window.addEventListener("blur", onBlur);
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -218,65 +111,32 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     const laneY = (lane: number, layout: GameLayout) =>
       layout.laneTop + layout.laneSpan * ((lane + 0.5) / LANES);
 
+    let finishReported = false;
     const finish = () => {
-      if (s.done) return;
-      s.done = true;
-      onFinish({ correct: s.score > 0 ? Math.round(s.score / 100) : 0, wrong: 3 - s.hearts + (s.hearts <= 0 ? 0 : 0), bestCombo: s.bestCombo });
+      if (finishReported) return;
+      finishReported = true;
+      onFinish(getRunnerStats(s));
     };
 
     const frame = (t: number) => {
-      const dt = Math.min((t - last) / 1000, 0.05);
-      last = t;
+      const dt = Math.max(0, (t - (frameTimeRef.current ?? t)) / 1000);
+      frameTimeRef.current = t;
       const W = canvas.width / pixelRatio;
       const H = canvas.height / pixelRatio;
       const layout = getGameLayout(W, H);
-      const gateSpeed = getGateSpeed(W, layout);
       ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
       if (!pausedRef.current && !s.done) {
-        s.dist += SPEED * dt;
-        s.lane += (s.targetLane - s.lane) * Math.min(1, dt * 14);
-        s.flash = Math.max(0, s.flash - dt);
-        s.bump = Math.max(0, s.bump - dt);
-
-        // scroll gates
-        for (const g of s.gates) g.x -= gateSpeed * dt;
-
-        const decisionX = getDecisionX(layout);
-        for (const g of s.gates) {
-          if (g.resolved === -1 && g.x <= decisionX) {
-            const lane = Math.round(s.lane);
-            const correct = lane === g.correctLane;
-            g.resolved = correct ? 1 : 0;
-            if (correct) {
-              s.combo += 1;
-              s.bestCombo = Math.max(s.bestCombo, s.combo);
-              s.score += 100 * Math.max(1, s.combo);
-              s.bump = 0.5;
-            } else {
-              s.combo = 0;
-              s.hearts -= 1;
-              s.flash = 0.6;
-            }
-            onAnswer(g.q, correct);
-            setHud({ hearts: s.hearts, combo: s.combo, score: s.score, left: questions.length - (s.qi - s.gates.filter((x) => x.resolved === -1).length) });
-          }
-        }
-
-        // remove passed gates, spawn new
-        s.gates = s.gates.filter((g) =>
-          g.resolved === -1 || g.x > (layout.compact ? layout.playerX : -200),
-        );
-        const lastGateX = s.gates.length ? Math.max(...s.gates.map((g) => g.x)) : 300;
-        while (s.qi < questions.length && s.gates.length < 3) {
-          const g = spawnGate(s.qi, lastGateX + getGateSpacing(W, layout));
-          if (g) s.gates.push(g);
-          s.qi++;
-          if (s.gates.length) break;
-        }
-        if (s.qi >= questions.length && s.gates.length === 0) finish();
-        if (s.hearts <= 0) finish();
+        advanceRunner(s, questions, W, H, dt, (question, correct) => {
+          onAnswer(question, correct);
+          setHud({
+            hearts: s.hearts, combo: s.combo, score: s.score,
+            left: getRunnerRemaining(s, questions.length),
+          });
+          return !pausedRef.current;
+        });
       }
+      if (s.done) finish();
 
       // ---------- render ----------
       // sky (washi paper wash)
@@ -513,7 +373,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         <div className="min-w-0 flex-1 rounded-lg border border-border bg-card/90 px-2.5 py-1.5 shadow-sm backdrop-blur sm:flex-none sm:px-3 sm:py-2">
           <div className="line-clamp-2 text-[9px] font-bold uppercase leading-tight tracking-widest text-muted-foreground sm:text-[10px]">{title}</div>
           <div className="mt-1 flex items-center gap-1.5 text-base leading-none sm:mt-0 sm:gap-2 sm:text-lg">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: RUNNER_HEARTS }).map((_, i) => (
               <span key={i} className={i < hud.hearts ? "text-primary" : "text-border"}>♥</span>
             ))}
           </div>
@@ -521,7 +381,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         <div className="flex shrink-0 gap-1.5 sm:gap-2">
           <div className="rounded-lg border border-border bg-card/90 px-2 py-1.5 text-right shadow-sm backdrop-blur sm:px-3 sm:py-2">
             <div className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground sm:text-[10px]">Combo</div>
-            <div className="font-serif text-base font-bold leading-tight text-accent sm:text-lg">×{Math.max(1, hud.combo)}</div>
+            <div className="font-serif text-base font-bold leading-tight text-accent sm:text-lg">×{hud.combo}</div>
           </div>
           <div className="rounded-lg border border-border bg-card/90 px-2 py-1.5 text-right shadow-sm backdrop-blur sm:px-3 sm:py-2">
             <div className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground sm:text-[10px]">Score</div>
@@ -531,7 +391,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       </div>
       <button
         type="button"
-        onClick={() => setPaused((p) => !p)}
+        onClick={() => updatePaused(!pausedRef.current)}
         aria-label={paused ? "Resume game" : "Pause game"}
         aria-pressed={paused}
         className="absolute bottom-2 left-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-lg font-bold text-paper shadow backdrop-blur sm:bottom-4 sm:left-4"
@@ -542,6 +402,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         className="pointer-events-none absolute inset-x-14 bottom-2 flex justify-center px-1 sm:inset-x-16 sm:bottom-4"
       >
         <div className="max-w-full rounded-full bg-ink/70 px-3 py-1.5 text-center text-[11px] font-bold text-paper sm:px-4 sm:text-xs">
+          <span className="mr-2">{hud.left} left</span>
           <span className="sm:hidden">Tap a lane to answer</span>
           <span className="hidden sm:inline">↑ ↓ / W S to change lane · tap a lane on touch · Esc to pause</span>
         </div>

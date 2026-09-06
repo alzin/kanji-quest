@@ -31,7 +31,8 @@ function PracticePage() {
   }, [save]);
 
   const [idx, setIdx] = useState(0);
-  const kanji = candidates[Math.min(idx, candidates.length - 1)];
+  const currentIndex = Math.max(0, Math.min(idx, candidates.length - 1));
+  const kanji = candidates[currentIndex];
 
   return (
     <div className="app-shell min-h-screen bg-paper">
@@ -51,18 +52,18 @@ function PracticePage() {
                   <button
                     type="button"
                     aria-label="Previous kanji"
-                    onClick={() => setIdx((i) => Math.max(0, i - 1))}
-                    disabled={idx === 0}
+                    onClick={() => setIdx(Math.max(0, currentIndex - 1))}
+                    disabled={currentIndex === 0}
                     className="min-h-11 rounded-lg border border-border px-3 py-2 text-sm font-bold transition-colors hover:bg-secondary active:bg-secondary disabled:opacity-40 sm:px-4"
                   >
                     ← Previous
                   </button>
-                  <span aria-live="polite" aria-atomic="true" className="shrink-0 text-xs tabular-nums text-muted-foreground">{Math.min(idx, candidates.length - 1) + 1} / {candidates.length}</span>
+                  <span aria-live="polite" aria-atomic="true" className="shrink-0 text-xs tabular-nums text-muted-foreground">{currentIndex + 1} / {candidates.length}</span>
                   <button
                     type="button"
                     aria-label="Next kanji"
-                    onClick={() => setIdx((i) => Math.min(candidates.length - 1, i + 1))}
-                    disabled={idx >= candidates.length - 1}
+                    onClick={() => setIdx(Math.min(candidates.length - 1, currentIndex + 1))}
+                    disabled={currentIndex >= candidates.length - 1}
                     className="min-h-11 rounded-lg border border-border px-3 py-2 text-sm font-bold transition-colors hover:bg-secondary active:bg-secondary disabled:opacity-40 sm:px-4"
                   >
                     Next →

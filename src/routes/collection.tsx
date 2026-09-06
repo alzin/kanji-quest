@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { KanjiDetail } from "@/components/KanjiDetail";
-import { allKanji, CHAPTER_NAMES } from "@/data/n5";
+import { allKanji, CHAPTER_NAMES, CHAPTER_COUNT } from "@/data/n5";
 import type { Kanji } from "@/data/n5/types";
 import { useSave, getCard, type CardProgress } from "@/lib/srs";
 
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/collection")({
   head: () => ({
     meta: [
       { title: "Kanji Collection — Kanji Dash" },
-      { name: "description", content: "All 96 JLPT N5 kanji with readings, radicals, mnemonics, vocabulary, and your mastery state." },
+      { name: "description", content: `All ${allKanji.length} JLPT N5 kanji with readings, radicals, mnemonics, vocabulary, and your mastery state.` },
       { property: "og:title", content: "Kanji Collection — Kanji Dash" },
       { property: "og:description", content: "Browse every N5 kanji and track your mastery." },
     ],
@@ -184,7 +184,7 @@ function CollectionPage() {
           >
             All
           </button>
-          {[1, 2, 3, 4, 5, 6].map((ch) => (
+          {Array.from({ length: CHAPTER_COUNT }, (_, index) => index + 1).map((ch) => (
             <button
               key={ch}
               type="button"

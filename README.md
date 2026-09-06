@@ -12,3 +12,17 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Game calculations
+
+- A correct answer earns `100 × current consecutive correct answers` points. A mistake resets the combo and costs one of three hearts. Unreached questions are counted separately from mistakes.
+- A daily run earns `2 × correct answers + best combo` mon. A checkpoint needs at least 70% of its full question count correct (9 of 12) and pays 50 mon on its first clearance only. Every finished session, including a failed or passed checkpoint, adds one completed run.
+- Mastery progress gives each card 0/1/2/3 points for unseen/learning/reviewing/mastered, divided by the maximum possible points. Displays round to whole percentages, with 100% reserved for all cards mastered. Region unlocks use the exact 55% threshold, not a rounded display value.
+- Daily queues contain up to 15 oldest due reviews and 5 new cards from eligible regions. Mastered cards return when due. Correct answers before a card is due count as practice without advancing its schedule. The first correct interval is 0.02 days (28 minutes 48 seconds), followed by 1 day; later intervals multiply by the prior ease and round to tenths of a day. Mastery requires an interval of at least 21 days. Mistakes shorten the interval to 40%, with a 0.01-day minimum.
+- Streaks count local calendar days, including daylight-saving transitions. Tracing uses every pixel with a symmetric 10-pixel square tolerance: at least 70% coverage and strictly less than 45% stray ink, before display rounding. Tracing does not assess stroke order or award mastery.
+
+Existing saves retain their totals. Legacy checkpoint saves only recorded a highest chapter number, so migration preserves their previous implied seals; new saves track each chapter explicitly. Historical overpaid rewards cannot be reconstructed because saves contain no run history.
+
+## Verification
+
+`npm test` runs deterministic calculation and curriculum tests without a browser. `npm run typecheck` checks application types. `npm run test:pwa` builds the app and runs browser, gameplay, progress, mobile, and offline tests in Chromium and WebKit. `npm run test:pages` checks the static Pages build with the same browser suite.

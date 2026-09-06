@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type PointerEvent } from "react";
 import type { Kanji } from "@/data/n5/types";
+import { evaluateTrace } from "@/lib/stroke-math";
 
 const SIZE = 320;
 
@@ -60,36 +61,9 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
     const ctx = canvas.getContext("2d")!;
     const drawn = ctx.getImageData(0, 0, SIZE, SIZE).data;
     const target = targetPixels();
-    let targetCount = 0;
-    let covered = 0;
-    let stray = 0;
-    let drawnCount = 0;
-    const R = 10; // tolerance radius (coarse grid)
-    for (let y = 0; y < SIZE; y += 2) {
-      for (let x = 0; x < SIZE; x += 2) {
-        const ti = y * SIZE + x;
-        if (!target[ti]) continue;
-        targetCount++;
-        let hit = false;
-        for (let dy = -R; dy <= R && !hit; dy += 2) {
-          for (let dx = -R; dx <= R && !hit; dx += 2) {
-            const nx = x + dx, ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE) continue;
-            if ((drawn[(ny * SIZE + nx) * 4 + 3] ?? 0) > 60) hit = true;
-          }
-        }
-        if (hit) covered++;
-      }
-    }
-    for (let i = 0; i < SIZE * SIZE; i += 4) {
-      if ((drawn[i * 4 + 3] ?? 0) > 60) {
-        drawnCount++;
-        if (!target[i]) stray++;
-      }
-    }
-    const pct = targetCount ? Math.round((covered / targetCount) * 100) : 0;
-    const strayRatio = drawnCount ? stray / drawnCount : 1;
-    setResult({ pct, pass: pct >= 70 && strayRatio < 0.45 });
+    const drawnMask = new Uint8Array(SIZE * SIZE);
+    for (let i = 0; i < drawnMask.length; i++) drawnMask[i] = (drawn[i * 4 + 3] ?? 0) > 60 ? 1 : 0;
+    setResult(evaluateTrace(target, drawnMask, SIZE, SIZE));
   };
 
   const pos = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -173,8 +147,8 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
         >
           {result
             ? result.pass
-              ? `Stamped! ${result.pct}% coverage. Beautiful brushwork.`
-              : `${result.pct}% coverage. Trace more of the guide and stay on the lines.`
+              ? `Stamped! About ${result.pct}% coverage. Beautiful brushwork.`
+              : `About ${result.pct}% coverage. Trace more of the guide and stay on the lines.`
             : "Swipe outside the square to scroll."}
         </p>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-3">

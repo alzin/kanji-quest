@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Nav } from "@/components/Nav";
 import { AppIcon } from "@/components/AppIcon";
 import { CHAPTER_NAMES, CHAPTER_COUNT, kanjiOfChapter } from "@/data/n5";
-import { useSave, chapterMasteryPct, isChapterUnlocked, isGateCleared } from "@/lib/srs";
+import { useSave, chapterMasteryPct, getCard, isChapterUnlocked, isGateCleared } from "@/lib/srs";
 
 export const Route = createFileRoute("/map")({
   head: () => ({
@@ -30,12 +30,12 @@ function MapPage() {
         <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your journey</p>
         <h1 className="mt-2 font-serif text-3xl font-bold">The N5 Road</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Master 55% of a region's kanji to open the next. Stamp each checkpoint gate to earn your N5 seal.
+          Reach 55% mastery progress in a region to open the next. Learning and reviewing kanji contribute partial progress. Stamp each checkpoint gate to earn your N5 seal.
         </p>
 
         <section className="mt-5 rounded-2xl border border-border bg-card p-4" aria-label="Checkpoint progress">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-bold">One road. Six seals.</span>
+            <span className="text-sm font-bold">One road. {CHAPTER_COUNT} seals.</span>
             <span className="text-xs font-bold text-primary">{seals} / {CHAPTER_COUNT} earned</span>
           </div>
           <div className="mt-3 flex gap-1.5" aria-hidden="true">
@@ -63,7 +63,9 @@ function MapPage() {
             const unlocked = isChapterUnlocked(save, ch);
             const pct = chapterMasteryPct(save, ch);
             const cleared = isGateCleared(save, ch);
-            const count = kanjiOfChapter(ch).length;
+            const kanji = kanjiOfChapter(ch);
+            const count = kanji.length;
+            const mastered = kanji.filter((entry) => getCard(save, entry.c).mastery === 3).length;
             return (
               <li key={ch} className="relative">
                 {i < chapters.length - 1 && (
@@ -89,7 +91,7 @@ function MapPage() {
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="mt-3 flex flex-col items-stretch gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-muted-foreground">{unlocked ? `${pct}% mastered` : "Locked — master the previous region"}</span>
+                      <span className="text-muted-foreground">{unlocked ? `${pct}% progress · ${mastered}/${count} mastered` : "Locked — reach 55% progress in the previous region"}</span>
                       {unlocked && !cleared && (
                         <Link
                           to="/run"

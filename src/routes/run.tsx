@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RunnerGame } from "@/components/game/RunnerGame";
+import { checkpointPassed, dailyRunReward, type RunnerStats } from "@/components/game/runner-math";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import {
   buildRunQueue, buildGateQuiz, grade, finishRun, clearGate,
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/run")({
   validateSearch: (s: Record<string, unknown>) => {
     const g = s["gate"];
     const n = typeof g === "number" ? g : typeof g === "string" && /^\d+$/.test(g) ? parseInt(g) : NaN;
-    return { gate: Number.isFinite(n) ? Math.min(CHAPTER_COUNT, Math.max(1, n)) : undefined };
+    return { gate: Number.isInteger(n) && n >= 1 && n <= CHAPTER_COUNT ? n : undefined };
   },
   head: () => ({
     meta: [
@@ -27,6 +28,14 @@ export const Route = createFileRoute("/run")({
 
 function RunPage() {
   const { gate } = useSearch({ from: "/run" });
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  // The saved review queue is only available in this browser, after hydration.
+  if (!ready) return <div className="game-viewport flex items-center justify-center bg-paper" role="status">Preparing your run…</div>;
+  return <RunSession key={gate ?? "daily"} gate={gate} />;
+}
+
+function RunSession({ gate }: { gate: number | undefined }) {
   const navigate = useNavigate();
   const [session, setSession] = useState(0);
   const questions = useMemo<Question[]>(() => {
@@ -36,7 +45,15 @@ function RunPage() {
   }, [gate, session]);
 
   const [lesson, setLesson] = useState<Question | null>(null);
-  const [results, setResults] = useState<null | { correct: number; wrong: number; bestCombo: number }>(null);
+  const [results, setResults] = useState<null | (RunnerStats & { earned: number })>(null);
+  const finished = useRef(false);
+
+  const restart = () => {
+    finished.current = false;
+    setLesson(null);
+    setResults(null);
+    setSession((value) => value + 1);
+  };
 
   const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : "Daily run";
 
@@ -46,7 +63,7 @@ function RunPage() {
         <div className="font-serif text-6xl font-bold text-primary">完</div>
         <h1 className="mt-4 font-serif text-2xl font-bold">Nothing to run right now</h1>
         <p className="mt-2 max-w-sm text-muted-foreground">
-          Every unlocked kanji is already mastered or not yet due. Come back later, or visit the dojo to practice strokes.
+          There are no new kanji or reviews due in your unlocked regions. Come back later, or visit the dojo to practice strokes.
         </p>
         <div className="mt-6 flex gap-3">
           <Link to="/" className="rounded-lg bg-primary px-5 py-2.5 font-bold text-primary-foreground">Home</Link>
@@ -56,7 +73,10 @@ function RunPage() {
     );
   }
 
-  const pass = results ? results.correct / Math.max(1, results.correct + results.wrong) >= 0.7 : false;
+  const pass = results ? checkpointPassed(results.correct, questions.length) : false;
+  const attempted = results ? results.correct + results.wrong : 0;
+  const unattempted = results ? questions.length - attempted : 0;
+  const accuracy = results && attempted > 0 ? Math.round(results.correct / attempted * 100) : 0;
 
   return (
     <div className="game-viewport overflow-hidden bg-paper">
@@ -73,15 +93,14 @@ function RunPage() {
             }
           }}
           onFinish={(stats) => {
-            const wrongCount = questions.length - stats.correct;
-            const finalStats = { ...stats, wrong: wrongCount };
-            setResults(finalStats);
-            if (gate) {
-              if (stats.correct / questions.length >= 0.7) clearGate(gate);
-              else finishRun(0);
-            } else {
-              finishRun(Math.round(stats.correct * 2 + stats.bestCombo));
-            }
+            if (finished.current) return;
+            finished.current = true;
+            const earned = gate
+              ? (checkpointPassed(stats.correct, questions.length) ? clearGate(gate) : 0)
+              : dailyRunReward(stats);
+            finishRun(gate ? 0 : earned);
+            setLesson(null);
+            setResults({ ...stats, earned });
           }}
         />
       )}
@@ -122,8 +141,12 @@ function RunPage() {
               <div className="font-serif text-5xl font-bold">{gate ? "再挑戦" : "完了"}</div>
             )}
             <h1 className="mt-4 font-serif text-2xl font-bold">
-              {gate ? (pass ? "Checkpoint cleared!" : "Not yet — train and return") : "Run complete!"}
+              {gate ? (pass ? "Checkpoint cleared!" : "Not yet — train and return") : unattempted > 0 ? "Run ended" : "Run complete!"}
             </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {attempted} / {questions.length} answered{unattempted > 0 ? ` · ${unattempted} not reached` : ""}
+            </p>
+            {gate && <p className="mt-1 text-xs text-muted-foreground">Pass: at least {Math.ceil(questions.length * 0.7)} correct out of {questions.length}.</p>}
             <div className="mt-5 grid grid-cols-3 gap-1.5 text-center sm:mt-6 sm:gap-3">
               <div className="rounded-lg bg-secondary p-2 sm:p-3">
                 <div className="font-serif text-xl font-bold text-[#2e5238] sm:text-2xl">{results.correct}</div>
@@ -138,10 +161,24 @@ function RunPage() {
                 <div className="text-xs font-bold text-muted-foreground">Best combo</div>
               </div>
             </div>
+            <div className="mt-3 grid grid-cols-3 gap-1.5 text-center sm:gap-3">
+              <div className="rounded-lg bg-secondary p-2 sm:p-3">
+                <div className="font-serif text-xl font-bold sm:text-2xl">{results.score.toLocaleString()}</div>
+                <div className="text-xs font-bold text-muted-foreground">Score</div>
+              </div>
+              <div className="rounded-lg bg-secondary p-2 sm:p-3">
+                <div className="font-serif text-xl font-bold sm:text-2xl">{accuracy}%</div>
+                <div className="text-xs font-bold text-muted-foreground">Answer accuracy</div>
+              </div>
+              <div className="rounded-lg bg-secondary p-2 sm:p-3">
+                <div className="font-serif text-xl font-bold text-accent sm:text-2xl">+{results.earned}</div>
+                <div className="text-xs font-bold text-muted-foreground">Mon earned</div>
+              </div>
+            </div>
             <div className="mt-6 flex flex-col gap-2">
               {!gate && (
                 <button
-                  onClick={() => { setResults(null); setSession((x) => x + 1); }}
+                  onClick={restart}
                   className="rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
                 >
                   Run again
@@ -149,7 +186,7 @@ function RunPage() {
               )}
               {gate && !pass && (
                 <button
-                  onClick={() => { setResults(null); setSession((x) => x + 1); }}
+                  onClick={restart}
                   className="rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
                 >
                   Retry checkpoint
