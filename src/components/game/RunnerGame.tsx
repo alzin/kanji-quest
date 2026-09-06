@@ -10,7 +10,7 @@ type Props = {
 
 type Gate = {
   q: Question;
-  x: number; // world px of the decision line
+  x: number; // world px of the gate center
   correctLane: number;
   laneChoices: (string | null)[]; // per lane
   resolved: -1 | 0 | 1; // -1 pending, 0 wrong, 1 correct
@@ -19,6 +19,77 @@ type Gate = {
 const LANES = 3;
 const GATE_SPACING = 560;
 const SPEED = 150; // px/s
+
+type GameLayout = {
+  compact: boolean;
+  laneTop: number;
+  laneBottom: number;
+  laneSpan: number;
+  questionTop: number;
+  questionHeight: number;
+  signWidth: number;
+  signHeight: number;
+  playerX: number;
+};
+
+function getDecisionX(layout: GameLayout) {
+  return layout.compact ? layout.playerX + layout.signWidth / 2 : layout.playerX;
+}
+
+function getPreviewX(width: number, layout: GameLayout) {
+  return layout.compact ? width - layout.signWidth / 2 - 10 : width;
+}
+
+function getGateSpeed(width: number, layout: GameLayout) {
+  if (!layout.compact) return SPEED;
+  const runway = Math.max(1, getPreviewX(width, layout) - getDecisionX(layout));
+  return Math.min(SPEED, runway / 3);
+}
+
+function getGateSpacing(width: number, layout: GameLayout) {
+  return layout.compact ? getGateSpeed(width, layout) * 3 : GATE_SPACING;
+}
+
+function getGameLayout(width: number, height: number): GameLayout {
+  const compact = width < 640 || height < 500;
+  const landscape = width > height;
+
+  if (!compact) {
+    const laneTop = height * 0.24;
+    const laneBottom = height * 0.86;
+    return {
+      compact,
+      laneTop,
+      laneBottom,
+      laneSpan: laneBottom - laneTop,
+      questionTop: height * 0.03,
+      questionHeight: height * 0.16,
+      signWidth: 190,
+      signHeight: 52,
+      playerX: width * 0.22,
+    };
+  }
+
+  const questionTop = landscape ? 68 : height < 650 ? 76 : 90;
+  const questionHeight = landscape ? 50 : 72;
+  const laneTop = questionTop + questionHeight + (landscape ? 8 : 14);
+  const laneBottom = Math.max(laneTop + 108, height - (landscape ? 38 : 62));
+  const laneSpan = laneBottom - laneTop;
+  const signWidth = Math.min(132, Math.max(116, width * 0.34), width - 24);
+  const signHeight = Math.min(48, Math.max(36, laneSpan / LANES - 10));
+
+  return {
+    compact,
+    laneTop,
+    laneBottom,
+    laneSpan,
+    questionTop,
+    questionHeight,
+    signWidth,
+    signHeight,
+    playerX: Math.max(54, width * 0.2),
+  };
+}
 
 export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,16 +123,46 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
+    const s = stateRef.current;
     let raf = 0;
     let last = performance.now();
+    let pixelRatio = window.devicePixelRatio || 1;
+    let previousWidth = 0;
+    let previousHeight = 0;
 
     const resize = () => {
       const r = canvas.getBoundingClientRect();
-      canvas.width = r.width * devicePixelRatio;
-      canvas.height = r.height * devicePixelRatio;
+      const width = Math.max(1, r.width);
+      const height = Math.max(1, r.height);
+
+      // Preserve each gate's progress toward the player when a phone rotates.
+      if (previousWidth > 0 && Math.abs(width - previousWidth) > 0.5 && s.gates.length) {
+        const previousLayout = getGameLayout(previousWidth, previousHeight);
+        const nextLayout = getGameLayout(width, height);
+        const previousDecisionX = getDecisionX(previousLayout);
+        const nextDecisionX = getDecisionX(nextLayout);
+        const previousRunway = Math.max(
+          1,
+          getPreviewX(previousWidth, previousLayout) - previousDecisionX,
+        );
+        const nextRunway = Math.max(1, getPreviewX(width, nextLayout) - nextDecisionX);
+        for (const gate of s.gates) {
+          gate.x = nextDecisionX
+            + (gate.x - previousDecisionX) * (nextRunway / previousRunway);
+        }
+      }
+
+      pixelRatio = window.devicePixelRatio || 1;
+      canvas.width = Math.round(width * pixelRatio);
+      canvas.height = Math.round(height * pixelRatio);
+      previousWidth = width;
+      previousHeight = height;
     };
     resize();
     window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(canvas);
 
     const spawnGate = (qi: number, startX: number): Gate | null => {
       const q = questions[qi];
@@ -77,14 +178,17 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       return { q, x: startX, correctLane, laneChoices, resolved: -1 };
     };
 
-    const s = stateRef.current;
     s.gates = [];
-    let nextX = 700;
+    const initialLayout = getGameLayout(previousWidth, previousHeight);
+    const initialSpacing = getGateSpacing(previousWidth, initialLayout);
+    let nextX = initialLayout.compact
+      ? getPreviewX(previousWidth, initialLayout)
+      : 700;
     for (let i = 0; i < 3; i++) {
       const g = spawnGate(s.qi, nextX);
       if (g) s.gates.push(g);
       s.qi++;
-      nextX += GATE_SPACING;
+      nextX += initialSpacing;
     }
 
     const moveLane = (dir: number) => {
@@ -96,19 +200,23 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { e.preventDefault(); moveLane(1); }
     };
     const onBlur = () => setPaused(true);
+    const onVisibilityChange = () => {
+      if (document.hidden) setPaused(true);
+    };
     window.addEventListener("blur", onBlur);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     const onPointer = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
-      const y = (e.clientY - r.top) / r.height;
-      const laneH = 0.62; // lanes occupy middle band
-      const top = 0.24;
-      const lane = Math.floor(((y - top) / laneH) * LANES);
+      const y = e.clientY - r.top;
+      const layout = getGameLayout(r.width, r.height);
+      const lane = Math.floor(((y - layout.laneTop) / layout.laneSpan) * LANES);
       if (lane >= 0 && lane < LANES) s.targetLane = lane;
     };
     window.addEventListener("keydown", onKey);
     canvas.addEventListener("pointerdown", onPointer);
 
-    const laneY = (lane: number, h: number) => h * 0.24 + h * 0.62 * ((lane + 0.5) / LANES);
+    const laneY = (lane: number, layout: GameLayout) =>
+      layout.laneTop + layout.laneSpan * ((lane + 0.5) / LANES);
 
     const finish = () => {
       if (s.done) return;
@@ -119,9 +227,11 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     const frame = (t: number) => {
       const dt = Math.min((t - last) / 1000, 0.05);
       last = t;
-      const W = canvas.width / devicePixelRatio;
-      const H = canvas.height / devicePixelRatio;
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      const W = canvas.width / pixelRatio;
+      const H = canvas.height / pixelRatio;
+      const layout = getGameLayout(W, H);
+      const gateSpeed = getGateSpeed(W, layout);
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
       if (!pausedRef.current && !s.done) {
         s.dist += SPEED * dt;
@@ -130,11 +240,11 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         s.bump = Math.max(0, s.bump - dt);
 
         // scroll gates
-        for (const g of s.gates) g.x -= SPEED * dt;
+        for (const g of s.gates) g.x -= gateSpeed * dt;
 
-        const playerX = W * 0.22;
+        const decisionX = getDecisionX(layout);
         for (const g of s.gates) {
-          if (g.resolved === -1 && g.x <= playerX) {
+          if (g.resolved === -1 && g.x <= decisionX) {
             const lane = Math.round(s.lane);
             const correct = lane === g.correctLane;
             g.resolved = correct ? 1 : 0;
@@ -154,10 +264,12 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         }
 
         // remove passed gates, spawn new
-        s.gates = s.gates.filter((g) => g.x > -200);
+        s.gates = s.gates.filter((g) =>
+          g.resolved === -1 || g.x > (layout.compact ? layout.playerX : -200),
+        );
         const lastGateX = s.gates.length ? Math.max(...s.gates.map((g) => g.x)) : 300;
         while (s.qi < questions.length && s.gates.length < 3) {
-          const g = spawnGate(s.qi, lastGateX + GATE_SPACING * (s.gates.length ? 1 : 1));
+          const g = spawnGate(s.qi, lastGateX + getGateSpacing(W, layout));
           if (g) s.gates.push(g);
           s.qi++;
           if (s.gates.length) break;
@@ -203,19 +315,20 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       drawHills(0.3, "#8fa08b", H * 0.58, H * 0.12);
 
       // ground
+      const groundY = Math.min(H, layout.laneBottom + (layout.compact ? 10 : 30));
       ctx.fillStyle = "#d9c9a3";
-      ctx.fillRect(0, H * 0.24 + H * 0.62 + 30, W, H);
+      ctx.fillRect(0, groundY, W, H - groundY);
       ctx.fillStyle = "#c9b78d";
       const goff = s.dist % 60;
       for (let x = -60; x < W + 60; x += 60) {
-        ctx.fillRect(x - goff, H * 0.24 + H * 0.62 + 34, 24, 4);
+        ctx.fillRect(x - goff, groundY + 4, 24, 4);
       }
 
       // torii decoration passing by
       const toriiOff = (s.dist * 0.9) % 900;
       for (let x = -900; x < W + 900; x += 900) {
         const px = x - toriiOff;
-        const gy = H * 0.24 + H * 0.62 + 30;
+        const gy = groundY;
         ctx.fillStyle = "#b03a2e";
         ctx.fillRect(px, gy - 130, 8, 130);
         ctx.fillRect(px + 62, gy - 130, 8, 130);
@@ -225,56 +338,91 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
 
       // lanes
       for (let l = 0; l < LANES; l++) {
-        const y = laneY(l, H);
+        const y = laneY(l, layout);
         ctx.strokeStyle = "rgba(60,50,30,0.25)";
         ctx.setLineDash([14, 18]);
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(0, y + 26);
-        ctx.lineTo(W, y + 26);
+        ctx.moveTo(0, y + layout.signHeight / 2);
+        ctx.lineTo(W, y + layout.signHeight / 2);
         ctx.stroke();
         ctx.setLineDash([]);
       }
 
       // gates
-      ctx.textAlign = "center";
-      for (const g of s.gates) {
-        // question banner above lanes
-        const bx = g.x;
-        ctx.fillStyle = "rgba(28,26,23,0.88)";
-        roundRect(ctx, bx - 70, H * 0.03, 140, H * 0.16, 10);
+      const activeGate = s.gates
+        .filter((g) => g.resolved === -1)
+        .reduce<Gate | null>((nearest, g) => (!nearest || g.x < nearest.x ? g : nearest), null);
+
+      const drawQuestion = (g: Gate, x: number, y: number, width: number, height: number) => {
+        ctx.fillStyle = "rgba(28,26,23,0.9)";
+        roundRect(ctx, x - width / 2, y, width, height, 10);
         ctx.fill();
         ctx.fillStyle = "#f7f2e7";
-        ctx.font = `800 ${Math.min(54, H * 0.09)}px "Shippori Mincho B1", serif`;
-        ctx.fillText(g.q.prompt, bx, H * 0.125);
-        ctx.font = `700 ${Math.min(13, H * 0.022)}px "Zen Kaku Gothic New", sans-serif`;
+        ctx.font = `800 ${Math.min(layout.compact ? 42 : 54, height * 0.58)}px "Shippori Mincho B1", serif`;
+        ctx.fillText(g.q.prompt, x, y + height * 0.58);
+        const helperFontSize = layout.compact
+          ? Math.max(10, Math.min(12, height * 0.15))
+          : Math.max(10, Math.min(13, height * 0.15));
+        ctx.font = `700 ${helperFontSize}px "Zen Kaku Gothic New", sans-serif`;
         ctx.fillStyle = "#d8b24a";
-        ctx.fillText(g.q.sub, bx, H * 0.165);
+        ctx.fillText(g.q.sub, x, y + height * 0.84);
+      };
+
+      ctx.textAlign = "center";
+      if (layout.compact && activeGate) {
+        drawQuestion(
+          activeGate,
+          W / 2,
+          layout.questionTop,
+          Math.min(226, W - 24),
+          layout.questionHeight,
+        );
+      }
+
+      for (const g of s.gates) {
+        // On compact screens, reveal one moving decision at a time.
+        if (layout.compact && g.resolved === -1 && g !== activeGate) continue;
+        const bx = g.x;
+        if (!layout.compact) {
+          drawQuestion(g, bx, layout.questionTop, 140, layout.questionHeight);
+        }
 
         // lane signposts
         for (let l = 0; l < LANES; l++) {
           const choice = g.laneChoices[l];
           if (choice == null) continue;
-          const y = laneY(l, H);
+          const y = laneY(l, layout);
           const isCorrect = g.resolved === 1 && l === g.correctLane;
           const isWrong = g.resolved === 0 && l === g.correctLane;
           ctx.fillStyle =
             g.resolved === -1 ? "#fdfaf2" : isCorrect ? "#4a7c59" : isWrong ? "#4a7c59" : "#e8dcc0";
           ctx.strokeStyle = g.resolved === -1 ? "#8a7a55" : isCorrect || isWrong ? "#2e5238" : "#b5a67f";
           ctx.lineWidth = 2.5;
-          roundRect(ctx, bx - 95, y - 26, 190, 52, 8);
+          roundRect(
+            ctx,
+            bx - layout.signWidth / 2,
+            y - layout.signHeight / 2,
+            layout.signWidth,
+            layout.signHeight,
+            8,
+          );
           ctx.fill();
           ctx.stroke();
           ctx.fillStyle = g.resolved === -1 ? "#1c1a17" : isCorrect || isWrong ? "#f7f2e7" : "#6b5d40";
-          const fontSize = choice.length > 14 ? 13 : choice.length > 8 ? 16 : 20;
+          let fontSize = choice.length > 14 ? 13 : choice.length > 8 ? 16 : 20;
           ctx.font = `700 ${fontSize}px "Zen Kaku Gothic New", "Shippori Mincho B1", sans-serif`;
-          ctx.fillText(choice, bx, y + 6);
+          while (fontSize > 10 && ctx.measureText(choice).width > layout.signWidth - 18) {
+            fontSize -= 1;
+            ctx.font = `700 ${fontSize}px "Zen Kaku Gothic New", "Shippori Mincho B1", sans-serif`;
+          }
+          ctx.fillText(choice, bx, y + fontSize * 0.32, layout.signWidth - 16);
         }
       }
 
       // player: ink runner blob
-      const px = W * 0.22;
-      const py = laneY(s.lane, H);
+      const px = layout.playerX;
+      const py = laneY(s.lane, layout);
       const run = Math.sin(s.dist * 0.05);
       if (s.bump > 0) {
         ctx.fillStyle = `rgba(74,124,89,${s.bump})`;
@@ -333,7 +481,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         ctx.textBaseline = "middle";
         ctx.fillText("一時停止", W / 2, H / 2 - H * 0.06);
         ctx.font = `${H * 0.03}px sans-serif`;
-        ctx.fillText("Press Esc to resume", W / 2, H / 2 + H * 0.04);
+        ctx.fillText(layout.compact ? "Tap ▶ to resume" : "Press Esc to resume", W / 2, H / 2 + H * 0.04);
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
       }
@@ -345,8 +493,11 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+      resizeObserver.disconnect();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       canvas.removeEventListener("pointerdown", onPointer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -356,29 +507,46 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     <div className="relative h-full w-full">
       <canvas ref={canvasRef} className="h-full w-full touch-none" aria-label="Kanji runner game" />
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 sm:p-4">
-        <div className="rounded-lg border border-border bg-card/90 px-3 py-2 shadow-sm backdrop-blur">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</div>
-          <div className="flex items-center gap-2 text-lg">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-1.5 p-2 sm:justify-between sm:gap-2 sm:p-4"
+        style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
+      >
+        <div className="min-w-0 flex-1 rounded-lg border border-border bg-card/90 px-2.5 py-1.5 shadow-sm backdrop-blur sm:flex-none sm:px-3 sm:py-2">
+          <div className="line-clamp-2 text-[9px] font-bold uppercase leading-tight tracking-widest text-muted-foreground sm:text-[10px]">{title}</div>
+          <div className="mt-1 flex items-center gap-1.5 text-base leading-none sm:mt-0 sm:gap-2 sm:text-lg">
             {Array.from({ length: 3 }).map((_, i) => (
               <span key={i} className={i < hud.hearts ? "text-primary" : "text-border"}>♥</span>
             ))}
           </div>
         </div>
-        <div className="flex gap-2">
-          <div className="rounded-lg border border-border bg-card/90 px-3 py-2 text-right shadow-sm backdrop-blur">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Combo</div>
-            <div className="font-serif text-lg font-bold text-accent">×{Math.max(1, hud.combo)}</div>
+        <div className="flex shrink-0 gap-1.5 sm:gap-2">
+          <div className="rounded-lg border border-border bg-card/90 px-2 py-1.5 text-right shadow-sm backdrop-blur sm:px-3 sm:py-2">
+            <div className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground sm:text-[10px]">Combo</div>
+            <div className="font-serif text-base font-bold leading-tight text-accent sm:text-lg">×{Math.max(1, hud.combo)}</div>
           </div>
-          <div className="rounded-lg border border-border bg-card/90 px-3 py-2 text-right shadow-sm backdrop-blur">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score</div>
-            <div className="font-serif text-lg font-bold">{hud.score.toLocaleString()}</div>
+          <div className="rounded-lg border border-border bg-card/90 px-2 py-1.5 text-right shadow-sm backdrop-blur sm:px-3 sm:py-2">
+            <div className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground sm:text-[10px]">Score</div>
+            <div className="font-serif text-base font-bold leading-tight sm:text-lg">{hud.score.toLocaleString()}</div>
           </div>
         </div>
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-        <div className="rounded-full bg-ink/70 px-4 py-1.5 text-xs font-bold text-paper">
-          ↑ ↓ / W S to change lane · tap a lane on touch · Esc to pause
+      <button
+        type="button"
+        onClick={() => setPaused((p) => !p)}
+        aria-label={paused ? "Resume game" : "Pause game"}
+        aria-pressed={paused}
+        className="absolute left-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-lg font-bold text-paper shadow backdrop-blur sm:bottom-4 sm:left-4"
+        style={{ bottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+      >
+        {paused ? "▶" : "Ⅱ"}
+      </button>
+      <div
+        className="pointer-events-none absolute inset-x-14 flex justify-center px-1 sm:inset-x-16"
+        style={{ bottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+      >
+        <div className="max-w-full rounded-full bg-ink/70 px-3 py-1.5 text-center text-[11px] font-bold text-paper sm:px-4 sm:text-xs">
+          <span className="sm:hidden">Tap a lane to answer</span>
+          <span className="hidden sm:inline">↑ ↓ / W S to change lane · tap a lane on touch · Esc to pause</span>
         </div>
       </div>
     </div>

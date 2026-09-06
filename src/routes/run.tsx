@@ -59,7 +59,7 @@ function RunPage() {
   const pass = results ? results.correct / Math.max(1, results.correct + results.wrong) >= 0.7 : false;
 
   return (
-    <div className="fixed inset-0 bg-paper">
+    <div className="fixed inset-0 h-[100dvh] overflow-hidden bg-paper">
       {!results && (
         <RunnerGame
           key={`${session}-${gate ?? "daily"}`}
@@ -88,19 +88,21 @@ function RunPage() {
 
       {/* Lesson flash on wrong answer */}
       {lesson && !results && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg">
-            <div className="mb-3 text-center font-serif text-xl font-bold text-paper">Lesson flash — 復習</div>
-            <KanjiDetail kanji={lesson.kanji} />
-            <div className="mt-3 rounded-lg bg-card p-3 text-center text-sm">
-              The answer was <b className="font-serif text-lg">{lesson.answer}</b>
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/60 px-3 py-4 backdrop-blur-sm sm:p-4">
+          <div className="flex max-h-full w-full max-w-lg flex-col">
+            <div className="min-h-0 overflow-y-auto overscroll-contain">
+              <div className="mb-2 text-center font-serif text-lg font-bold text-paper sm:mb-3 sm:text-xl">Lesson flash — 復習</div>
+              <KanjiDetail kanji={lesson.kanji} />
+              <div className="mt-2 rounded-lg bg-card p-2.5 text-center text-sm sm:mt-3 sm:p-3">
+                The answer was <b className="font-serif text-lg">{lesson.answer}</b>
+              </div>
             </div>
             <button
               onClick={() => {
                 setLesson(null);
                 (window as any).__kanjiDashPause?.(false);
               }}
-              className="mt-4 w-full rounded-lg bg-primary py-3 font-serif text-lg font-bold text-primary-foreground shadow"
+              className="mt-3 min-h-12 w-full shrink-0 rounded-lg bg-primary py-3 font-serif text-lg font-bold text-primary-foreground shadow sm:mt-4"
             >
               Keep running
             </button>
@@ -110,10 +112,10 @@ function RunPage() {
 
       {/* Results */}
       {results && (
-        <div className="flex min-h-screen items-center justify-center bg-paper px-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+        <div className="flex h-full overflow-y-auto bg-paper px-3 py-4 sm:px-4">
+          <div className="my-auto w-full max-w-md rounded-2xl border border-border bg-card p-5 text-center shadow-sm sm:mx-auto sm:p-8">
             {gate && pass ? (
-              <div className="mx-auto flex h-24 w-24 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-4xl font-bold text-primary">
+              <div className="mx-auto flex h-20 w-20 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-3xl font-bold text-primary sm:h-24 sm:w-24 sm:text-4xl">
                 合格
               </div>
             ) : (
@@ -122,17 +124,17 @@ function RunPage() {
             <h1 className="mt-4 font-serif text-2xl font-bold">
               {gate ? (pass ? "Checkpoint cleared!" : "Not yet — train and return") : "Run complete!"}
             </h1>
-            <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-lg bg-secondary p-3">
-                <div className="font-serif text-2xl font-bold text-[#2e5238]">{results.correct}</div>
+            <div className="mt-5 grid grid-cols-3 gap-1.5 text-center sm:mt-6 sm:gap-3">
+              <div className="rounded-lg bg-secondary p-2 sm:p-3">
+                <div className="font-serif text-xl font-bold text-[#2e5238] sm:text-2xl">{results.correct}</div>
                 <div className="text-xs font-bold text-muted-foreground">Correct</div>
               </div>
-              <div className="rounded-lg bg-secondary p-3">
-                <div className="font-serif text-2xl font-bold text-primary">{results.wrong}</div>
+              <div className="rounded-lg bg-secondary p-2 sm:p-3">
+                <div className="font-serif text-xl font-bold text-primary sm:text-2xl">{results.wrong}</div>
                 <div className="text-xs font-bold text-muted-foreground">Missed</div>
               </div>
-              <div className="rounded-lg bg-secondary p-3">
-                <div className="font-serif text-2xl font-bold text-accent">×{results.bestCombo}</div>
+              <div className="rounded-lg bg-secondary p-2 sm:p-3">
+                <div className="font-serif text-xl font-bold text-accent sm:text-2xl">×{results.bestCombo}</div>
                 <div className="text-xs font-bold text-muted-foreground">Best combo</div>
               </div>
             </div>

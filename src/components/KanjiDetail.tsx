@@ -11,14 +11,14 @@ const MASTERY_CLASS = [
 
 export function KanjiDetail({ kanji, progress }: { kanji: Kanji; progress?: CardProgress }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-start gap-5">
-        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border-2 border-primary/70 bg-paper font-serif text-6xl font-bold shadow-inner">
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex items-start gap-3 sm:gap-5">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border-2 border-primary/70 bg-paper font-serif text-5xl font-bold shadow-inner sm:h-24 sm:w-24 sm:text-6xl">
           {kanji.c}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-serif text-xl font-bold">{kanji.m}</h3>
+            <h3 className="font-serif text-lg font-bold sm:text-xl">{kanji.m}</h3>
             {progress && (
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${MASTERY_CLASS[progress.mastery]}`}>
                 {MASTERY_LABEL[progress.mastery]}
@@ -33,11 +33,11 @@ export function KanjiDetail({ kanji, progress }: { kanji: Kanji; progress?: Card
           </dl>
         </div>
       </div>
-      <div className="mt-4 rounded-lg bg-secondary p-3 text-sm">
+      <div className="mt-3 rounded-lg bg-secondary p-2.5 text-sm sm:mt-4 sm:p-3">
         <span className="font-bold text-primary">Mnemonic — </span>
         {kanji.mn}
       </div>
-      <div className="mt-4">
+      <div className="mt-3 sm:mt-4">
         <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Vocabulary</div>
         <ul className="mt-1 divide-y divide-border">
           {kanji.vocab.map((v) => (

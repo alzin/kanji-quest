@@ -68,13 +68,13 @@ function MapPage() {
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-sm">
+                    <div className="mt-3 flex flex-col items-stretch gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-muted-foreground">{unlocked ? `${pct}% mastered` : "Locked — master the previous region"}</span>
                       {unlocked && !cleared && (
                         <Link
                           to="/run"
                           search={{ gate: ch }}
-                          className="rounded-md bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground shadow-sm transition-transform hover:scale-105"
+                          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-accent px-4 py-2.5 text-xs font-bold text-accent-foreground shadow-sm transition-transform hover:scale-105 sm:min-h-0 sm:px-3 sm:py-1.5"
                         >
                           Checkpoint gate
                         </Link>
