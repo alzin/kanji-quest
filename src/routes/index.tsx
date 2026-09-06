@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Nav } from "@/components/Nav";
+import { InstallApp } from "@/components/InstallApp";
 import { useSave, dueCount, n5MasteryPct, streakCount } from "@/lib/srs";
 import { allKanji } from "@/data/n5";
 
@@ -68,6 +69,8 @@ function Home() {
             </div>
           </div>
         </section>
+
+        <InstallApp />
 
         {/* Daily mission + stats */}
         <section className="mt-6 grid gap-4 sm:grid-cols-3">

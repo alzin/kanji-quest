@@ -509,7 +509,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       {/* HUD */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-1.5 p-2 sm:justify-between sm:gap-2 sm:p-4"
-        style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
       >
         <div className="min-w-0 flex-1 rounded-lg border border-border bg-card/90 px-2.5 py-1.5 shadow-sm backdrop-blur sm:flex-none sm:px-3 sm:py-2">
           <div className="line-clamp-2 text-[9px] font-bold uppercase leading-tight tracking-widest text-muted-foreground sm:text-[10px]">{title}</div>
@@ -535,14 +534,12 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         onClick={() => setPaused((p) => !p)}
         aria-label={paused ? "Resume game" : "Pause game"}
         aria-pressed={paused}
-        className="absolute left-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-lg font-bold text-paper shadow backdrop-blur sm:bottom-4 sm:left-4"
-        style={{ bottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+        className="absolute bottom-2 left-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-lg font-bold text-paper shadow backdrop-blur sm:bottom-4 sm:left-4"
       >
         {paused ? "▶" : "Ⅱ"}
       </button>
       <div
-        className="pointer-events-none absolute inset-x-14 flex justify-center px-1 sm:inset-x-16"
-        style={{ bottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+        className="pointer-events-none absolute inset-x-14 bottom-2 flex justify-center px-1 sm:inset-x-16 sm:bottom-4"
       >
         <div className="max-w-full rounded-full bg-ink/70 px-3 py-1.5 text-center text-[11px] font-bold text-paper sm:px-4 sm:text-xs">
           <span className="sm:hidden">Tap a lane to answer</span>

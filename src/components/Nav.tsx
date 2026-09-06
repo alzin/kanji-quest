@@ -12,7 +12,7 @@ export function Nav() {
   const save = useSave();
   const streak = streakCount(save);
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border bg-paper/90 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-2 sm:px-4">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-serif text-lg font-bold text-primary-foreground shadow-sm">

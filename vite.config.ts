@@ -4,18 +4,47 @@ import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { offlinePwa } from "./build/pwa";
 
-export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    tanstackStart({
-      server: {
-        entry: "server",
-      },
-      srcDirectory: "src",
-    }),
-    viteReact(),
-    nitro(),
-    tsconfigPaths(),
-  ],
+export default defineConfig(({ mode }) => {
+  const pagesBuild = mode === "pages";
+  const basePath = (process.env["VITE_BASE_PATH"] ?? (pagesBuild ? "/kanji-quest/" : "/"))
+    .replace(/^\/+|\/+$/g, "");
+  const base = basePath ? `/${basePath}/` : "/";
+
+  return {
+    base,
+    plugins: [
+      tailwindcss(),
+      tanstackStart({
+        server: {
+          entry: "server",
+        },
+        srcDirectory: "src",
+        prerender: {
+          enabled: true,
+          autoStaticPathsDiscovery: false,
+        },
+        pages: [{
+          path: "/",
+          prerender: {
+            outputPath: "/offline",
+            autoSubfolderIndex: false,
+            crawlLinks: false,
+            headers: { "X-TSS_SHELL": "true" },
+          },
+        }],
+      }),
+      viteReact(),
+      nitro({
+        routeRules: {
+          "/sw.js": { headers: { "cache-control": "no-cache" } },
+          "/offline.html": { headers: { "cache-control": "no-cache" } },
+          "/manifest.webmanifest": { headers: { "cache-control": "no-cache" } },
+        },
+      }),
+      tsconfigPaths(),
+      offlinePwa({ staticExport: pagesBuild }),
+    ],
+  };
 });

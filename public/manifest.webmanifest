@@ -1,0 +1,49 @@
+{
+  "id": "./",
+  "name": "Kanji Dash",
+  "short_name": "Kanji Dash",
+  "description": "Learn Japanese kanji through runner challenges, handwriting practice, and daily review.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f2e6",
+  "theme_color": "#f6f2e6",
+  "categories": ["education", "games"],
+  "screenshots": [
+    {
+      "src": "screenshots/run.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Learn kanji by choosing the correct lane during a daily run."
+    },
+    {
+      "src": "screenshots/map.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Master kanji across six regions and clear checkpoint challenges."
+    }
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

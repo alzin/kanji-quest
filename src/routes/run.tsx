@@ -59,7 +59,7 @@ function RunPage() {
   const pass = results ? results.correct / Math.max(1, results.correct + results.wrong) >= 0.7 : false;
 
   return (
-    <div className="fixed inset-0 h-[100dvh] overflow-hidden bg-paper">
+    <div className="game-viewport overflow-hidden bg-paper">
       {!results && (
         <RunnerGame
           key={`${session}-${gate ?? "daily"}`}

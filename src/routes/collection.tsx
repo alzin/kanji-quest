@@ -79,7 +79,7 @@ function CollectionPage() {
         </div>
 
         {selected && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm" onClick={() => setSelected(null)}>
+          <div className="safe-area-modal fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm" onClick={() => setSelected(null)}>
             <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <KanjiDetail kanji={selected} progress={getCard(save, selected.c)} />
               <button
