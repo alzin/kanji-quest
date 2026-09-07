@@ -1,4 +1,12 @@
-export type Vocab = { w: string; r: string; m: string };
+/** One ruby span of a word: surface text plus the reading it carries. */
+export type Furi = { t: string; r?: string };
+
+export type Vocab = {
+  w: string; // the word
+  r: string; // wapuro romaji
+  m: string; // english meaning
+  f: Furi[]; // per-character readings; f.map(t).join("") === w
+};
 
 export type Kanji = {
   c: string; // the kanji character

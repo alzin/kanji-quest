@@ -1,5 +1,9 @@
 import { allKanji, kanjiByChar, kanjiOfChapter, CHAPTER_COUNT } from "@/data/n5";
-import type { Kanji } from "@/data/n5/types";
+import type { Kanji, Vocab } from "@/data/n5/types";
+import {
+  meaningChoices, readingChoices, vocabKana, wordSegments,
+  type PromptSegment, type WordCard,
+} from "./words";
 import { useSyncExternalStore } from "react";
 
 // ---------- Types ----------
@@ -260,12 +264,14 @@ export function streakCount(s: SaveData, now = Date.now()): number {
 
 // ---------- Question building ----------
 
-export type QuestionType = "meaning" | "reading" | "vocab";
+export type QuestionType = "reading" | "meaning";
 
 export type Question = {
-  kanji: Kanji;
+  kanji: Kanji; // the kanji this card grades
+  vocab: Vocab; // the word it is being practised inside
   type: QuestionType;
-  prompt: string; // big text shown on the gate
+  prompt: string; // the word as plain text
+  segments: PromptSegment[]; // the word split for furigana and highlighting
   sub: string; // small helper text
   choices: string[]; // 3 choices, one correct
   answer: string;
@@ -286,49 +292,30 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
-function readingOf(k: Kanji): string {
-  const kun = k.kun !== "—" ? (k.kun.split(",")[0] ?? "").replace(/[()]/g, "").trim() : "";
-  const on = k.on !== "—" ? (k.on.split(",")[0] ?? "").trim() : "";
-  return kun || on;
-}
+// Reading is the core drill; meaning keeps the word tied to something concrete.
+const TYPE_WEIGHTS: QuestionType[] = ["reading", "reading", "meaning"];
 
-function normalizedReading(reading: string): string {
-  return reading.replace(/[()\s]/g, "").replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
-}
-
-function meanings(k: Kanji): string[] {
-  return k.m.toLowerCase().split(";").map((m) => m.trim());
-}
-
-export function buildQuestion(k: Kanji, type: QuestionType = pick(["meaning", "reading", "vocab"])): Question {
-  const pool = allKanji.filter((x) => x.c !== k.c);
-
-  if (type === "meaning") {
-    const correctMeanings = new Set(meanings(k));
-    const distractors = shuffle([...new Set(pool.filter((x) => !meanings(x).some((m) => correctMeanings.has(m))).map((x) => x.m))]).slice(0, 2);
-    const choices = shuffle([k.m, ...distractors]);
-    return { kanji: k, type, prompt: k.c, sub: "What does this kanji mean?", choices, answer: k.m };
-  }
-  if (type === "reading") {
-    const correct = readingOf(k);
-    const validReadings = new Set(`${k.kun},${k.on}`.split(",").map(normalizedReading));
-    const uniqueReadings = new Map(pool.map(readingOf).filter((r) => r && !validReadings.has(normalizedReading(r))).map((r) => [normalizedReading(r), r]));
-    const distractors = shuffle([...uniqueReadings.values()]).slice(0, 2);
-    const choices = shuffle([correct, ...distractors]);
-    return { kanji: k, type, prompt: k.c, sub: "Pick the correct reading", choices, answer: correct };
-  }
-  // vocab: which word uses this kanji?
-  const correct = pick(k.vocab.filter((v) => v.w.includes(k.c)));
-  const distractors = shuffle([...new Set(pool.flatMap((x) => x.vocab).filter((v) => !v.w.includes(k.c)).map((v) => `${v.w} (${v.r})`))]).slice(0, 2);
-  const choices = shuffle([`${correct.w} (${correct.r})`, ...distractors]);
-  return {
+/** A card asks about a whole word, so the kanji is learned in the company it keeps. */
+export function buildQuestion(
+  k: Kanji,
+  type: QuestionType = pick(TYPE_WEIGHTS),
+  vocab: Vocab = pick(k.vocab),
+): Question {
+  const card: WordCard = { kanji: k, vocab, kana: vocabKana(vocab) };
+  const base = {
     kanji: k,
+    vocab,
     type,
-    prompt: k.c,
-    sub: "Which word uses this kanji?",
-    choices,
-    answer: `${correct.w} (${correct.r})`,
+    prompt: vocab.w,
+    segments: wordSegments(vocab, k),
   };
+
+  if (type === "reading") {
+    const choices = shuffle([card.kana, ...readingChoices(card)]);
+    return { ...base, sub: "How is this word read?", choices, answer: card.kana };
+  }
+  const choices = shuffle([vocab.m, ...meaningChoices(card)]);
+  return { ...base, sub: "What does this word mean?", choices, answer: vocab.m };
 }
 
 // ---------- Run queue ----------
@@ -426,4 +413,5 @@ export function clearGate(ch: number): number {
   return earned;
 }
 
-export { kanjiByChar, CHAPTER_COUNT };
+export { kanjiByChar, CHAPTER_COUNT, vocabKana };
+export type { PromptSegment, WordCard };

@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Kanji Dash — Master JLPT N5 Kanji by Running" },
       {
         property: "og:description",
-        content: "Daily runs through the Japanese countryside. Every gate is a kanji — answer to keep running.",
+        content: "Daily runs through the Japanese countryside. Every gate is a real word — read it to keep running.",
       },
     ],
   }),
@@ -125,7 +125,7 @@ function Home() {
           <h2 id="how-it-works" className="mb-3 font-serif text-lg font-bold">Small steps. Lasting progress.</h2>
           <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
             {[
-              { jp: "走", t: "Run the gates", d: "Three lanes, three answers. Steer into the correct reading, meaning, or word before the gate hits." },
+              { jp: "走", t: "Run the gates", d: "Real words, not lone characters. Three lanes, three spellings — steer into the right one before the gate hits." },
               { jp: "記", t: "Spaced repetition", d: "Missed kanji return sooner; mastered ones space out to weeks. The queue is the game." },
               { jp: "印", t: "Checkpoint gates", d: "Clear a region's boss run to stamp your hanko seal and unlock the next stretch of road." },
             ].map((f) => (

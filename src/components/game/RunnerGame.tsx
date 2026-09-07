@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Question } from "@/lib/srs";
+import type { PromptSegment, Question } from "@/lib/srs";
 import {
   advanceRunner, createRunnerState, getDecisionX, getGameLayout, getPreviewX,
   getRunnerRemaining, getRunnerStats, RUNNER_HEARTS, RUNNER_LANES as LANES,
@@ -12,6 +12,8 @@ type Props = {
   onFinish: (stats: RunnerStats) => void;
   title: string;
 };
+
+const SPAN_GAP = 3;
 
 export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -214,19 +216,76 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         .filter((g) => g.resolved === -1)
         .reduce<Gate | null>((nearest, g) => (!nearest || g.x < nearest.x ? g : nearest), null);
 
+      const wordFont = (size: number) => `800 ${size}px "Shippori Mincho B1", serif`;
+      const rubyFont = (size: number) => `700 ${size}px "Zen Kaku Gothic New", sans-serif`;
+
+      // A span is as wide as its kanji or its furigana, whichever needs more room.
+      const measureWord = (segments: PromptSegment[], wordSize: number, rubySize: number) => {
+        const widths = segments.map((segment) => {
+          ctx.font = wordFont(wordSize);
+          const base = ctx.measureText(segment.t).width;
+          ctx.font = rubyFont(rubySize);
+          const ruby = segment.furigana ? ctx.measureText(segment.furigana).width : 0;
+          return Math.max(base, ruby) + SPAN_GAP;
+        });
+        return { widths, total: widths.reduce((sum, value) => sum + value, 0) };
+      };
+
       const drawQuestion = (g: Gate, x: number, y: number, width: number, height: number) => {
         ctx.fillStyle = "rgba(28,26,23,0.9)";
         roundRect(ctx, x - width / 2, y, width, height, 10);
         ctx.fill();
-        ctx.fillStyle = "#f7f2e7";
-        ctx.font = `800 ${Math.min(layout.compact ? 42 : 54, height * 0.58)}px "Shippori Mincho B1", serif`;
-        ctx.fillText(g.q.prompt, x, y + height * 0.58);
-        const helperFontSize = layout.compact
-          ? Math.max(10, Math.min(12, height * 0.15))
-          : Math.max(10, Math.min(13, height * 0.15));
-        ctx.font = `700 ${helperFontSize}px "Zen Kaku Gothic New", sans-serif`;
+
+        const pad = height * 0.07;
+        const helperFontSize = Math.max(10, Math.min(layout.compact ? 12 : 13, height * 0.15));
+        const hasRuby = g.q.segments.some((segment) => segment.furigana);
+        const rubySize = hasRuby ? Math.max(8, Math.min(13, height * 0.16)) : 0;
+        const rubyGap = hasRuby ? 2 : 0;
+        let wordSize = Math.max(
+          14,
+          Math.min(layout.compact ? 40 : 54, height - pad * 2 - rubySize - rubyGap - helperFontSize - 4),
+        );
+
+        // Long words shrink rather than spill past the panel.
+        const maxWidth = width - 16;
+        let measured = measureWord(g.q.segments, wordSize, rubySize);
+        while (measured.total > maxWidth && wordSize > 12) {
+          wordSize -= 1;
+          measured = measureWord(g.q.segments, wordSize, rubySize);
+        }
+
+        const rubyBaseline = y + pad + rubySize;
+        const wordBaseline = rubyBaseline + rubyGap + wordSize * 0.82;
+        let spanX = x - measured.total / 2;
+        g.q.segments.forEach((segment, i) => {
+          const spanWidth = measured.widths[i]!;
+          const center = spanX + spanWidth / 2;
+          if (segment.focus) {
+            ctx.fillStyle = "rgba(216,178,74,0.2)";
+            roundRect(
+              ctx,
+              center - spanWidth / 2 + 1,
+              wordBaseline - wordSize * 0.86,
+              spanWidth - 2,
+              wordSize * 1.06,
+              5,
+            );
+            ctx.fill();
+          }
+          if (segment.furigana) {
+            ctx.font = rubyFont(rubySize);
+            ctx.fillStyle = "rgba(247,242,231,0.66)";
+            ctx.fillText(segment.furigana, center, rubyBaseline);
+          }
+          ctx.font = wordFont(wordSize);
+          ctx.fillStyle = segment.focus ? "#f0c469" : "#f7f2e7";
+          ctx.fillText(segment.t, center, wordBaseline);
+          spanX += spanWidth;
+        });
+
+        ctx.font = rubyFont(helperFontSize);
         ctx.fillStyle = "#d8b24a";
-        ctx.fillText(g.q.sub, x, y + height * 0.84);
+        ctx.fillText(g.q.sub, x, y + height - pad, width - 12);
       };
 
       ctx.textAlign = "center";
@@ -245,7 +304,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         if (layout.compact && g.resolved === -1 && g !== activeGate) continue;
         const bx = g.x;
         if (!layout.compact) {
-          drawQuestion(g, bx, layout.questionTop, 140, layout.questionHeight);
+          drawQuestion(g, bx, layout.questionTop, 240, layout.questionHeight);
         }
 
         // lane signposts

@@ -1,5 +1,7 @@
 import type { Kanji } from "@/data/n5/types";
 import type { CardProgress } from "@/lib/srs";
+import { vocabKana } from "@/lib/words";
+import { WordRuby } from "./WordRuby";
 
 const MASTERY_LABEL = ["Unseen", "Learning", "Reviewing", "Mastered"];
 const MASTERY_CLASS = [
@@ -42,8 +44,8 @@ export function KanjiDetail({ kanji, progress }: { kanji: Kanji; progress?: Card
         <ul className="mt-1 divide-y divide-border">
           {kanji.vocab.map((v) => (
             <li key={v.w} className="flex items-baseline justify-between gap-3 py-2 text-sm">
-              <span className="font-serif text-lg font-bold">{v.w}</span>
-              <span className="font-serif text-muted-foreground">{v.r}</span>
+              <WordRuby vocab={v} focus={kanji.c} className="text-lg font-bold" />
+              <span className="font-serif text-muted-foreground">{vocabKana(v)}</span>
               <span className="text-right">{v.m}</span>
             </li>
           ))}

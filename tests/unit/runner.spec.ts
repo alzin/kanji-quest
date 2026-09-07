@@ -11,14 +11,19 @@ const fixedRandom = () => 0.999;
 const layout = getGameLayout(width, height);
 
 function questions(count: number): Question[] {
-  return Array.from({ length: count }, (_, i) => ({
-    kanji: { c: String(i), m: "one", on: "イチ", kun: "ひと", rad: "一", mn: "one", strokes: 1, ch: 1, vocab: [] },
-    type: "meaning",
-    prompt: String(i),
-    sub: "Meaning?",
-    choices: ["one", "two", "three"],
-    answer: "one",
-  }));
+  return Array.from({ length: count }, (_, i) => {
+    const vocab = { w: String(i), r: "one", m: "one", f: [{ t: String(i) }] };
+    return {
+      kanji: { c: String(i), m: "one", on: "イチ", kun: "ひと", rad: "一", mn: "one", strokes: 1, ch: 1, vocab: [vocab] },
+      vocab,
+      type: "meaning" as const,
+      prompt: String(i),
+      segments: [{ t: String(i), focus: true }],
+      sub: "Meaning?",
+      choices: ["one", "two", "three"],
+      answer: "one",
+    };
+  });
 }
 
 function answerNext(s: RunnerState, queue: Question[], correct: boolean, answered: string[] = []) {

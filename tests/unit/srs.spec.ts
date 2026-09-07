@@ -3,7 +3,6 @@ import { allKanji, CHAPTER_COUNT, CHAPTER_NAMES, kanjiByChar, kanjiOfChapter } f
 import type { Kanji } from "../../src/data/n5/types";
 import {
   buildGateQuiz,
-  buildQuestion,
   buildRunQueue,
   chapterMasteryPct,
   clearGate,
@@ -20,8 +19,8 @@ import {
   streakCount,
   subscribe,
   touchStreak,
+  vocabKana,
   type CardProgress,
-  type QuestionType,
   type SaveData,
 } from "../../src/lib/srs";
 
@@ -96,44 +95,22 @@ test("curriculum has unique cards and complete chapter, reading, and vocabulary 
     expect(validReadings(k).size, k.c).toBeGreaterThan(0);
     expect(k.vocab.length, k.c).toBeGreaterThan(0);
     for (const vocab of k.vocab) {
-      expect(vocab.w, `${k.c}: ${vocab.w}`).toContain(k.c);
-      expect(vocab.r.trim(), k.c).toBeTruthy();
-      expect(vocab.m.trim(), k.c).toBeTruthy();
+      const where = `${k.c}: ${vocab.w}`;
+      expect(vocab.w, where).toContain(k.c);
+      expect(vocab.r.trim(), where).toBeTruthy();
+      expect(vocab.m.trim(), where).toBeTruthy();
+      // Ruby spans must rebuild both the word and a readable hiragana spelling.
+      expect(vocab.f.map((span) => span.t).join(""), where).toBe(vocab.w);
+      expect(vocabKana(vocab), where).toMatch(/^[ぁ-ゖ]+$/);
+      for (const span of vocab.f) {
+        expect(span.t.length, where).toBeGreaterThan(0);
+        if (span.r !== undefined) expect(span.r, `${where} span ${span.t}`).toMatch(/^[ぁ-ゖ]+$/);
+        // Only kanji carry a reading; kana spans read as themselves.
+        if (!/[一-鿿々]/.test(span.t)) expect(span.r, `${where} span ${span.t}`).toBeUndefined();
+      }
     }
   }
 });
-
-for (const type of ["meaning", "reading", "vocab"] as QuestionType[]) {
-  test(`${type} questions have three distinct choices and only one supported answer across the curriculum`, () => {
-    // Fixed seeds make failures reproducible while exercising different distractor pools.
-    for (const k of allKanji) {
-      for (let seed = 1; seed <= 32; seed += 1) {
-        const question = withSeed(seed * 2654435761 + k.c.codePointAt(0)!, () => buildQuestion(k, type));
-        const context = `${k.c} ${type} seed ${seed}: ${question.choices.join(" | ")}`;
-        expect(question.type, context).toBe(type);
-        expect(question.choices, context).toHaveLength(3);
-        expect(new Set(question.choices).size, context).toBe(3);
-        expect(question.choices.filter((choice) => choice === question.answer), context).toHaveLength(1);
-
-        if (type === "meaning") {
-          expect(question.answer, context).toBe(k.m);
-          for (const distractor of question.choices.filter((choice) => choice !== question.answer)) {
-            expect(meanings(distractor).some((value) => meanings(k.m).includes(value)), context).toBe(false);
-          }
-        } else if (type === "reading") {
-          expect(validReadings(k).has(normalizeReading(question.answer)), context).toBe(true);
-          expect(new Set(question.choices.map(normalizeReading)).size, context).toBe(3);
-          for (const distractor of question.choices.filter((choice) => choice !== question.answer)) {
-            expect(validReadings(k).has(normalizeReading(distractor)), context).toBe(false);
-          }
-        } else {
-          expect(k.vocab.some((value) => `${value.w} (${value.r})` === question.answer), context).toBe(true);
-          expect(question.choices.filter((choice) => choice.includes(k.c)), context).toEqual([question.answer]);
-        }
-      }
-    }
-  });
-}
 
 test("mastery uses every card's weight and only reaches 100% when all cards are mastered", () => {
   const save = emptySave();

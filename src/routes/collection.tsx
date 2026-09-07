@@ -5,6 +5,7 @@ import { KanjiDetail } from "@/components/KanjiDetail";
 import { allKanji, CHAPTER_NAMES, CHAPTER_COUNT } from "@/data/n5";
 import type { Kanji } from "@/data/n5/types";
 import { useSave, getCard, type CardProgress } from "@/lib/srs";
+import { vocabKana } from "@/lib/words";
 
 export const Route = createFileRoute("/collection")({
   head: () => ({
@@ -133,7 +134,7 @@ function CollectionPage() {
   const searchTerms = normalizeSearch(query.trim()).split(/\s+/).filter(Boolean);
   const shown = allKanji.filter((kanji) => {
     if (filter !== null && kanji.ch !== filter) return false;
-    const searchable = normalizeSearch([kanji.c, kanji.m, kanji.on, kanji.kun, ...kanji.vocab.flatMap((word) => [word.w, word.r, word.m])].join(" "));
+    const searchable = normalizeSearch([kanji.c, kanji.m, kanji.on, kanji.kun, ...kanji.vocab.flatMap((word) => [word.w, word.r, vocabKana(word), word.m])].join(" "));
     return searchTerms.every((term) => searchable.includes(term));
   });
 

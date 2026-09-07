@@ -3,9 +3,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RunnerGame } from "@/components/game/RunnerGame";
 import { checkpointPassed, dailyRunReward, type RunnerStats } from "@/components/game/runner-math";
 import { KanjiDetail } from "@/components/KanjiDetail";
+import { WordRuby } from "@/components/WordRuby";
 import {
   buildRunQueue, buildGateQuiz, grade, finishRun, clearGate,
-  getSnapshot, type Question,
+  getSnapshot, vocabKana, type Question,
 } from "@/lib/srs";
 import { CHAPTER_NAMES, CHAPTER_COUNT } from "@/data/n5";
 
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/run")({
   head: () => ({
     meta: [
       { title: "Run — Kanji Dash" },
-      { name: "description", content: "A kanji run session: steer through answer gates and clear today's review queue." },
+      { name: "description", content: "A kanji run session: read the word at each gate and clear today's review queue." },
       { property: "og:title", content: "Run — Kanji Dash" },
       { property: "og:description", content: "Steer through kanji gates in today's run." },
     ],
@@ -111,6 +112,12 @@ function RunSession({ gate }: { gate: number | undefined }) {
           <div className="flex max-h-full w-full max-w-lg flex-col">
             <div className="min-h-0 overflow-y-auto overscroll-contain">
               <div className="mb-2 text-center font-serif text-lg font-bold text-paper sm:mb-3 sm:text-xl">Lesson flash — 復習</div>
+              <div className="mb-2 rounded-xl border border-border bg-card p-3 text-center sm:mb-3">
+                <WordRuby vocab={lesson.vocab} focus={lesson.kanji.c} className="text-3xl font-bold sm:text-4xl" />
+                <div className="mt-2 text-sm text-muted-foreground">
+                  <span className="font-serif">{vocabKana(lesson.vocab)}</span> · {lesson.vocab.m}
+                </div>
+              </div>
               <KanjiDetail kanji={lesson.kanji} />
               <div className="mt-2 rounded-lg bg-card p-2.5 text-center text-sm sm:mt-3 sm:p-3">
                 The answer was <b className="font-serif text-lg">{lesson.answer}</b>
