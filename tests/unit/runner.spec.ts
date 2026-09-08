@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 import type { Question } from "../../src/lib/srs";
 import {
-  advanceRunner, checkpointPassed, createRunnerState, dailyRunReward, getDecisionX,
-  getGameLayout, getGateSpeed, getRunnerRemaining, getRunnerStats, type RunnerState,
+  advanceRunner, checkpointPassed, COMPACT_CLEAR_SECONDS, createRunnerState, dailyRunReward,
+  getDecisionX, getGameLayout, getGateOpacity, getGateSpeed, getRunnerRemaining, getRunnerStats, RUNNER_SPEED,
+  type RunnerState,
 } from "../../src/components/game/runner-math";
 
 const width = 320;
@@ -91,7 +92,7 @@ test("a slow frame stops immediately after the third mistake", () => {
   expect(answered).toEqual([false, false, false]);
   expect(getRunnerStats(s)).toEqual({ correct: 0, wrong: 3, bestCombo: 0, score: 0 });
   expect(s.hearts).toBe(0);
-  expect(s.dist).toBeCloseTo(getGateSpeed(width, layout) * 9, 8);
+  expect(s.dist).toBeCloseTo(RUNNER_SPEED * 9, 8);
   expect(getRunnerRemaining(s, queue.length)).toBe(17);
 });
 
@@ -106,7 +107,7 @@ test("lesson pause resolves only one gate and excludes time spent paused", () =>
   expect(answered).toEqual([false]);
   expect(s.done).toBe(false);
   expect(s.wrong).toBe(1);
-  expect(s.dist).toBeCloseTo(getGateSpeed(width, layout) * 3, 8);
+  expect(s.dist).toBeCloseTo(RUNNER_SPEED * 3, 8);
   answerNext(s, queue, true);
   expect(getRunnerStats(s)).toEqual({ correct: 1, wrong: 1, bestCombo: 1, score: 100 });
 });
@@ -119,7 +120,7 @@ test("distance and lane animation use elapsed seconds at both high and low frame
     single.targetLane = split.targetLane = 0;
     advanceRunner(single, queue, w, h, 2, () => {}, fixedRandom);
     for (let i = 0; i < 120; i++) advanceRunner(split, queue, w, h, 1 / 60, () => {}, fixedRandom);
-    expect(single.dist).toBeCloseTo(getGateSpeed(w, getGameLayout(w, h)) * 2, 8);
+    expect(single.dist).toBeCloseTo(RUNNER_SPEED * 2, 8);
     expect(split.dist).toBeCloseTo(single.dist, 8);
     expect(split.lane).toBeCloseTo(single.lane, 12);
     for (let i = 0; i < single.gates.length; i++) expect(split.gates[i]!.x).toBeCloseTo(single.gates[i]!.x, 8);
@@ -148,7 +149,7 @@ test("complete outcomes do not depend on animation frame frequency", () => {
     while (!s.done) advanceRunner(s, queue, width, height, frameSize, () => { attempts += 1; }, fixedRandom);
     expect(attempts).toBe(20);
     expect(getRunnerStats(s)).toEqual({ correct: 20, wrong: 0, bestCombo: 20, score: 21_000 });
-    expect(s.dist).toBeCloseTo(getGateSpeed(width, layout) * 60, 7);
+    expect(s.dist).toBeCloseTo(RUNNER_SPEED * 60, 7);
   }
 });
 
@@ -174,4 +175,87 @@ test("invalid elapsed time never changes game numbers", () => {
     advanceRunner(s, queue, width, height, elapsed, () => { throw new Error("Unexpected answer"); }, fixedRandom);
     expect(JSON.stringify(s)).toBe(before);
   }
+});
+
+function resolveFirstGate(s: RunnerState, queue: Question[], w: number, h: number, correct: boolean) {
+  const layout = getGameLayout(w, h);
+  const gate = s.gates[0]!;
+  s.lane = s.targetLane = correct ? gate.correctLane : (gate.correctLane + 1) % 3;
+  const seconds = Math.max(0, (gate.x - getDecisionX(layout)) / getGateSpeed(w, layout));
+  advanceRunner(s, queue, w, h, seconds, () => {}, fixedRandom);
+  expect(gate.resolved).toBe(correct ? 1 : 0);
+  return gate;
+}
+
+test("phones fade a finished gate out over the clear time at any frame rate, then drop it", () => {
+  for (const [w, h] of [[320, 568], [375, 812], [390, 844], [430, 932], [844, 390], [639, 1000], [1279, 499]] as const) {
+    const layout = getGameLayout(w, h);
+    expect(layout.compact).toBe(true);
+    for (const frameSize of [1 / 120, 1 / 60, 0.1, COMPACT_CLEAR_SECONDS, 1]) {
+      const queue = questions(3);
+      const s = createRunnerState(queue, w, h, fixedRandom);
+      const gate = resolveFirstGate(s, queue, w, h, true);
+      expect(getGateOpacity(gate, layout)).toBe(1);
+      let elapsed = 0;
+      let previous = 1;
+      while (s.gates.includes(gate)) {
+        advanceRunner(s, queue, w, h, frameSize, () => { throw new Error("The next gate must not resolve during the fade"); }, fixedRandom);
+        elapsed += frameSize;
+        const opacity = getGateOpacity(gate, layout);
+        expect(opacity).toBeLessThanOrEqual(previous);
+        expect(opacity).toBeCloseTo(Math.max(0, 1 - elapsed / COMPACT_CLEAR_SECONDS), 8);
+        previous = opacity;
+      }
+      // Gone as soon as the fade completes, and never a frame later than that.
+      expect(elapsed).toBeGreaterThanOrEqual(COMPACT_CLEAR_SECONDS - 1e-9);
+      expect(elapsed - frameSize).toBeLessThan(COMPACT_CLEAR_SECONDS);
+      // The pending gates stay fully visible and untouched.
+      expect(s.gates.filter((g) => g.resolved === -1)).toHaveLength(2);
+      for (const pending of s.gates) expect(getGateOpacity(pending, layout)).toBe(1);
+    }
+  }
+});
+
+test("desktop keeps a finished gate fully visible until it has left the screen", () => {
+  const w = 1280;
+  const h = 900;
+  const layout = getGameLayout(w, h);
+  expect(layout.compact).toBe(false);
+  const queue = questions(3);
+  const s = createRunnerState(queue, w, h, fixedRandom);
+  const gate = resolveFirstGate(s, queue, w, h, true);
+  for (let i = 0; i < 20; i++) {
+    advanceRunner(s, queue, w, h, 0.1, () => { throw new Error("Unexpected answer"); }, fixedRandom);
+    expect(s.gates).toContain(gate);
+    expect(getGateOpacity(gate, layout)).toBe(1);
+  }
+  expect(gate.x).toBeGreaterThan(-200);
+  advanceRunner(s, queue, w, h, 1.3, () => { throw new Error("Unexpected answer"); }, fixedRandom);
+  expect(s.gates).not.toContain(gate);
+});
+
+test("a lesson pause freezes the fade of the missed gate until the run resumes", () => {
+  const queue = questions(3);
+  const s = createRunnerState(queue, width, height, fixedRandom);
+  answerNext(s, queue, false);
+  const gate = s.gates.find((g) => g.resolved === 0)!;
+  expect(getGateOpacity(gate, layout)).toBe(1);
+  advanceRunner(s, queue, width, height, COMPACT_CLEAR_SECONDS / 2, () => {}, fixedRandom);
+  expect(getGateOpacity(gate, layout)).toBeCloseTo(0.5, 8);
+  expect(s.gates).toContain(gate);
+  advanceRunner(s, queue, width, height, COMPACT_CLEAR_SECONDS / 2, () => {}, fixedRandom);
+  expect(s.gates).not.toContain(gate);
+  expect(s.gates.filter((g) => g.resolved === -1)).toHaveLength(2);
+});
+
+test("a slow frame that resolves several gates leaves only the newest one fading", () => {
+  const queue = questions(6);
+  const s = createRunnerState(queue, width, height, fixedRandom);
+  s.lane = s.targetLane = 0;
+  advanceRunner(s, queue, width, height, 9.1, () => {}, fixedRandom); // gates arrive at 3 s, 6 s and 9 s
+  expect(getRunnerStats(s).correct).toBe(3);
+  const finished = s.gates.filter((g) => g.resolved !== -1);
+  expect(finished).toHaveLength(1);
+  expect(getGateOpacity(finished[0]!, layout)).toBeCloseTo(1 - 0.1 / COMPACT_CLEAR_SECONDS, 8);
+  expect(s.gates.filter((g) => g.resolved === -1)).toHaveLength(3);
 });

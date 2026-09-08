@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PromptSegment, Question } from "@/lib/srs";
 import {
-  advanceRunner, createRunnerState, getDecisionX, getGameLayout, getPreviewX,
+  advanceRunner, createRunnerState, getDecisionX, getGameLayout, getGateOpacity, getPreviewX,
   getRunnerRemaining, getRunnerStats, RUNNER_HEARTS, RUNNER_LANES as LANES,
   type GameLayout, type RunnerGate as Gate, type RunnerStats,
 } from "./runner-math";
@@ -307,7 +307,8 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           drawQuestion(g, bx, layout.questionTop, 240, layout.questionHeight);
         }
 
-        // lane signposts
+        // lane signposts (a finished gate fades away on phones)
+        ctx.globalAlpha = getGateOpacity(g, layout);
         for (let l = 0; l < LANES; l++) {
           const choice = g.laneChoices[l];
           if (choice == null) continue;
@@ -337,6 +338,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           }
           ctx.fillText(choice, bx, y + fontSize * 0.32, layout.signWidth - 16);
         }
+        ctx.globalAlpha = 1;
       }
 
       // player: ink runner blob

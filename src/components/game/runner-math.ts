@@ -3,7 +3,9 @@ import type { Question } from "@/lib/srs";
 export const RUNNER_LANES = 3;
 export const RUNNER_HEARTS = 3;
 const GATE_SPACING = 560;
-const SPEED = 150; // world px per second
+export const RUNNER_SPEED = 150; // scenery and stride, world px per second
+/** Phones show one gate at a time, so a finished gate fades out instead of drifting under the runner. */
+export const COMPACT_CLEAR_SECONDS = 0.4;
 
 export type RunnerStats = {
   correct: number;
@@ -26,6 +28,7 @@ export type RunnerGate = {
   correctLane: number;
   laneChoices: (string | null)[];
   resolved: -1 | 0 | 1;
+  sinceResolved: number; // seconds the gate has been resolved
 };
 
 export type RunnerState = RunnerStats & {
@@ -62,9 +65,9 @@ export function getPreviewX(width: number, layout: GameLayout) {
 }
 
 export function getGateSpeed(width: number, layout: GameLayout) {
-  if (!layout.compact) return SPEED;
+  if (!layout.compact) return RUNNER_SPEED;
   const runway = Math.max(1, getPreviewX(width, layout) - getDecisionX(layout));
-  return Math.min(SPEED, runway / 3);
+  return Math.min(RUNNER_SPEED, runway / 3);
 }
 
 export function getGateSpacing(width: number, layout: GameLayout) {
@@ -126,7 +129,7 @@ function spawnGate(q: Question, x: number, random: () => number): RunnerGate {
     laneChoices[lane] = choice;
     if (choice === q.answer) correctLane = lane;
   });
-  return { q, x, correctLane, laneChoices, resolved: -1 };
+  return { q, x, correctLane, laneChoices, resolved: -1, sinceResolved: 0 };
 }
 
 function fillPendingGates(
@@ -184,6 +187,12 @@ export function getRunnerRemaining(s: RunnerState, total: number): number {
   return Math.max(0, total - s.correct - s.wrong);
 }
 
+/** Finished gates fade out on phones; desktop keeps them until they leave the screen. */
+export function getGateOpacity(gate: RunnerGate, layout: GameLayout): number {
+  if (gate.resolved === -1 || !layout.compact) return 1;
+  return Math.max(0, Math.min(1, 1 - gate.sinceResolved / COMPACT_CLEAR_SECONDS));
+}
+
 /** Advance to each decision at its actual time, including when frames are slow.
  * Returning false from onAnswer pauses immediately and discards paused time.
  */
@@ -211,12 +220,16 @@ export function advanceRunner(
     const reachesDecision = secondsToDecision <= remaining;
     const dt = reachesDecision ? secondsToDecision : remaining;
 
-    s.dist += speed * dt;
+    // Scenery and stride keep full pace even where gates approach more slowly.
+    s.dist += RUNNER_SPEED * dt;
     // Exponential smoothing is independent of frame rate.
     s.lane = s.targetLane + (s.lane - s.targetLane) * Math.exp(-14 * dt);
     s.flash = Math.max(0, s.flash - dt);
     s.bump = Math.max(0, s.bump - dt);
-    for (const gate of s.gates) gate.x -= speed * dt;
+    for (const gate of s.gates) {
+      gate.x -= speed * dt;
+      if (gate.resolved !== -1) gate.sinceResolved += dt;
+    }
     remaining = Math.max(0, remaining - dt);
 
     if (reachesDecision) {
@@ -241,7 +254,8 @@ export function advanceRunner(
     }
 
     s.gates = s.gates.filter((gate) =>
-      gate.resolved === -1 || gate.x > (layout.compact ? layout.playerX : -200),
+      gate.resolved === -1
+      || (layout.compact ? gate.sinceResolved < COMPACT_CLEAR_SECONDS : gate.x > -200),
     );
   }
 }
