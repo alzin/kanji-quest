@@ -139,3 +139,25 @@ test("fits the tracing pad and its controls on a 320px phone", async ({ page }) 
   await expect(page.getByLabel("Trace 二", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Previous kanji", exact: true })).toBeEnabled();
 });
+
+test("keeps the sound toggle inside the viewport and clear of the pause control", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("run?gate=1", { waitUntil: "domcontentloaded" });
+  await expect(page.getByLabel("Kanji runner game")).toBeVisible();
+  const mute = await page.getByRole("button", { name: "Mute sounds", exact: true }).boundingBox();
+  const pause = await page.getByRole("button", { name: "Pause game", exact: true }).boundingBox();
+  expect(mute!.x).toBeGreaterThanOrEqual(0);
+  expect(mute!.y).toBeGreaterThanOrEqual(0);
+  expect(mute!.x + mute!.width).toBeLessThanOrEqual(320);
+  expect(mute!.y + mute!.height).toBeLessThanOrEqual(568);
+  expect(mute!.width).toBeGreaterThanOrEqual(44);
+  expect(mute!.height).toBeGreaterThanOrEqual(44);
+  const separated = mute!.x >= pause!.x + pause!.width || pause!.x >= mute!.x + mute!.width
+    || mute!.y >= pause!.y + pause!.height || pause!.y >= mute!.y + mute!.height;
+  expect(separated).toBe(true);
+  await expectNoHorizontalOverflow(page);
+
+  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "Mute sounds", exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});

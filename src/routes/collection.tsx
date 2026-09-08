@@ -100,7 +100,7 @@ function KanjiDialog({ kanji, progress, returnFocusTo, onDismiss }: { kanji: Kan
           first?.focus();
         }
       }}
-      className={`fixed bottom-0 left-[env(safe-area-inset-left,0px)] right-[env(safe-area-inset-right,0px)] top-auto m-0 w-auto max-w-none overflow-hidden rounded-t-3xl border border-border bg-paper p-0 text-foreground shadow-2xl backdrop:bg-ink/60 backdrop:backdrop-blur-sm sm:bottom-[env(safe-area-inset-bottom,0px)] sm:top-[env(safe-area-inset-top,0px)] sm:m-auto sm:max-w-lg sm:rounded-2xl ${DIALOG_HEIGHT}`}
+      className={`sheet-up fixed bottom-0 left-[env(safe-area-inset-left,0px)] right-[env(safe-area-inset-right,0px)] top-auto m-0 w-auto max-w-none overflow-hidden rounded-t-3xl border border-border bg-paper p-0 text-foreground shadow-2xl backdrop:bg-ink/60 backdrop:backdrop-blur-sm sm:bottom-[env(safe-area-inset-bottom,0px)] sm:top-[env(safe-area-inset-top,0px)] sm:m-auto sm:max-w-lg sm:rounded-2xl ${DIALOG_HEIGHT}`}
     >
       <div className={`flex flex-col ${DIALOG_HEIGHT}`}>
         <div aria-hidden="true" className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border sm:hidden" />
@@ -215,7 +215,8 @@ function CollectionPage() {
                   event.currentTarget.focus({ preventScroll: true });
                   setSelected(k);
                 }}
-                className={`flex aspect-square min-h-11 items-center justify-center rounded-xl border-2 font-serif text-2xl font-bold transition-transform hover:-translate-y-0.5 hover:shadow active:scale-95 ${TILE_CLASS[p.mastery]}`}
+                data-sfx="sheet"
+                className={`flex aspect-square min-h-11 items-center justify-center rounded-xl border-2 font-serif text-2xl font-bold transition-transform hover:-translate-y-0.5 hover:shadow active:scale-95 ${TILE_CLASS[p.mastery]}${p.mastery === 3 ? " relative tile-mastered" : ""}`}
                 aria-label={`${k.c} — ${k.m} · ${MASTERY_LABEL[p.mastery]}`}
                 aria-haspopup="dialog"
               >

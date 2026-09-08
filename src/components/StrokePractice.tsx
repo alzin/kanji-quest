@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import type { Kanji } from "@/data/n5/types";
+import { play } from "@/lib/sfx";
 import { evaluateTrace } from "@/lib/stroke-math";
 
 const SIZE = 320;
@@ -13,9 +14,17 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
   const instructionsId = useId();
   const [strokes, setStrokes] = useState(0);
   const [result, setResult] = useState<null | { pct: number; pass: boolean }>(null);
+  // Counts Check presses; it keys the guide canvas so the failed-check pulse replays.
+  const [resultCount, setResultCount] = useState(0);
 
   useEffect(() => {
     reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kanji.c]);
+
+  // Layout effect: the guide canvas remounts on every Check (keyed by resultCount),
+  // so the glyph must be back before the browser paints that frame.
+  useLayoutEffect(() => {
     let cancelled = false;
     const drawGuide = () => {
       if (cancelled) return;
@@ -32,8 +41,7 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
     // The visible guide and coverage mask must use the same loaded font.
     void document.fonts.ready.then(drawGuide);
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kanji.c]);
+  }, [kanji.c, resultCount]);
 
   const reset = () => {
     const canvas = canvasRef.current;
@@ -63,7 +71,11 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
     const target = targetPixels();
     const drawnMask = new Uint8Array(SIZE * SIZE);
     for (let i = 0; i < drawnMask.length; i++) drawnMask[i] = (drawn[i * 4 + 3] ?? 0) > 60 ? 1 : 0;
-    setResult(evaluateTrace(target, drawnMask, SIZE, SIZE));
+    const verdict = evaluateTrace(target, drawnMask, SIZE, SIZE);
+    setResult(verdict);
+    setResultCount((n) => n + 1);
+    // Inside the Check click (boot()'s gesture listener has already unlocked audio).
+    play(verdict.pass ? "dojoPass" : "dojoFail");
   };
 
   const pos = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -80,6 +92,9 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
+    // The brush lifting off the paper. Only after an active stroke (the guard
+    // above), never in onPointerDown; a no-op until audio is unlocked and running.
+    play("strokeEnd");
   };
 
   return (
@@ -87,11 +102,12 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
       {/* Reserve phone viewport space for the header, touch controls, and bottom tabs. */}
       <div className="relative mx-auto w-full max-w-[clamp(204px,calc(100svh_-_450px_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px)),320px)] overflow-hidden rounded-xl border-2 border-border bg-paper shadow-inner md:max-w-[320px]">
         <canvas
+          key={resultCount}
           ref={guideRef}
           width={SIZE}
           height={SIZE}
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 block aspect-square w-full opacity-20"
+          className={`pointer-events-none absolute inset-0 block aspect-square w-full opacity-20${result && !result.pass ? " guide-pulse" : ""}`}
         />
         <canvas
           ref={canvasRef}
@@ -132,11 +148,17 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
           onPointerCancel={endStroke}
           onLostPointerCapture={endStroke}
         />
+        {/* Hanko badge for a pass; the role="status" text below stays the accessible result. */}
+        {result?.pass && (
+          <div aria-hidden="true" className="dojo-stamp">
+            印
+          </div>
+        )}
       </div>
       <div className="mt-2 text-sm sm:mt-3">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <span className="text-muted-foreground">
-            Your strokes: <b className="tabular-nums text-foreground">{strokes}</b>
+            Your strokes: <b key={strokes} className={`tabular-nums text-foreground${strokes > 0 ? " hud-pop-left" : ""}`}>{strokes}</b>
           </span>
           <span className="text-muted-foreground">Guide: {kanji.strokes} {kanji.strokes === 1 ? "stroke" : "strokes"}</span>
         </div>

@@ -240,6 +240,8 @@ html {
   background: color-mix(in oklch, var(--primary) 12%, transparent);
 }
 .app-tab:active, .pressable:active { transform: scale(0.96); }
+/* Press feedback for every button and link (zero specificity: .app-tab:active above still wins). */
+:where(button:not(:disabled), a[href]):active { transform: scale(.97); transition: transform 80ms; }
 
 @media (min-width: 768px) {
   .app-shell { padding-bottom: 0; }
@@ -269,7 +271,9 @@ html {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
 }
@@ -289,4 +293,298 @@ html {
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
   padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
+}
+
+/* ==========================================================================
+ * Sound & animation catalog (DOM/CSS side; canvas effects live in effects.ts).
+ * Every entrance is CSS-only so the fake-clock e2e suite sees final DOM values
+ * immediately; the prefers-reduced-motion rule above collapses all of it.
+ * ========================================================================== */
+
+/* --- shared primitives --- */
+@keyframes fade-only {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-soft {
+  from { opacity: 0; scale: .95; }
+  to { opacity: 1; scale: 1; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- run HUD --- */
+@keyframes hud-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+.hud-pop {
+  transform-origin: right center;
+  animation: hud-pop 220ms cubic-bezier(.2,1.6,.4,1);
+}
+.hud-pop-left {
+  display: inline-block;
+  transform-origin: left center;
+  animation: hud-pop 220ms cubic-bezier(.2,1.6,.4,1);
+}
+
+@keyframes hud-glow {
+  from { box-shadow: 0 0 0 3px color-mix(in oklch, var(--gold) 60%, transparent); }
+  to { box-shadow: 0 0 0 8px transparent; }
+}
+.hud-glow { animation: hud-glow 600ms ease-out; }
+
+@keyframes combo-tag {
+  0% { opacity: 0; transform: translateY(6px); }
+  22% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(0); }
+}
+.combo-tag {
+  position: absolute;
+  right: 0;
+  bottom: -1rem;
+  font-family: var(--font-serif);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--primary);
+  pointer-events: none;
+  animation: combo-tag 800ms ease-out forwards;
+}
+/* Reduced motion: the numeral tag simply appears and stays until the combo changes. */
+@media (prefers-reduced-motion: reduce) {
+  .combo-tag { animation: none; opacity: 1; }
+}
+
+@keyframes heart-out {
+  0% { transform: scale(1); color: var(--primary); }
+  30% { transform: scale(1.5) rotate(-12deg); }
+  60% { transform: scale(.9) rotate(8deg); }
+  100% { transform: scale(1); color: var(--border); }
+}
+.heart-out {
+  display: inline-block;
+  animation: heart-out 420ms ease-out;
+}
+
+@keyframes heart-last {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.heart-last {
+  display: inline-block;
+  animation: heart-last 1.4s ease-in-out infinite;
+}
+
+@keyframes score-tick {
+  from { color: var(--gold); transform: translateY(-2px); }
+  to { color: var(--foreground); transform: translateY(0); }
+}
+.score-tick { animation: score-tick 260ms ease-out; }
+
+/* --- hanko stamps (results 合格, map seals, dojo badge) ---
+ * CSS_STAMP_DELAY = 200ms; the ink lands at 55% of 480ms = 0.464 s, which is
+ * STAMP_LAND_SECONDS (0.46) in src/lib/sfx.ts. Keep the three in sync.
+ * The keyframes animate the individual `scale`/`rotate` properties so they
+ * compose with Tailwind's rotate-[-8deg] (also the `rotate` property) instead
+ * of doubling it; --stamp-angle is the element's resting angle. */
+@keyframes stamp-in {
+  0% { scale: 1.7; rotate: calc(var(--stamp-angle, -8deg) - 12deg); opacity: 0; }
+  55% { scale: .94; rotate: calc(var(--stamp-angle, -8deg) + 2deg); opacity: 1; }
+  75% { scale: 1.04; rotate: calc(var(--stamp-angle, -8deg) - 1deg); }
+  100% { scale: 1; rotate: var(--stamp-angle, -8deg); }
+}
+@keyframes ink-ring {
+  from { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 40%, transparent); }
+  to { box-shadow: 0 0 0 14px transparent; }
+}
+.stamp-in {
+  --stamp-angle: -8deg;
+  animation: stamp-in 480ms cubic-bezier(.2,1.5,.4,1) 200ms both;
+}
+.seal-in {
+  --stamp-angle: -6deg;
+  animation: stamp-in 480ms cubic-bezier(.2,1.5,.4,1) 200ms both;
+}
+/* Needs position: relative on the element. */
+.stamp-in::after, .seal-in::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: ink-ring 500ms ease-out 460ms both;
+}
+.dojo-stamp {
+  --stamp-angle: -10deg;
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+  z-index: 20;
+  display: flex;
+  width: 64px;
+  height: 64px;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--primary);
+  border-radius: 9999px;
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: .8;
+  rotate: var(--stamp-angle);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  animation: stamp-in 480ms cubic-bezier(.2,1.5,.4,1) both;
+}
+
+/* --- results --- */
+@keyframes stamp-pop {
+  from { scale: 1.15; }
+  to { scale: 1; }
+}
+.stamp-pop { animation: stamp-pop 260ms cubic-bezier(.2,1.5,.4,1) both; }
+
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tile-in { animation: tile-in 260ms ease-out both; }
+
+.results-card { animation: fade-in-soft 250ms ease-out; }
+.results-actions { animation: fade-only 200ms ease-out 500ms both; }
+
+@keyframes ink-in {
+  from { opacity: 0; filter: blur(2px); letter-spacing: .2em; }
+}
+.ink-in { animation: ink-in 420ms ease-out; }
+
+@keyframes shimmer-gold {
+  from { background-position: 120% 0; }
+  to { background-position: -20% 0; }
+}
+.shimmer-gold {
+  background-image: linear-gradient(110deg, transparent 30%, color-mix(in oklch, var(--gold) 30%, transparent) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  background-position: 120% 0;
+  animation: shimmer-gold 700ms ease-in-out 900ms both;
+}
+
+@keyframes pulse-primary {
+  50% { border-color: var(--primary); }
+}
+.pulse-primary { animation: pulse-primary 600ms ease-in-out 1100ms; }
+
+@keyframes breathe-ring {
+  0%, 100% { box-shadow: 0 1px 2px oklch(0.245 0.02 70 / 10%), 0 0 0 0 color-mix(in oklch, var(--primary) 0%, transparent); }
+  50% { box-shadow: 0 1px 2px oklch(0.245 0.02 70 / 10%), 0 0 0 8px color-mix(in oklch, var(--primary) 12%, transparent); }
+}
+.breathe-ring { animation: breathe-ring 2.2s ease-in-out 1.5s infinite; }
+
+@keyframes ignite {
+  0% { transform: scale(.5) rotate(-8deg); color: var(--muted-foreground); }
+  60% { transform: scale(1.15) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); color: var(--primary); }
+}
+.ignite {
+  display: inline-block;
+  animation: ignite 450ms cubic-bezier(.2,1.4,.4,1) 500ms both;
+}
+
+@keyframes flicker {
+  from { rotate: -3deg; }
+  to { rotate: 3deg; }
+}
+.flicker {
+  transform-origin: 50% 100%;
+  animation: flicker 1.2s ease-in-out infinite alternate;
+}
+.ignite.flicker {
+  animation:
+    ignite 450ms cubic-bezier(.2,1.4,.4,1) 500ms both,
+    flicker 1.2s ease-in-out infinite alternate;
+}
+
+/* --- lesson overlay (only opacity/transform animate under the backdrop blur) --- */
+.lesson-backdrop { animation: fade-only 200ms ease-out; }
+.lesson-card { animation: rise-in 260ms ease-out 150ms both; }
+.lesson-word { animation: fade-in-soft 240ms ease-out 200ms both; }
+.lesson-detail { animation: fade-only 260ms ease-out 500ms both; }
+.lesson-answer { animation: fade-only 260ms ease-out 500ms both; }
+
+@keyframes ink-reveal {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
+}
+.ink-reveal {
+  background-image: linear-gradient(color-mix(in oklch, var(--gold) 25%, transparent), color-mix(in oklch, var(--gold) 25%, transparent));
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 100% 100%;
+  animation: ink-reveal 320ms ease-out 700ms both;
+}
+
+/* Opacity only: the button's box never moves, so it is clickable immediately. */
+.lesson-cta { animation: fade-only 200ms ease-out 450ms both; }
+.lesson-cta.breathe-ring {
+  animation:
+    fade-only 200ms ease-out 450ms both,
+    breathe-ring 2.2s ease-in-out 1.6s infinite;
+}
+
+/* --- home / map / collection / dojo --- */
+.ring-fill { transition: stroke-dashoffset 1000ms cubic-bezier(.2,.8,.2,1); }
+
+@keyframes glow-next {
+  0%, 100% { box-shadow: 0 1px 2px oklch(0.245 0.02 70 / 8%), 0 0 0 0 color-mix(in oklch, var(--primary) 0%, transparent); }
+  50% { box-shadow: 0 1px 2px oklch(0.245 0.02 70 / 8%), 0 0 0 6px color-mix(in oklch, var(--primary) 10%, transparent); }
+}
+.glow-next { animation: glow-next 2.4s ease-in-out infinite; }
+
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+dialog[open].sheet-up { animation: sheet-up 240ms cubic-bezier(.2,.9,.3,1); }
+dialog.sheet-up::backdrop { animation: fade-only 200ms ease-out; }
+@media (min-width: 640px) {
+  @keyframes sheet-up-zoom {
+    from { opacity: 0; scale: .98; }
+    to { opacity: 1; scale: 1; }
+  }
+  dialog[open].sheet-up { animation: sheet-up-zoom 240ms cubic-bezier(.2,.9,.3,1); }
+}
+
+@keyframes guide-pulse {
+  0%, 100% { opacity: .2; }
+  50% { opacity: .42; }
+}
+.guide-pulse { animation: guide-pulse 900ms ease-in-out 2; }
+
+/* Static 6px vermillion corner mark; needs position: relative on the tile. */
+.tile-mastered::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background: var(--primary);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+  pointer-events: none;
+}
+
+/* SVG slash on the mute button */
+.sound-toggle-slash {
+  transition: stroke-dashoffset 160ms ease, stroke-dasharray 160ms ease;
 }

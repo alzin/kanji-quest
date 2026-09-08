@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AppIcon } from "@/components/AppIcon";
 import { RunnerGame } from "@/components/game/RunnerGame";
 import { checkpointPassed, dailyRunReward, type RunnerStats } from "@/components/game/runner-math";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { WordRuby } from "@/components/WordRuby";
+import { play } from "@/lib/sfx";
 import {
   buildRunQueue, buildGateQuiz, grade, finishRun, clearGate,
-  getSnapshot, vocabKana, type Question,
+  getCard, getSnapshot, streakCount, vocabKana, type Question,
 } from "@/lib/srs";
 import { CHAPTER_NAMES, CHAPTER_COUNT } from "@/data/n5";
 
@@ -58,6 +60,16 @@ function RunSession({ gate }: { gate: number | undefined }) {
 
   const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : "Daily run";
 
+  // One ceremony per results object: the hanko thump for 合格, an open question for 再挑戦,
+  // the rising koto phrase for 完了 and a quiet page turn when the hearts ran out.
+  useEffect(() => {
+    if (!results) return;
+    const total = questions.length;
+    const opts = { earned: results.earned };
+    if (gate) play(checkpointPassed(results.correct, total) ? "checkpointPassed" : "checkpointFailed", opts);
+    else play(results.correct + results.wrong < total ? "runEnded" : "runComplete", opts);
+  }, [results, gate, questions]);
+
   if (questions.length === 0 && !results) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 text-center">
@@ -78,6 +90,9 @@ function RunSession({ gate }: { gate: number | undefined }) {
   const attempted = results ? results.correct + results.wrong : 0;
   const unattempted = results ? questions.length - attempted : 0;
   const accuracy = results && attempted > 0 ? Math.round(results.correct / attempted * 100) : 0;
+  const tileDelay = (index: number) => ({ animationDelay: `${150 + index * 60}ms` });
+  // .shimmer-gold / .pulse-primary would replace .tile-in's animation shorthand on the same tile: compose both inline.
+  const tileWith = (index: number, extra: string) => ({ animation: `tile-in 260ms ease-out ${150 + index * 60}ms both, ${extra}` });
 
   return (
     <div className="game-viewport overflow-hidden bg-paper">
@@ -87,7 +102,10 @@ function RunSession({ gate }: { gate: number | undefined }) {
           questions={questions}
           title={title}
           onAnswer={(q, correct) => {
+            const masteryBefore = getCard(getSnapshot(), q.kanji.c).mastery;
             grade(q.kanji.c, correct);
+            // The long-term goal reached inside the loop (the engine drops it when a milestone bell just rang).
+            if (correct && masteryBefore < 3 && getCard(getSnapshot(), q.kanji.c).mastery === 3) play("mastered");
             if (!correct) {
               setLesson(q);
               (window as any).__kanjiDashPause?.(true);
@@ -108,27 +126,31 @@ function RunSession({ gate }: { gate: number | undefined }) {
 
       {/* Lesson flash on wrong answer */}
       {lesson && !results && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/60 px-3 py-4 backdrop-blur-sm sm:p-4">
-          <div className="flex max-h-full w-full max-w-lg flex-col">
+        <div className="lesson-backdrop absolute inset-0 z-20 flex items-center justify-center bg-ink/60 px-3 py-4 backdrop-blur-sm sm:p-4">
+          <div className="lesson-card flex max-h-full w-full max-w-lg flex-col">
             <div className="min-h-0 overflow-y-auto overscroll-contain">
               <div className="mb-2 text-center font-serif text-lg font-bold text-paper sm:mb-3 sm:text-xl">Lesson flash — 復習</div>
-              <div className="mb-2 rounded-xl border border-border bg-card p-3 text-center sm:mb-3">
+              <div className="lesson-word mb-2 rounded-xl border border-border bg-card p-3 text-center sm:mb-3">
                 <WordRuby vocab={lesson.vocab} focus={lesson.kanji.c} className="text-3xl font-bold sm:text-4xl" />
                 <div className="mt-2 text-sm text-muted-foreground">
                   <span className="font-serif">{vocabKana(lesson.vocab)}</span> · {lesson.vocab.m}
                 </div>
               </div>
-              <KanjiDetail kanji={lesson.kanji} />
-              <div className="mt-2 rounded-lg bg-card p-2.5 text-center text-sm sm:mt-3 sm:p-3">
-                The answer was <b className="font-serif text-lg">{lesson.answer}</b>
+              <div className="lesson-detail">
+                <KanjiDetail kanji={lesson.kanji} />
+              </div>
+              <div className="lesson-answer mt-2 rounded-lg bg-card p-2.5 text-center text-sm sm:mt-3 sm:p-3">
+                The answer was <b className="ink-reveal font-serif text-lg">{lesson.answer}</b>
               </div>
             </div>
+            {/* No data-sfx here: the exhale + root note is played directly so it never doubles with a tap. */}
             <button
               onClick={() => {
+                play("keepRunning");
                 setLesson(null);
                 (window as any).__kanjiDashPause?.(false);
               }}
-              className="mt-3 min-h-12 w-full shrink-0 rounded-lg bg-primary py-3 font-serif text-lg font-bold text-primary-foreground shadow sm:mt-4"
+              className="lesson-cta breathe-ring mt-3 min-h-12 w-full shrink-0 rounded-lg bg-primary py-3 font-serif text-lg font-bold text-primary-foreground shadow sm:mt-4"
             >
               Keep running
             </button>
@@ -139,13 +161,14 @@ function RunSession({ gate }: { gate: number | undefined }) {
       {/* Results */}
       {results && (
         <div className="flex h-full overflow-y-auto bg-paper px-3 py-4 sm:px-4">
-          <div className="my-auto w-full max-w-md rounded-2xl border border-border bg-card p-5 text-center shadow-sm sm:mx-auto sm:p-8">
+          <div className="results-card my-auto w-full max-w-md rounded-2xl border border-border bg-card p-5 text-center shadow-sm sm:mx-auto sm:p-8">
             {gate && pass ? (
-              <div className="mx-auto flex h-20 w-20 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-3xl font-bold text-primary sm:h-24 sm:w-24 sm:text-4xl">
+              // stamp-in lands at 200 ms + 55% of 480 ms = STAMP_LAND_SECONDS, when the thump plays
+              <div className="stamp-in relative mx-auto flex h-20 w-20 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-3xl font-bold text-primary sm:h-24 sm:w-24 sm:text-4xl">
                 合格
               </div>
             ) : (
-              <div className="font-serif text-5xl font-bold">{gate ? "再挑戦" : "完了"}</div>
+              <div className="ink-in font-serif text-5xl font-bold">{gate ? "再挑戦" : "完了"}</div>
             )}
             <h1 className="mt-4 font-serif text-2xl font-bold">
               {gate ? (pass ? "Checkpoint cleared!" : "Not yet — train and return") : unattempted > 0 ? "Run ended" : "Run complete!"}
@@ -153,40 +176,50 @@ function RunSession({ gate }: { gate: number | undefined }) {
             <p className="mt-2 text-sm text-muted-foreground">
               {attempted} / {questions.length} answered{unattempted > 0 ? ` · ${unattempted} not reached` : ""}
             </p>
+            {!gate && (
+              <p className="mt-1 text-xs font-bold text-muted-foreground">
+                <AppIcon name="flame" className="ignite mr-1 h-3.5 w-3.5 align-[-3px]" />
+                Day {streakCount(getSnapshot())} of your streak
+              </p>
+            )}
             {gate && <p className="mt-1 text-xs text-muted-foreground">Pass: at least {Math.ceil(questions.length * 0.7)} correct out of {questions.length}.</p>}
             <div className="mt-5 grid grid-cols-3 gap-1.5 text-center sm:mt-6 sm:gap-3">
-              <div className="rounded-lg bg-secondary p-2 sm:p-3">
-                <div className="font-serif text-xl font-bold text-[#2e5238] sm:text-2xl">{results.correct}</div>
+              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(0)}>
+                <div className="stamp-pop font-serif text-xl font-bold text-[#2e5238] sm:text-2xl" style={tileDelay(0)}>{results.correct}</div>
                 <div className="text-xs font-bold text-muted-foreground">Correct</div>
               </div>
-              <div className="rounded-lg bg-secondary p-2 sm:p-3">
-                <div className="font-serif text-xl font-bold text-primary sm:text-2xl">{results.wrong}</div>
+              <div
+                className={`tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3${results.wrong > 0 ? " pulse-primary" : ""}`}
+                style={results.wrong > 0 ? tileWith(1, "pulse-primary 600ms ease-in-out 1100ms") : tileDelay(1)}
+              >
+                <div className="stamp-pop font-serif text-xl font-bold text-primary sm:text-2xl" style={tileDelay(1)}>{results.wrong}</div>
                 <div className="text-xs font-bold text-muted-foreground">Missed</div>
               </div>
-              <div className="rounded-lg bg-secondary p-2 sm:p-3">
-                <div className="font-serif text-xl font-bold text-accent sm:text-2xl">×{results.bestCombo}</div>
+              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(2)}>
+                <div className="stamp-pop font-serif text-xl font-bold text-accent sm:text-2xl" style={tileDelay(2)}>×{results.bestCombo}</div>
                 <div className="text-xs font-bold text-muted-foreground">Best combo</div>
               </div>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-1.5 text-center sm:gap-3">
-              <div className="rounded-lg bg-secondary p-2 sm:p-3">
-                <div className="font-serif text-xl font-bold sm:text-2xl">{results.score.toLocaleString()}</div>
+              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(3)}>
+                <div className="stamp-pop font-serif text-xl font-bold sm:text-2xl" style={tileDelay(3)}>{results.score.toLocaleString()}</div>
                 <div className="text-xs font-bold text-muted-foreground">Score</div>
               </div>
-              <div className="rounded-lg bg-secondary p-2 sm:p-3">
-                <div className="font-serif text-xl font-bold sm:text-2xl">{accuracy}%</div>
+              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(4)}>
+                <div className="stamp-pop font-serif text-xl font-bold sm:text-2xl" style={tileDelay(4)}>{accuracy}%</div>
                 <div className="text-xs font-bold text-muted-foreground">Answer accuracy</div>
               </div>
-              <div className="rounded-lg bg-secondary p-2 sm:p-3">
-                <div className="font-serif text-xl font-bold text-accent sm:text-2xl">+{results.earned}</div>
+              <div className="tile-in shimmer-gold rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileWith(5, "shimmer-gold 700ms ease-in-out 900ms both")}>
+                <div className="stamp-pop font-serif text-xl font-bold text-accent sm:text-2xl" style={tileDelay(5)}>+{results.earned}</div>
                 <div className="text-xs font-bold text-muted-foreground">Mon earned</div>
               </div>
             </div>
-            <div className="mt-6 flex flex-col gap-2">
+            <div className="results-actions mt-6 flex flex-col gap-2">
               {!gate && (
                 <button
                   onClick={restart}
-                  className="rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
+                  data-sfx="tap"
+                  className="breathe-ring rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
                 >
                   Run again
                 </button>
@@ -194,13 +227,15 @@ function RunSession({ gate }: { gate: number | undefined }) {
               {gate && !pass && (
                 <button
                   onClick={restart}
-                  className="rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
+                  data-sfx="tap"
+                  className="breathe-ring rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
                 >
                   Retry checkpoint
                 </button>
               )}
               <button
                 onClick={() => navigate({ to: gate ? "/map" : "/" })}
+                data-sfx="tap"
                 className="rounded-lg border border-border py-3 font-bold"
               >
                 {gate ? "Back to map" : "Back home"}

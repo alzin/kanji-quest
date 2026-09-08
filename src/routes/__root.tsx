@@ -7,9 +7,10 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { InstallAppProvider } from "@/components/InstallApp";
+import { boot } from "@/lib/sfx";
 
 import appCss from "../styles.css?url";
 
@@ -133,6 +134,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Audio unlockers, the [data-sfx] click delegate and the visibility suspend; boot() returns its disposer.
+  useEffect(() => boot(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -1,7 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { InstallApp } from "@/components/InstallApp";
-import { useSave, dueCount, getCard, isChapterUnlocked, n5MasteryPct, streakCount, NEW_PER_RUN } from "@/lib/srs";
+import { SoundToggle } from "@/components/SoundToggle";
+import { useSave, dueCount, getCard, getSnapshot, isChapterUnlocked, n5MasteryPct, streakCount, NEW_PER_RUN } from "@/lib/srs";
+import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
+import { isAudioRunning, play } from "@/lib/sfx";
 import { allKanji } from "@/data/n5";
 import { AppIcon } from "@/components/AppIcon";
 
@@ -24,6 +28,11 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+// YYYY-MM-DD from local date parts: the same day convention srs.ts keeps streak.last in.
+function localDay(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function Home() {
   const save = useSave();
   const due = dueCount(save);
@@ -34,6 +43,20 @@ function Home() {
 
   const R = 42;
   const circ = 2 * Math.PI * R;
+
+  // Coins and the streak pop only when they changed since the last visit (kanji-dash-fx-v1 record).
+  const [pops, setPops] = useState({ coins: false, streak: false });
+
+  // Post-hydration only. getSnapshot() is the loaded save: during hydration useSave() still
+  // holds the server snapshot and the store's own re-render lands after this effect.
+  useEffect(() => {
+    const snapshot = getSnapshot();
+    const today = localDay(new Date());
+    const changed = diffFx(readFx(), snapshot, today);
+    if (changed.coinsChanged || changed.streakDayChanged) setPops({ coins: changed.coinsChanged, streak: changed.streakDayChanged });
+    if (changed.streakDayChanged && isAudioRunning()) play("streakBell"); // never creates a context on load
+    rememberFx(snapshot, today);
+  }, []);
 
   return (
     <div className="app-shell bg-paper">
@@ -60,6 +83,7 @@ function Home() {
               <Link
                 to="/run"
                 search={{ gate: undefined }}
+                data-sfx="tap"
                 className="pressable flex min-h-14 items-center justify-between gap-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-sm transition-transform sm:justify-center sm:px-6 sm:text-lg"
               >
                 Start today's run
@@ -71,6 +95,7 @@ function Home() {
               >
                 <AppIcon name="map" className="h-4 w-4" /> World map
               </Link>
+              <SoundToggle variant="inline" />
             </div>
           </div>
         </section>
@@ -93,9 +118,10 @@ function Home() {
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-xs sm:text-sm">
               <span className="flex items-center gap-1.5 font-bold">
-                <AppIcon name="flame" className="h-4 w-4 text-primary" /> {streak} day streak
+                <AppIcon name="flame" className={`h-4 w-4 text-primary${streak >= 1 ? " flicker" : ""}${pops.streak ? " ignite" : ""}`} />
+                <span className={pops.streak ? "hud-pop-left" : undefined}>{streak} day streak</span>
               </span>
-              <span className="font-bold"><span className="text-gold">●</span> {save.coins} mon</span>
+              <span className={pops.coins ? "font-bold hud-pop-left" : "font-bold"}><span className="text-gold">●</span> {save.coins} mon</span>
               <span className="text-muted-foreground">{save.runsCompleted} runs</span>
             </div>
           </div>
@@ -104,6 +130,7 @@ function Home() {
             <svg className="h-20 w-20 shrink-0 lg:h-[104px] lg:w-[104px]" width="104" height="104" viewBox="0 0 104 104" role="img" aria-label={`N5 mastery progress ${pct}%`}>
               <circle cx="52" cy="52" r={R} fill="none" stroke="var(--color-border)" strokeWidth="9" />
               <circle
+                className="ring-fill"
                 cx="52" cy="52" r={R} fill="none" stroke="var(--color-primary)" strokeWidth="9"
                 strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)}
                 transform="rotate(-90 52 52)"

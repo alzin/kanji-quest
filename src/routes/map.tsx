@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { AppIcon } from "@/components/AppIcon";
 import { CHAPTER_NAMES, CHAPTER_COUNT, kanjiOfChapter } from "@/data/n5";
-import { useSave, chapterMasteryPct, getCard, isChapterUnlocked, isGateCleared } from "@/lib/srs";
+import { useSave, chapterMasteryPct, getCard, getSnapshot, isChapterUnlocked, isGateCleared } from "@/lib/srs";
+import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
+import { isAudioRunning, play } from "@/lib/sfx";
 
 export const Route = createFileRoute("/map")({
   head: () => ({
@@ -16,12 +19,40 @@ export const Route = createFileRoute("/map")({
   component: MapPage,
 });
 
+// YYYY-MM-DD from local date parts: the same day convention srs.ts keeps streak.last in.
+function localDay(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function MapPage() {
   const save = useSave();
   const chapters = Array.from({ length: CHAPTER_COUNT }, (_, i) => i + 1);
   const allCleared = chapters.every((ch) => isGateCleared(save, ch));
   const seals = chapters.filter((ch) => isGateCleared(save, ch)).length;
   const nextCheckpoint = chapters.find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
+
+  // Seals not yet in the kanji-dash-fx-v1 record slam in once; seen seals render statically.
+  const [newSeals, setNewSeals] = useState<number[]>([]);
+  const cardRefs = useRef(new Map<number, HTMLLIElement>());
+
+  // Post-hydration only. getSnapshot() is the loaded save: during hydration useSave() still
+  // holds the server snapshot and the store's own re-render lands after this effect.
+  useEffect(() => {
+    const snapshot = getSnapshot();
+    const today = localDay(new Date());
+    const changed = diffFx(readFx(), snapshot, today);
+    if (changed.newSeals.length > 0) {
+      setNewSeals(changed.newSeals);
+      try {
+        const first = changed.newSeals[0];
+        if (first !== undefined) cardRefs.current.get(first)?.scrollIntoView({ block: "center" });
+      } catch {
+        /* scrolling is cosmetic */
+      }
+      if (isAudioRunning()) play("sealEarned"); // never creates a context on load
+    }
+    rememberFx(snapshot, today);
+  }, []);
 
   return (
     <div className="app-shell bg-paper">
@@ -41,7 +72,7 @@ function MapPage() {
           <div className="mt-3 flex gap-1.5" aria-hidden="true">
             {chapters.map((ch) => <span key={ch} className={`h-1.5 flex-1 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
           </div>
-          <Link to="/run" search={{ gate: undefined }} className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform">
+          <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform">
             Continue daily run <AppIcon name="arrow" className="h-4 w-4" />
           </Link>
         </section>
@@ -66,15 +97,16 @@ function MapPage() {
             const kanji = kanjiOfChapter(ch);
             const count = kanji.length;
             const mastered = kanji.filter((entry) => getCard(save, entry.c).mastery === 3).length;
+            const sealIndex = cleared ? newSeals.indexOf(ch) : -1;
             return (
-              <li key={ch} className="relative">
+              <li key={ch} className="relative" ref={(el) => { if (el) cardRefs.current.set(ch, el); else cardRefs.current.delete(ch); }}>
                 {i < chapters.length - 1 && (
                   <div className="absolute left-[36px] top-16 h-[calc(100%-3rem)] w-0.5 bg-border sm:left-[44px]" />
                 )}
-                <div className={`relative flex gap-3 rounded-2xl border p-4 sm:gap-4 ${ch === nextCheckpoint ? "border-primary/50 bg-card shadow-sm" : unlocked ? "border-border bg-card shadow-sm" : "border-dashed border-border bg-secondary/40"}`}>
+                <div className={`relative flex gap-3 rounded-2xl border p-4 sm:gap-4 ${ch === nextCheckpoint ? "glow-next border-primary/50 bg-card shadow-sm" : unlocked ? "border-border bg-card shadow-sm" : "border-dashed border-border bg-secondary/40"}`}>
                   <div aria-hidden="true" className={`z-10 flex h-10 w-10 shrink-0 rotate-[-6deg] items-center justify-center rounded-full border-2 font-serif text-lg font-bold sm:h-14 sm:w-14 sm:border-4 sm:text-xl ${
                     cleared ? "border-primary bg-primary/10 text-primary" : unlocked ? "border-accent bg-card text-accent" : "border-border bg-card text-muted-foreground"
-                  }`}>
+                  }${sealIndex >= 0 ? " relative seal-in" : ""}`} style={sealIndex >= 0 ? { animationDelay: `${200 + sealIndex * 80}ms` } : undefined}>
                     {cleared ? "印" : unlocked ? ch : <AppIcon name="lock" className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -96,6 +128,7 @@ function MapPage() {
                         <Link
                           to="/run"
                           search={{ gate: ch }}
+                          data-sfx="tap"
                           className="pressable inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-xs font-bold text-accent-foreground shadow-sm transition-transform"
                         >
                           Checkpoint gate
