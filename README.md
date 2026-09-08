@@ -15,6 +15,8 @@ npm run dev
 
 ## Game calculations
 
+- Every daily run, checkpoint, and retry starts with Dojo preparation: study each word with furigana, kana, meaning, and a kanji mnemonic; optionally trace its focus kanji; then recall every reading and meaning without a timer. Incorrect recall checks show feedback and require another attempt. The runner uses the same frozen word queue. Preparation never grades cards or awards mastery, coins, or streaks. Leaving or refreshing starts preparation again.
+
 - A correct answer earns `100 × current consecutive correct answers` points. A mistake resets the combo and costs one of three hearts. Unreached questions are counted separately from mistakes.
 - A daily run earns `2 × correct answers + best combo` mon. A checkpoint needs at least 70% of its full question count correct (9 of 12) and pays 50 mon on its first clearance only. Every finished session, including a failed or passed checkpoint, adds one completed run.
 - Mastery progress gives each card 0/1/2/3 points for unseen/learning/reviewing/mastered, divided by the maximum possible points. Displays round to whole percentages, with 100% reserved for all cards mastered. Region unlocks use the exact 55% threshold, not a rounded display value.

@@ -1,3 +1,4 @@
+import { completePreparation } from "./helpers/preparation";
 import { expect, test, type Page } from "@playwright/test";
 import { allKanji, kanjiOfChapter } from "../src/data/n5";
 
@@ -36,7 +37,7 @@ test("keeps due reviews, partial mastery, and exact checkpoint seals consistent 
   await expect(regions.nth(0).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
   await expect(regions.nth(0).getByText("67% progress · 0/16 mastered", { exact: true })).toBeVisible();
   await expect(regions.nth(0).getByText("Seal stamped ✓", { exact: true })).toHaveCount(0);
-  await expect(regions.nth(1).getByRole("link", { name: "Checkpoint gate" })).toBeVisible();
+  await expect(regions.nth(1).getByRole("link", { name: "Prepare checkpoint" })).toBeVisible();
   await expect(regions.nth(2).getByText("Seal stamped ✓", { exact: true })).toBeVisible();
   await expect(page.getByText("JLPT N5 kanji seal earned!", { exact: true })).toHaveCount(0);
 
@@ -74,6 +75,7 @@ test("ignores checkpoint numbers outside the integer chapter range", async ({ pa
   page.on("pageerror", (error) => errors.push(error.message));
   for (const gate of ["1.5", "0", "7", "-1"]) {
     await page.goto(`run?gate=${gate}`, { waitUntil: "domcontentloaded" });
+    await completePreparation(page);
     await expect(page.getByText("Daily run", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
   }

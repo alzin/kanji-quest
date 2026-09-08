@@ -73,7 +73,7 @@ function MapPage() {
             {chapters.map((ch) => <span key={ch} className={`h-1.5 flex-1 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
           </div>
           <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform">
-            Continue daily run <AppIcon name="arrow" className="h-4 w-4" />
+            Learn words & prepare a run <AppIcon name="arrow" className="h-4 w-4" />
           </Link>
         </section>
 
@@ -131,7 +131,7 @@ function MapPage() {
                           data-sfx="tap"
                           className="pressable inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-xs font-bold text-accent-foreground shadow-sm transition-transform"
                         >
-                          Checkpoint gate
+                          Prepare checkpoint
                           <AppIcon name="arrow" className="h-4 w-4" />
                         </Link>
                       )}

@@ -1,3 +1,4 @@
+import { completePreparation } from "./helpers/preparation";
 import { expect, test, type Page } from "@playwright/test";
 
 type VoiceLog = { type: string; freq: number; at: number };
@@ -76,6 +77,7 @@ async function prepare(page: Page) {
 
 async function startRun(page: Page, url = "run") {
   await page.goto(url, { waitUntil: "domcontentloaded" });
+  await completePreparation(page);
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");
 }

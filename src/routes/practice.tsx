@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { StrokePractice } from "@/components/StrokePractice";
@@ -40,8 +40,18 @@ function PracticePage() {
       <main className="mx-auto max-w-4xl px-4 pb-16">
         <h1 className="mt-4 font-serif text-2xl font-bold sm:mt-8 sm:text-3xl">Stroke Dojo</h1>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Trace the guide. Aim for 70% coverage.
+          Learn words before you run, or spend extra time practicing kanji shapes.
         </p>
+
+        <section aria-label="Guided word learning" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-card p-4">
+          <div>
+            <h2 className="font-serif font-bold">Words → writing → recall → run</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Study the exact words in your next run, with writing practice along the way.</p>
+          </div>
+          <Link to="/run" search={{ gate: undefined }} className="min-h-11 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">Learn today’s words</Link>
+        </section>
+        <h2 className="mt-6 font-serif text-lg font-bold">Free writing practice</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Trace the guide. Aim for 70% coverage.</p>
 
         <div className="mt-3 grid items-start gap-4 sm:mt-6 sm:gap-6 md:grid-cols-2">
           <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
@@ -71,7 +81,7 @@ function PracticePage() {
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground">Run a session first to unlock practice targets.</p>
+              <p className="text-muted-foreground">No writing targets are available right now.</p>
             )}
           </div>
           {kanji && <KanjiDetail kanji={kanji} progress={getCard(save, kanji.c)} />}

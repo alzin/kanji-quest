@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-r
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { RunnerGame } from "@/components/game/RunnerGame";
+import { RunPreparation } from "@/components/RunPreparation";
 import { checkpointPassed, dailyRunReward, type RunnerStats } from "@/components/game/runner-math";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { WordRuby } from "@/components/WordRuby";
@@ -41,6 +42,7 @@ function RunPage() {
 function RunSession({ gate }: { gate: number | undefined }) {
   const navigate = useNavigate();
   const [session, setSession] = useState(0);
+  const [prepared, setPrepared] = useState(false);
   const questions = useMemo<Question[]>(() => {
     void session;
     const s = getSnapshot();
@@ -53,6 +55,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
 
   const restart = () => {
     finished.current = false;
+    setPrepared(false);
     setLesson(null);
     setResults(null);
     setSession((value) => value + 1);
@@ -85,6 +88,8 @@ function RunSession({ gate }: { gate: number | undefined }) {
       </div>
     );
   }
+
+  if (!prepared) return <RunPreparation key={session} questions={questions} title={title} onStart={() => setPrepared(true)} />;
 
   const pass = results ? checkpointPassed(results.correct, questions.length) : false;
   const attempted = results ? results.correct + results.wrong : 0;

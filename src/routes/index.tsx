@@ -74,10 +74,10 @@ function Home() {
               Your daily kanji adventure
             </p>
             <h1 className="mt-3 max-w-lg font-serif text-[2.125rem] font-bold leading-tight sm:text-5xl">
-              Run. Answer. <span className="text-primary">Remember.</span>
+              Learn. Recall. <span className="text-primary">Run.</span>
             </h1>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-              A little practice, every day. Run through Japan and turn {allKanji.length} N5 kanji into second nature.
+              Meet the words, practice their kanji, then run through Japan. Build lasting recall of {allKanji.length} N5 kanji, a little every day.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:mt-6 sm:flex-row sm:items-center sm:gap-3">
               <Link
@@ -86,7 +86,7 @@ function Home() {
                 data-sfx="tap"
                 className="pressable flex min-h-14 items-center justify-between gap-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-sm transition-transform sm:justify-center sm:px-6 sm:text-lg"
               >
-                Start today's run
+                Learn today’s words
                 <AppIcon name="arrow" className="h-5 w-5" />
               </Link>
               <Link
@@ -110,10 +110,10 @@ function Home() {
             <p className="mt-2 text-sm text-muted-foreground">
               {due > 0
                 ? fresh > 0
-                  ? `Revisit familiar kanji, then meet up to ${fresh} new ${fresh === 1 ? "one" : "ones"}.`
-                  : "Revisit familiar kanji that are ready for review."
+                  ? `Prepare words for your due reviews and up to ${fresh} new kanji, then test your recall in a run.`
+                  : "Prepare the words for your due reviews, then put them into practice in a run."
                 : fresh > 0
-                  ? `You're up to date on reviews. Meet ${fresh} fresh kanji in your next run.`
+                  ? `You're up to date on reviews. Learn words using ${fresh} fresh kanji before your next run.`
                   : "No new kanji or reviews are ready right now. Visit the dojo for extra practice."}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-xs sm:text-sm">
@@ -152,9 +152,9 @@ function Home() {
           <h2 id="how-it-works" className="mb-3 font-serif text-lg font-bold">Small steps. Lasting progress.</h2>
           <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
             {[
-              { jp: "走", t: "Run the gates", d: "Real words, not lone characters. Three lanes, three spellings — steer into the right one before the gate hits." },
-              { jp: "記", t: "Spaced repetition", d: "Missed kanji return sooner; mastered ones space out to weeks. The queue is the game." },
-              { jp: "印", t: "Checkpoint gates", d: "Clear a region's boss run to stamp your hanko seal and unlock the next stretch of road." },
+              { jp: "学", t: "1. Learn & write", d: "Study every word in your upcoming run with its reading and meaning. Trace its kanji in the dojo to practice the shape." },
+              { jp: "記", t: "2. Recall calmly", d: "Hide the readings and check what you remember. Practice both reading and meaning, with no timer or lost hearts." },
+              { jp: "走", t: "3. Run & revisit", d: "Play with the words you just studied. Run answers schedule spaced reviews, so missed kanji return sooner." },
             ].map((f) => (
               <div key={f.t} className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 sm:block sm:p-5">
                 <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 font-serif text-xl font-bold text-accent">

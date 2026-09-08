@@ -107,7 +107,7 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
           width={SIZE}
           height={SIZE}
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 block aspect-square w-full opacity-20${result && !result.pass ? " guide-pulse" : ""}`}
+          className={`pointer-events-none absolute inset-0 block aspect-square w-full opacity-20 ${result && !result.pass ? "guide-pulse" : ""}`}
         />
         <canvas
           ref={canvasRef}
