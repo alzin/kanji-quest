@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { KanjiDetail } from "@/components/KanjiDetail";
-import { allKanji, CHAPTER_NAMES, CHAPTER_COUNT } from "@/data/n5";
+import { LevelSelector } from "@/components/LevelSelector";
+import { allKanji, kanjiOfLevel, CHAPTER_NAMES, LEVEL_CHAPTERS } from "@/data";
 import type { Kanji } from "@/data/n5/types";
 import { useSave, getCard, type CardProgress } from "@/lib/srs";
 import { vocabKana } from "@/lib/words";
@@ -11,9 +12,9 @@ export const Route = createFileRoute("/collection")({
   head: () => ({
     meta: [
       { title: "Kanji Collection — Kanji Dash" },
-      { name: "description", content: `All ${allKanji.length} JLPT N5 kanji with readings, radicals, mnemonics, vocabulary, and your mastery state.` },
+      { name: "description", content: `${allKanji.length} kanji across the N5 and N4 study roads, with readings, mnemonics, vocabulary, and mastery progress.` },
       { property: "og:title", content: "Kanji Collection — Kanji Dash" },
-      { property: "og:description", content: "Browse every N5 kanji and track your mastery." },
+      { property: "og:description", content: "Explore N5 and N4 kanji and track your mastery." },
     ],
   }),
   component: CollectionPage,
@@ -121,6 +122,7 @@ function KanjiDialog({ kanji, progress, returnFocusTo, onDismiss }: { kanji: Kan
 
 function CollectionPage() {
   const save = useSave();
+  const level = save.selectedLevel;
   const [selected, setSelected] = useState<Kanji | null>(null);
   const [filter, setFilter] = useState<number | null>(null);
   const [query, setQuery] = useState("");
@@ -132,8 +134,10 @@ function CollectionPage() {
   useEffect(() => { setIsHydrated(true); }, []);
 
   const searchTerms = normalizeSearch(query.trim()).split(/\s+/).filter(Boolean);
-  const shown = allKanji.filter((kanji) => {
-    if (filter !== null && kanji.ch !== filter) return false;
+  // A level change in another tab must not leave an incompatible region filter.
+  const activeFilter = filter !== null && LEVEL_CHAPTERS[level].includes(filter) ? filter : null;
+  const shown = kanjiOfLevel(level).filter((kanji) => {
+    if (activeFilter !== null && kanji.ch !== activeFilter) return false;
     const searchable = normalizeSearch([kanji.c, kanji.m, kanji.on, kanji.kun, ...kanji.vocab.flatMap((word) => [word.w, word.r, vocabKana(word), word.m])].join(" "));
     return searchTerms.every((term) => searchable.includes(term));
   });
@@ -144,6 +148,7 @@ function CollectionPage() {
       <main className="mx-auto max-w-4xl px-4 pb-16">
         <h1 className="mt-6 font-serif text-3xl font-bold sm:mt-8">Kanji Collection</h1>
         <p className="mt-1 text-sm text-muted-foreground">Your growing library. Tap a kanji to explore it.</p>
+        <LevelSelector level={level} preview onChange={() => { setFilter(null); setQuery(""); setSelected(null); }} />
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold">
           <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded-sm border border-border bg-card" /> Unseen</span>
           <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded-sm border border-gold/60 bg-gold/20" /> Learning</span>
@@ -180,19 +185,19 @@ function CollectionPage() {
           <button
             type="button"
             onClick={() => setFilter(null)}
-            aria-pressed={filter === null}
-            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${filter === null ? "border-ink bg-ink text-paper" : "border-border bg-card hover:bg-secondary"}`}
+            aria-pressed={activeFilter === null}
+            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${activeFilter === null ? "border-ink bg-ink text-paper" : "border-border bg-card hover:bg-secondary"}`}
           >
             All
           </button>
-          {Array.from({ length: CHAPTER_COUNT }, (_, index) => index + 1).map((ch) => (
+          {LEVEL_CHAPTERS[level].map((ch) => (
             <button
               key={ch}
               type="button"
               onClick={() => setFilter(ch)}
-              aria-pressed={filter === ch}
+              aria-pressed={activeFilter === ch}
               title={CHAPTER_NAMES[ch]?.name}
-              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${filter === ch ? "border-ink bg-ink text-paper" : "border-border bg-card hover:bg-secondary"}`}
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${activeFilter === ch ? "border-ink bg-ink text-paper" : "border-border bg-card hover:bg-secondary"}`}
             >
               Region {ch}
             </button>
@@ -200,7 +205,7 @@ function CollectionPage() {
         </div>
 
         <p className="mt-5 text-xs font-bold text-muted-foreground" role="status" aria-live="polite" aria-atomic="true">
-          {shown.length} {shown.length === 1 ? "kanji found" : "kanji"}{filter !== null ? ` · ${CHAPTER_NAMES[filter]?.name ?? `Region ${filter}`}` : " · All regions"}
+          {shown.length} {shown.length === 1 ? "kanji found" : "kanji"}{activeFilter !== null ? ` · ${CHAPTER_NAMES[activeFilter]?.name ?? `Region ${activeFilter}`}` : " · All regions"}
         </p>
 
         <div className="mt-3 grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10">

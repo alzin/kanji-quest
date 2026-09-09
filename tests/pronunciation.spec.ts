@@ -60,7 +60,7 @@ test("run speaks active gates and cancels speech on pause", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Replay Japanese pronunciation" })).toBeDisabled();
   expect(await page.evaluate(() => (window as any).__speechCancels)).toBeGreaterThan(cancels);
   const count = await page.evaluate(() => (window as any).__speechLog.length);
-  await page.clock.runFor(5000);
+  await page.clock.fastForward(5000);
   expect(await page.evaluate(() => (window as any).__speechLog.length)).toBe(count);
   await page.getByRole("button", { name: "Resume game", exact: true }).click();
   await page.keyboard.press("ArrowUp");

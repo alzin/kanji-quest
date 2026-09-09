@@ -3,22 +3,23 @@ import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { InstallApp } from "@/components/InstallApp";
 import { SoundToggle } from "@/components/SoundToggle";
-import { useSave, dueCount, getCard, getSnapshot, isChapterUnlocked, n5MasteryPct, streakCount, NEW_PER_RUN } from "@/lib/srs";
+import { LevelSelector } from "@/components/LevelSelector";
+import { useSave, dueCount, getSnapshot, learningLevel, levelMasteryPct, newKanji, selectLevel, streakCount } from "@/lib/srs";
 import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
 import { isAudioRunning, play } from "@/lib/sfx";
-import { allKanji } from "@/data/n5";
+import { kanjiOfLevel } from "@/data";
 import { AppIcon } from "@/components/AppIcon";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Kanji Dash — Master JLPT N5 Kanji by Running" },
+      { title: "Kanji Dash — Learn JLPT N5 & N4 Kanji by Running" },
       {
         name: "description",
         content:
-          "A 2D runner game that teaches all JLPT N5 kanji with daily missions, spaced repetition, and stroke-order practice.",
+          "Learn JLPT N5 and N4 kanji with daily missions, spaced repetition, vocabulary, and writing practice.",
       },
-      { property: "og:title", content: "Kanji Dash — Master JLPT N5 Kanji by Running" },
+      { property: "og:title", content: "Kanji Dash — Learn JLPT N5 & N4 Kanji by Running" },
       {
         property: "og:description",
         content: "Daily runs through the Japanese countryside. Every gate is a real word — read it to keep running.",
@@ -35,10 +36,12 @@ function localDay(date: Date): string {
 
 function Home() {
   const save = useSave();
+  const level = learningLevel(save);
+  const allKanji = kanjiOfLevel(level);
   const due = dueCount(save);
-  const pct = n5MasteryPct(save);
+  const pct = levelMasteryPct(save, level);
   const streak = streakCount(save);
-  const fresh = Math.min(NEW_PER_RUN, allKanji.filter((k) => getCard(save, k.c).mastery === 0 && isChapterUnlocked(save, k.ch)).length);
+  const fresh = newKanji(save).length;
   const mastered = allKanji.filter((k) => save.progress[k.c]?.mastery === 3).length;
 
   const R = 42;
@@ -77,8 +80,9 @@ function Home() {
               Learn. Recall. <span className="text-primary">Run.</span>
             </h1>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Meet the words, practice their kanji, then run through Japan. Build lasting recall of {allKanji.length} N5 kanji, a little every day.
+              Meet the words, practice their kanji, then run through Japan. Build lasting recall of {allKanji.length} {level} kanji, a little every day.
             </p>
+            <LevelSelector level={level} />
             <div className="mt-5 flex flex-col gap-2 sm:mt-6 sm:flex-row sm:items-center sm:gap-3">
               <Link
                 to="/run"
@@ -127,7 +131,7 @@ function Home() {
           </div>
 
           <div className="flex items-center justify-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-            <svg className="h-20 w-20 shrink-0 lg:h-[104px] lg:w-[104px]" width="104" height="104" viewBox="0 0 104 104" role="img" aria-label={`N5 mastery progress ${pct}%`}>
+            <svg className="h-20 w-20 shrink-0 lg:h-[104px] lg:w-[104px]" width="104" height="104" viewBox="0 0 104 104" role="img" aria-label={`${level} mastery progress ${pct}%`}>
               <circle cx="52" cy="52" r={R} fill="none" stroke="var(--color-border)" strokeWidth="9" />
               <circle
                 className="ring-fill"
@@ -136,13 +140,13 @@ function Home() {
                 transform="rotate(-90 52 52)"
               />
               <text x="52" y="49" textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--color-foreground)" fontFamily="serif">{pct}%</text>
-              <text x="52" y="66" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--color-muted-foreground)">N5</text>
+              <text x="52" y="66" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--color-muted-foreground)">{level}</text>
             </svg>
             <div className="text-sm">
-              <div className="text-xs font-bold text-muted-foreground">N5 mastery progress</div>
+              <div className="text-xs font-bold text-muted-foreground">{level} mastery progress</div>
               <div className="font-serif text-2xl font-bold">{mastered}<span className="text-muted-foreground">/{allKanji.length}</span></div>
               <div className="text-muted-foreground">kanji mastered</div>
-              <Link to="/collection" className="-ml-1 mt-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs font-bold text-primary">View collection <AppIcon name="arrow" className="h-3.5 w-3.5" /></Link>
+              <Link to="/collection" onClick={() => selectLevel(level)} className="-ml-1 mt-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs font-bold text-primary">View collection <AppIcon name="arrow" className="h-3.5 w-3.5" /></Link>
             </div>
           </div>
         </section>

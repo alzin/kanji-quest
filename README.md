@@ -15,6 +15,9 @@ npm run dev
 
 ## Game calculations
 
+- Choose N5 or N4 on Home, the map, the collection, or the dojo. Earn all six N5 checkpoint seals to open the N4 road: 189 additional kanji, 378 vocabulary examples, and six new regions. You can preview its map and collection before unlocking it. N5 and N4 keep separate mastery percentages and completion seals. [Curriculum scope and references](src/data/n4/SOURCES.md) explain the study coverage and foundation bridge cards.
+- Daily runs add up to five new cards from the selected learning level and retain due reviews from both unlocked roads. Your existing N5 card progress, schedules, mon, streak, and seals carry forward. Older saves default to N5, and legacy gate counts can only grant the original six seals.
+
 - Every daily run, checkpoint, and retry starts with Dojo preparation: study each word with furigana, kana, meaning, and a kanji mnemonic; optionally trace its focus kanji; then recall every reading and meaning without a timer. Incorrect recall checks show feedback and require another attempt. The runner uses the same frozen word queue. Preparation never grades cards or awards mastery, coins, or streaks. Leaving or refreshing starts preparation again.
 
 - A correct answer earns `100 × current consecutive correct answers` points. A mistake resets the combo and costs one of three hearts. Unreached questions are counted separately from mistakes.

@@ -10,9 +10,9 @@ import { WordAudio } from "@/components/WordAudio";
 import { play } from "@/lib/sfx";
 import {
   buildRunQueue, buildGateQuiz, grade, finishRun, clearGate,
-  getCard, getSnapshot, streakCount, vocabKana, type Question,
+  getCard, getSnapshot, isChapterUnlocked, learningLevel, selectLevel, streakCount, vocabKana, type Question,
 } from "@/lib/srs";
-import { CHAPTER_NAMES, CHAPTER_COUNT } from "@/data/n5";
+import { CHAPTER_NAMES, CHAPTER_COUNT, levelOfChapter } from "@/data";
 
 export const Route = createFileRoute("/run")({
   validateSearch: (s: Record<string, unknown>) => {
@@ -44,10 +44,15 @@ function RunSession({ gate }: { gate: number | undefined }) {
   const navigate = useNavigate();
   const [session, setSession] = useState(0);
   const [prepared, setPrepared] = useState(false);
-  const questions = useMemo<Question[]>(() => {
+  const { questions, level, blockedGate } = useMemo(() => {
     void session;
     const s = getSnapshot();
-    return gate ? buildGateQuiz(gate) : buildRunQueue(s);
+    const blockedGate = gate !== undefined && levelOfChapter(gate) === "N4" && !isChapterUnlocked(s, gate);
+    return {
+      level: learningLevel(s),
+      blockedGate,
+      questions: gate ? (blockedGate ? [] : buildGateQuiz(gate)) : buildRunQueue(s),
+    };
   }, [gate, session]);
 
   const [lesson, setLesson] = useState<Question | null>(null);
@@ -62,7 +67,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
     setSession((value) => value + 1);
   };
 
-  const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : "Daily run";
+  const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : level === "N4" ? "Daily run · N4" : "Daily run";
 
   // One ceremony per results object: the hanko thump for 合格, an open question for 再挑戦,
   // the rising koto phrase for 完了 and a quiet page turn when the hearts ran out.
@@ -73,6 +78,16 @@ function RunSession({ gate }: { gate: number | undefined }) {
     if (gate) play(checkpointPassed(results.correct, total) ? "checkpointPassed" : "checkpointFailed", opts);
     else play(results.correct + results.wrong < total ? "runEnded" : "runComplete", opts);
   }, [results, gate, questions]);
+
+  if (blockedGate && !results) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 text-center">
+        <h1 className="font-serif text-2xl font-bold">This N4 checkpoint is locked</h1>
+        <p className="mt-3 max-w-sm text-muted-foreground">Earn all six N5 seals first, then reach 55% progress in the previous N4 region to continue.</p>
+        <Link to="/map" onClick={() => selectLevel("N4")} className="mt-6 min-h-11 rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">View the N4 road</Link>
+      </div>
+    );
+  }
 
   if (questions.length === 0 && !results) {
     return (
@@ -241,7 +256,10 @@ function RunSession({ gate }: { gate: number | undefined }) {
                 </button>
               )}
               <button
-                onClick={() => navigate({ to: gate ? "/map" : "/" })}
+                onClick={() => {
+                  if (gate) selectLevel(levelOfChapter(gate)!);
+                  void navigate({ to: gate ? "/map" : "/" });
+                }}
                 data-sfx="tap"
                 className="rounded-lg border border-border py-3 font-bold"
               >
