@@ -12,17 +12,22 @@ export async function studyWords(page: Page) {
   return answers;
 }
 
-export async function recallWords(page: Page, answers: { reading: string; meaning: string }[]) {
+export async function recallWords(page: Page, answers: { reading: string; meaning: string }[], { advanceClock = false } = {}) {
+  let checkIndex = 0;
   for (const type of ["reading", "meaning"] as const) {
     for (const answer of answers) {
+      await expect(page.getByText(`Check ${++checkIndex} of ${answers.length * 2}`, { exact: true })).toBeVisible();
       await page.getByRole("region", { name: "Recall check" }).getByRole("button", { name: answer[type], exact: true }).click();
-      await page.getByRole("button", { name: "Continue", exact: true }).click();
+      if (advanceClock) {
+        await expect(page.getByRole("region", { name: "Recall check" }).getByRole("status")).toContainText("Correct.");
+        await page.clock.fastForward(800);
+      }
     }
   }
   await expect(page.getByRole("heading", { name: "Ready for your run", exact: true })).toBeVisible();
 }
 
-export async function completePreparation(page: Page) {
-  await recallWords(page, await studyWords(page));
+export async function completePreparation(page: Page, options: { advanceClock?: boolean } = {}) {
+  await recallWords(page, await studyWords(page), options);
   await page.getByRole("button", { name: "Start run", exact: true }).click();
 }

@@ -25,6 +25,15 @@ export function RunPreparation({ questions, title, onStart }: {
   const checks = useMemo(() => (["reading", "meaning"] as const).flatMap((type) =>
     questions.map((q) => buildQuestion(q.kanji, type, q.vocab)),
   ), [questions]);
+  useEffect(() => {
+    if (stage !== "recall" || feedback !== "correct") return;
+    const timeout = window.setTimeout(() => {
+      setFeedback(null);
+      if (recallIndex + 1 === checks.length) setStage("ready");
+      else setRecallIndex(recallIndex + 1);
+    }, 800);
+    return () => window.clearTimeout(timeout);
+  }, [stage, feedback, recallIndex, checks.length]);
   const word = questions[index]!;
   const check = checks[recallIndex]!;
   const allSeen = seen.size === questions.length;
@@ -106,13 +115,14 @@ export function RunPreparation({ questions, title, onStart }: {
           {feedback && <div role="status" className="mt-4 rounded-lg bg-secondary p-3 text-sm leading-relaxed">
             {feedback === "correct" ? "Correct." : "Let’s learn that once more."} <b>{check.vocab.w}</b> — {vocabKana(check.vocab)} — {check.vocab.m}
           </div>}
-          {feedback && <button type="button" className={`${primary} mt-4 w-full`} onClick={() => {
-            setFeedback(null);
-            if (feedback === "wrong") return;
-            if (recallIndex + 1 === checks.length) setStage("ready");
-            else setRecallIndex(recallIndex + 1);
-          }}>{feedback === "wrong" ? "Try this word again" : "Continue"}</button>}
-          <button type="button" className={`${secondary} mt-4 w-full`} onClick={() => { setStage("learn"); selectWord(0); }}>Back to word list</button>
+          {feedback === "wrong" && <button type="button" className={`${primary} mt-4 w-full`} onClick={() => setFeedback(null)}>Try this word again</button>}
+          <div className="mt-6 border-t border-border pt-2">
+            <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+              onClick={() => { setStage("learn"); selectWord(0); }}>
+              <span aria-hidden="true">←</span>
+              Back to word list
+            </button>
+          </div>
         </section>}
 
         {stage === "ready" && <section className="mx-auto max-w-lg rounded-xl border border-border bg-card p-6 text-center">

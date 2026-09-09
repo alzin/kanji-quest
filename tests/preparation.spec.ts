@@ -33,9 +33,21 @@ test("requires every word and both recall checks without grading preparation", a
     if ((await choices.nth(i).textContent()) !== answers[0]!.reading) { await choices.nth(i).click(); break; }
   }
   await expect(recall.getByRole("status")).toContainText("Let’s learn that once more.");
+  await page.clock.fastForward(2_000);
+  await expect(page.getByText("Check 1 of 10", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Try this word again" }).click();
   await expect(page.getByText("Check 1 of 10", { exact: true })).toBeVisible();
+
+  // Correct feedback advances automatically, and leaving cancels the pending advance.
+  await recall.getByRole("button", { name: answers[0]!.reading, exact: true }).click();
+  await expect(recall.getByRole("status")).toContainText("Correct.");
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
+  await expect(recall.getByRole("button", { name: answers[0]!.reading, exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Back to word list", exact: true }).click();
+  await page.clock.fastForward(2_000);
+  await expect(page.getByRole("heading", { name: "Learn before you run", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Check my recall", exact: true }).click();
   await recallWords(page, answers);
   expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBe(before);
   await page.getByRole("button", { name: "Start run", exact: true }).click();
