@@ -6,6 +6,7 @@ import { RunPreparation } from "@/components/RunPreparation";
 import { checkpointPassed, dailyRunReward, type RunnerStats } from "@/components/game/runner-math";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { WordRuby } from "@/components/WordRuby";
+import { WordAudio } from "@/components/WordAudio";
 import { play } from "@/lib/sfx";
 import {
   buildRunQueue, buildGateQuiz, grade, finishRun, clearGate,
@@ -140,6 +141,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
                 <div className="mt-2 text-sm text-muted-foreground">
                   <span className="font-serif">{vocabKana(lesson.vocab)}</span> · {lesson.vocab.m}
                 </div>
+                <WordAudio reading={vocabKana(lesson.vocab)} wordKey={lesson} className="mt-2" />
               </div>
               <div className="lesson-detail">
                 <KanjiDetail kanji={lesson.kanji} />

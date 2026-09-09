@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Nav } from "./Nav";
 import { WordRuby } from "./WordRuby";
 import { StrokePractice } from "./StrokePractice";
+import { WordAudio } from "./WordAudio";
+import { SoundToggle } from "./SoundToggle";
 import { buildQuestion, vocabKana, type Question } from "@/lib/srs";
 
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-40";
@@ -53,6 +55,11 @@ export function RunPreparation({ questions, title, onStart }: {
             </li>
           ))}
         </ol>
+        {stage !== "ready" && <div className="mb-4 flex flex-wrap items-center gap-2">
+          <WordAudio reading={vocabKana((stage === "learn" ? word : check).vocab)} wordKey={`${stage}-${stage === "learn" ? index : recallIndex}`} />
+          <SoundToggle variant="inline" />
+          <span className="text-xs text-muted-foreground">Japanese readings play automatically when voice is on. Game sound is separate.</span>
+        </div>}
 
         {stage === "learn" && <>
           <p className="text-sm leading-relaxed text-muted-foreground">Meet all {questions.length} words in this run. Read each word aloud, connect it to its meaning, and try writing its highlighted kanji. Then check what you remember.</p>
