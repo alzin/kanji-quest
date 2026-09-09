@@ -7,7 +7,7 @@ async function startDeterministicRun(page: Page, url = "run") {
   // Identity shuffles put each answer in the top lane for these integration tests.
   await page.addInitScript(() => { Math.random = () => 0.999; });
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  await completePreparation(page);
+  await completePreparation(page, { advanceClock: true });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");
 }
@@ -67,7 +67,7 @@ test("lesson pauses and three hearts preserve attempted counts and restart state
   expect(await savedTotals(page)).toEqual({ correct: 0, wrong: 3, coins: 0, runsCompleted: 1 });
 
   await page.getByRole("button", { name: "Run again", exact: true }).click();
-  await completePreparation(page);
+  await completePreparation(page, { advanceClock: true });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect(page.getByRole("button", { name: "Keep running", exact: true })).toHaveCount(0);
   await expect(page.getByText("×0", { exact: true })).toBeVisible();
@@ -95,7 +95,7 @@ test("a repeated checkpoint earns one exact seal and bonus without advancing rev
   expect(Object.values(initialCards).every((card) => card.mastery === 1)).toBe(true);
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await completePreparation(page);
+  await completePreparation(page, { advanceClock: true });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");
   await page.keyboard.press("ArrowUp");

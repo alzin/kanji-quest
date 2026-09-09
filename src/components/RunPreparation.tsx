@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Nav } from "./Nav";
 import { WordRuby } from "./WordRuby";
 import { StrokePractice } from "./StrokePractice";
+import { WordAudio } from "./WordAudio";
+import { SoundToggle } from "./SoundToggle";
 import { buildQuestion, vocabKana, type Question } from "@/lib/srs";
 
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-40";
@@ -25,6 +27,15 @@ export function RunPreparation({ questions, title, onStart }: {
   const checks = useMemo(() => (["reading", "meaning"] as const).flatMap((type) =>
     questions.map((q) => buildQuestion(q.kanji, type, q.vocab)),
   ), [questions]);
+  useEffect(() => {
+    if (stage !== "recall" || feedback !== "correct") return;
+    const timeout = window.setTimeout(() => {
+      setFeedback(null);
+      if (recallIndex + 1 === checks.length) setStage("ready");
+      else setRecallIndex(recallIndex + 1);
+    }, 800);
+    return () => window.clearTimeout(timeout);
+  }, [stage, feedback, recallIndex, checks.length]);
   const word = questions[index]!;
   const check = checks[recallIndex]!;
   const allSeen = seen.size === questions.length;
@@ -44,6 +55,11 @@ export function RunPreparation({ questions, title, onStart }: {
             </li>
           ))}
         </ol>
+        {stage !== "ready" && <div className="mb-4 flex flex-wrap items-center gap-2">
+          <WordAudio reading={vocabKana((stage === "learn" ? word : check).vocab)} wordKey={`${stage}-${stage === "learn" ? index : recallIndex}`} />
+          <SoundToggle variant="inline" />
+          <span className="text-xs text-muted-foreground">Japanese readings play automatically when voice is on. Game sound is separate.</span>
+        </div>}
 
         {stage === "learn" && <>
           <p className="text-sm leading-relaxed text-muted-foreground">Meet all {questions.length} words in this run. Read each word aloud, connect it to its meaning, and try writing its highlighted kanji. Then check what you remember.</p>
@@ -106,13 +122,14 @@ export function RunPreparation({ questions, title, onStart }: {
           {feedback && <div role="status" className="mt-4 rounded-lg bg-secondary p-3 text-sm leading-relaxed">
             {feedback === "correct" ? "Correct." : "Let’s learn that once more."} <b>{check.vocab.w}</b> — {vocabKana(check.vocab)} — {check.vocab.m}
           </div>}
-          {feedback && <button type="button" className={`${primary} mt-4 w-full`} onClick={() => {
-            setFeedback(null);
-            if (feedback === "wrong") return;
-            if (recallIndex + 1 === checks.length) setStage("ready");
-            else setRecallIndex(recallIndex + 1);
-          }}>{feedback === "wrong" ? "Try this word again" : "Continue"}</button>}
-          <button type="button" className={`${secondary} mt-4 w-full`} onClick={() => { setStage("learn"); selectWord(0); }}>Back to word list</button>
+          {feedback === "wrong" && <button type="button" className={`${primary} mt-4 w-full`} onClick={() => setFeedback(null)}>Try this word again</button>}
+          <div className="mt-6 border-t border-border pt-2">
+            <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+              onClick={() => { setStage("learn"); selectWord(0); }}>
+              <span aria-hidden="true">←</span>
+              Back to word list
+            </button>
+          </div>
         </section>}
 
         {stage === "ready" && <section className="mx-auto max-w-lg rounded-xl border border-border bg-card p-6 text-center">

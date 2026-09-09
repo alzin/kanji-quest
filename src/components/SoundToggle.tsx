@@ -23,6 +23,7 @@ export function SoundToggle({ variant, className }: { variant: "hud" | "inline";
       onClick={onClick}
       aria-label={muted ? "Unmute sounds" : "Mute sounds"}
       aria-pressed={muted}
+      title={muted ? "Unmute game sounds" : "Mute game sounds"}
       className={className ? `${base} ${className}` : base}
     >
       <svg
@@ -51,7 +52,7 @@ export function SoundToggle({ variant, className }: { variant: "hud" | "inline";
           strokeDashoffset={muted ? 0 : 24}
         />
       </svg>
-      {variant === "inline" && <span>{muted ? "Sound off" : "Sound on"}</span>}
+      {variant === "inline" && <span>{muted ? "Game sound off" : "Game sound on"}</span>}
     </button>
   );
 }

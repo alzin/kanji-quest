@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { vocabKana, type PromptSegment, type Question } from "@/lib/srs";
 import { play, playWhenReady, unlock } from "@/lib/sfx";
 import { SoundToggle } from "@/components/SoundToggle";
+import { WordAudio } from "@/components/WordAudio";
 import {
   advanceEffects, comboTier, createEffects, drawDamageVignette, drawEffectsBehindRunner, drawEffectsFront,
   drawEffectsScenery, drawEffectsUnderGates, drawLastHeartVignette, getBracket, getDecisionTimerBar, getPauseFade,
@@ -52,6 +53,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   const [hud, setHud] = useState({ hearts: RUNNER_HEARTS, combo: 0, score: 0, left: questions.length });
   const [announcement, setAnnouncement] = useState("");
   const [paused, setPaused] = useState(false);
+  const [spokenGate, setSpokenGate] = useState<Gate | null>(null);
   const pausedRef = useRef(false);
   const lessonPausedRef = useRef(false);
   const frameTimeRef = useRef<number | null>(null);
@@ -445,6 +447,10 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       const activeGate = s.gates
         .filter((g) => g.resolved === -1)
         .reduce<Gate | null>((nearest, g) => (!nearest || g.x < nearest.x ? g : nearest), null);
+      if (activeGate !== lastSpokenGate) {
+        lastSpokenGate = activeGate;
+        setSpokenGate(activeGate);
+      }
 
       const wordFont = (size: number) => `800 ${size}px "Shippori Mincho B1", serif`;
       const rubyFont = (size: number) => `700 ${size}px "Zen Kaku Gothic New", sans-serif`;
@@ -711,6 +717,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       raf = requestAnimationFrame(frame);
     };
 
+    let lastSpokenGate: Gate | null = null;
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
@@ -732,6 +739,8 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   return (
     <div className="relative h-full w-full">
       <canvas ref={canvasRef} className="h-full w-full touch-none" aria-label="Kanji runner game" />
+      <WordAudio reading={spokenGate ? vocabKana(spokenGate.q.vocab) : ""} wordKey={spokenGate}
+        paused={paused} className="absolute bottom-16 left-2 z-10 sm:left-4" />
       {/* HUD */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-1.5 p-2 sm:justify-between sm:gap-2 sm:p-4"
