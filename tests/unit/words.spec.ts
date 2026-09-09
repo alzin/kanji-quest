@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { allKanji, kanjiByChar } from "../../src/data/n5";
+import { allKanji, kanjiByChar } from "../../src/data";
 import type { Kanji, Vocab } from "../../src/data/n5/types";
 import {
   isHiragana, phoneticVariants, readingList, toHiragana, voicingVariants,

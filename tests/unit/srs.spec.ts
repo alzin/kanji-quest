@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { allKanji, CHAPTER_COUNT, CHAPTER_NAMES, kanjiByChar, kanjiOfChapter } from "../../src/data/n5";
+import { CHAPTER_COUNT as TOTAL_CHAPTERS } from "../../src/data";
 import type { Kanji } from "../../src/data/n5/types";
 import {
   buildGateQuiz,
@@ -38,6 +39,7 @@ function emptySave(): SaveData {
     runsCompleted: 0,
     gatesCleared: 0,
     clearedChapters: [],
+    selectedLevel: "N5",
   };
 }
 
@@ -144,7 +146,7 @@ test("chapter unlock thresholds and chapter identifiers are bounded", () => {
   expect(isChapterUnlocked(save, 2)).toBe(true); // 27/48 >= 55%.
 
   const complete = masterAll();
-  for (const ch of [-1, 0, 1.5, CHAPTER_COUNT + 1, NaN, Infinity]) {
+  for (const ch of [-1, 0, 1.5, TOTAL_CHAPTERS + 1, NaN, Infinity]) {
     expect(isChapterUnlocked(complete, ch), `chapter ${ch}`).toBe(false);
     expect(isGateCleared(complete, ch), `gate ${ch}`).toBe(false);
     expect(buildGateQuiz(ch), `quiz ${ch}`).toEqual([]);
@@ -249,7 +251,7 @@ test("save normalization repairs invalid math and discards unsupported progress"
     coins: -40,
     runsCompleted: Infinity,
     gatesCleared: 99,
-    clearedChapters: [3, 3, 0, -1, 1.5, CHAPTER_COUNT + 1, "2"],
+    clearedChapters: [3, 3, 0, -1, 1.5, TOTAL_CHAPTERS + 1, "2"],
     streak: { count: NaN, last: "not-a-day" },
     progress: {
       一: { mastery: 3, ivl: -2, ease: 20, due: -1, correct: 3.9, wrong: -8 },
@@ -378,7 +380,8 @@ test("store grading, rewards, persistence, and streak updates preserve exact tot
     expect(getSnapshot().runsCompleted).toBe(5);
     expect(isGateCleared(getSnapshot(), 4)).toBe(false);
     const beforeInvalidGate = structuredClone(getSnapshot());
-    for (const ch of [-1, 0, 1.5, 7, NaN, Infinity]) expect(clearGate(ch)).toBe(0);
+    for (const ch of [-1, 0, 1.5, TOTAL_CHAPTERS + 1, NaN, Infinity]) expect(clearGate(ch)).toBe(0);
+    expect(clearGate(7)).toBe(0); // A real N4 gate cannot pay before N5 is cleared.
     expect(getSnapshot()).toEqual(beforeInvalidGate);
 
     process.env.TZ = "Asia/Tokyo";

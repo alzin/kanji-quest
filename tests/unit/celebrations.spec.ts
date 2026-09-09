@@ -14,6 +14,7 @@ function save(over: Partial<SaveData> = {}): SaveData {
     runsCompleted: 3,
     gatesCleared: 2,
     clearedChapters: [1, 2],
+    selectedLevel: "N5",
     ...over,
   };
 }

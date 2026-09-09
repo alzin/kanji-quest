@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { AppIcon } from "@/components/AppIcon";
-import { CHAPTER_NAMES, CHAPTER_COUNT, kanjiOfChapter } from "@/data/n5";
-import { useSave, chapterMasteryPct, getCard, getSnapshot, isChapterUnlocked, isGateCleared } from "@/lib/srs";
+import { LevelSelector } from "@/components/LevelSelector";
+import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter } from "@/data";
+import { useSave, chapterMasteryPct, getCard, getSnapshot, isChapterUnlocked, isGateCleared, isLevelUnlocked, selectLevel } from "@/lib/srs";
 import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
 import { isAudioRunning, play } from "@/lib/sfx";
 
@@ -11,9 +12,9 @@ export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
       { title: "World Map — Kanji Dash" },
-      { name: "description", content: "Your journey across six regions of JLPT N5 kanji, with checkpoint gates and hanko seals." },
+      { name: "description", content: "Journey through the N5 and N4 kanji roads, with six regions and a checkpoint seal for each road." },
       { property: "og:title", content: "World Map — Kanji Dash" },
-      { property: "og:description", content: "Six regions, six checkpoint gates, one N5 badge." },
+      { property: "og:description", content: "Earn your N5 seal and continue along the N4 road." },
     ],
   }),
   component: MapPage,
@@ -26,7 +27,9 @@ function localDay(date: Date): string {
 
 function MapPage() {
   const save = useSave();
-  const chapters = Array.from({ length: CHAPTER_COUNT }, (_, i) => i + 1);
+  const level = save.selectedLevel;
+  const chapters = LEVEL_CHAPTERS[level];
+  const levelUnlocked = isLevelUnlocked(save, level);
   const allCleared = chapters.every((ch) => isGateCleared(save, ch));
   const seals = chapters.filter((ch) => isGateCleared(save, ch)).length;
   const nextCheckpoint = chapters.find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
@@ -59,32 +62,34 @@ function MapPage() {
       <Nav />
       <main className="mx-auto max-w-2xl px-4 pb-8">
         <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your journey</p>
-        <h1 className="mt-2 font-serif text-3xl font-bold">The N5 Road</h1>
+        <h1 className="mt-2 font-serif text-3xl font-bold">The {level} Road</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Reach 55% mastery progress in a region to open the next. Learning and reviewing kanji contribute partial progress. Stamp each checkpoint gate to earn your N5 seal.
+          Reach 55% mastery progress in a region to open the next. Learning and reviewing kanji contribute partial progress. Stamp each checkpoint gate to earn your {level} seal.
         </p>
+        <LevelSelector level={level} preview />
 
         <section className="mt-5 rounded-2xl border border-border bg-card p-4" aria-label="Checkpoint progress">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-bold">One road. {CHAPTER_COUNT} seals.</span>
-            <span className="text-xs font-bold text-primary">{seals} / {CHAPTER_COUNT} earned</span>
+            <span className="text-sm font-bold">One road. {chapters.length} seals.</span>
+            <span className="text-xs font-bold text-primary">{seals} / {chapters.length} earned</span>
           </div>
           <div className="mt-3 flex gap-1.5" aria-hidden="true">
             {chapters.map((ch) => <span key={ch} className={`h-1.5 flex-1 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
           </div>
-          <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform">
+          {levelUnlocked ? <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform">
             Learn words & prepare a run <AppIcon name="arrow" className="h-4 w-4" />
-          </Link>
+          </Link> : <button type="button" onClick={() => selectLevel("N5")} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">Continue the N5 road</button>}
         </section>
 
         {allCleared && (
           <div className="mt-6 flex items-center gap-4 rounded-xl border-2 border-gold bg-card p-5 shadow-sm">
             <div className="flex h-16 w-16 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-2xl font-bold text-primary">
-              N5
+              {level}
             </div>
             <div>
-              <div className="font-serif text-lg font-bold">JLPT N5 kanji seal earned!</div>
-              <p className="text-sm text-muted-foreground">Every checkpoint cleared. The N4 road awaits in a future update.</p>
+              <div className="font-serif text-lg font-bold">JLPT {level} kanji seal earned!</div>
+              <p className="text-sm text-muted-foreground">{level === "N5" ? "Every checkpoint cleared. Your N4 road is now open." : "Both roads explored. Keep revisiting your words to build lasting mastery."}</p>
+              {level === "N5" && <button type="button" onClick={() => selectLevel("N4")} className="mt-2 min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Start the N4 road →</button>}
             </div>
           </div>
         )}
@@ -115,7 +120,7 @@ function MapPage() {
                     </p>
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h2 className="font-serif text-lg font-bold">
-                        {CHAPTER_NAMES[ch]!.name} <span className="ml-1 text-sm text-muted-foreground">{CHAPTER_NAMES[ch]!.jp}</span>
+                        {CHAPTER_NAMES[ch]!.name} <span className="mt-0.5 block text-sm text-muted-foreground">{CHAPTER_NAMES[ch]!.jp}</span>
                       </h2>
                       <span className="text-xs font-bold text-muted-foreground">{count} kanji</span>
                     </div>
@@ -123,7 +128,7 @@ function MapPage() {
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="mt-3 flex flex-col items-stretch gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-muted-foreground">{unlocked ? `${pct}% progress · ${mastered}/${count} mastered` : "Locked — reach 55% progress in the previous region"}</span>
+                      <span className="text-muted-foreground">{unlocked ? `${pct}% progress · ${mastered}/${count} mastered` : !levelUnlocked ? "Locked — earn all six N5 checkpoint seals" : "Locked — reach 55% progress in the previous region"}</span>
                       {unlocked && !cleared && (
                         <Link
                           to="/run"

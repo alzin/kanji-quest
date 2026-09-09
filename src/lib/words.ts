@@ -1,4 +1,4 @@
-import { allKanji, kanjiByChar } from "@/data/n5";
+import { allKanji, kanjiByChar } from "@/data";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import { hasKanji, isHiragana, isKanji, isPlausibleReading, phoneticVariants, readingList } from "./kana";
 
@@ -68,11 +68,33 @@ const ALSO_CORRECT: Record<string, string[]> = {
   "大雨": ["たいう"],
   "富士山": ["ふじやま"],
   "目": ["もく"],
+  "私": ["わたくし"],
+  "兄弟": ["けいてい"],
+  "開く": ["あく"],
+  "町長": ["まちおさ"],
+  "工場": ["こうば"],
+  "悪口": ["わるぐち", "あっこう", "あくこう"],
+  "一度": ["ひとたび"],
+  "風": ["ふう"],
+  "音": ["ね", "おん"],
+  "首": ["しゅ"],
+  "日本": ["にっぽん"],
+  "外": ["ほか", "がい"],
+  "空": ["から", "くう"],
+  "魚": ["うお"],
+  "私立": ["わたくしりつ"],
+  "家": ["うち"],
+  "所": ["とこ"],
+  "夕飯": ["ゆうめし"],
 };
 
 /** Every spelling that must never appear in a wrong lane for this word. */
 export function correctReadings(word: string): Set<string> {
-  return new Set([...(kanaByWord.get(word) ?? []), ...(ALSO_CORRECT[word] ?? [])]);
+  // With no surrounding kana or context, a bare kanji's other listed readings
+  // must not become a supposedly wrong lane (門: もん / かど, 音: おと / ね).
+  const bare = kanjiByChar.get(word);
+  const listed = bare ? [...readingList(bare.on), ...readingList(bare.kun)] : [];
+  return new Set([...(kanaByWord.get(word) ?? []), ...(ALSO_CORRECT[word] ?? []), ...listed]);
 }
 
 /** Readings each kanji is known to take: its listed on/kun plus every reading
@@ -247,14 +269,16 @@ export function readingChoices(card: WordCard, random: () => number = Math.rando
   return chosen;
 }
 
-function normalizedMeaning(meaning: string): string {
-  return meaning.toLowerCase().replace(/[.;].*$/, "").trim();
+function meaningKeys(meaning: string): string[] {
+  // Every gloss counts. "problem; question" and "question; inquiry" overlap,
+  // as do "study" and "to study", so neither pair makes a fair choice set.
+  return meaning.toLowerCase().split(/[.;]/).map((part) => part.trim().replace(/^(?:to|the|an?) /, "")).filter(Boolean);
 }
 
 /** Meaning distractors prefer words that share a kanji: near-misses, not noise. */
 export function meaningChoices(card: WordCard, random: () => number = Math.random, count = 2): string[] {
   const forbidden = new Set(
-    allVocab.filter((other) => other.vocab.w === card.vocab.w).map((other) => normalizedMeaning(other.vocab.m)),
+    allVocab.filter((other) => other.vocab.w === card.vocab.w).flatMap((other) => meaningKeys(other.vocab.m)),
   );
   const characters = new Set([...card.vocab.w].filter(isKanji));
   const related: string[] = [];
@@ -262,13 +286,14 @@ export function meaningChoices(card: WordCard, random: () => number = Math.rando
   for (const other of allVocab) {
     if (other.vocab.w === card.vocab.w) continue;
     const meaning = other.vocab.m;
-    if (forbidden.has(normalizedMeaning(meaning))) continue;
+    if (meaningKeys(meaning).some((key) => forbidden.has(key))) continue;
     ([...other.vocab.w].some((character) => characters.has(character)) ? related : rest).push(meaning);
   }
   const chosen: string[] = [];
   for (const meaning of [...shuffle([...new Set(related)], random), ...shuffle([...new Set(rest)], random)]) {
     if (chosen.length >= count) break;
-    if (chosen.some((value) => normalizedMeaning(value) === normalizedMeaning(meaning))) continue;
+    const keys = meaningKeys(meaning);
+    if (chosen.some((value) => meaningKeys(value).some((key) => keys.includes(key)))) continue;
     chosen.push(meaning);
   }
   return chosen;

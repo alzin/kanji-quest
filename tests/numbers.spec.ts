@@ -1,4 +1,3 @@
-import { completePreparation } from "./helpers/preparation";
 import { expect, test, type Page } from "@playwright/test";
 import { allKanji, kanjiOfChapter } from "../src/data/n5";
 
@@ -73,11 +72,10 @@ test("shows an empty run when all eligible kanji are waiting for their review da
 test("ignores checkpoint numbers outside the integer chapter range", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  for (const gate of ["1.5", "0", "7", "-1"]) {
+  for (const gate of ["1.5", "0", "13", "-1"]) {
     await page.goto(`run?gate=${gate}`, { waitUntil: "domcontentloaded" });
-    await completePreparation(page);
-    await expect(page.getByText("Daily run", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Pause game", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Learn before you run", exact: true })).toBeVisible();
+    await expect(page.getByText("Daily run · Dojo preparation", { exact: true })).toBeVisible();
   }
   expect(errors).toEqual([]);
 });

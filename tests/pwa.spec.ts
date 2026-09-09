@@ -53,6 +53,7 @@ test("serves install metadata and valid Android/iOS icons", async ({ page, reque
 });
 
 test("opens every game screen offline after visiting only home", async ({ page, context, baseURL, browserName }) => {
+  await page.clock.install();
   // Use a private origin so shutting its server down doesn't interrupt other tests.
   // Windows WebKit's setOffline(true) fails before invoking service workers, even
   // for synthetic responses. A stopped server tests the actual offline behavior.
@@ -99,7 +100,7 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     }
 
     await page.goto(`${origin}/run?gate=3`, { waitUntil: "domcontentloaded" });
-    await completePreparation(page);
+    await completePreparation(page, { advanceClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await expect(page.getByText("Town of People — Checkpoint", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/run\/?\?gate=3$/);
@@ -107,12 +108,25 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await expect(page.getByRole("button", { name: "Resume game", exact: true })).toHaveAttribute("aria-pressed", "true");
 
     await page.goto(`${origin}/run`, { waitUntil: "domcontentloaded" });
-    await completePreparation(page);
+    await completePreparation(page, { advanceClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
     await page.goto(`${origin}/`, { waitUntil: "domcontentloaded" });
     await expect(page.getByText("4 runs", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!))).toEqual(savedProgress);
+    // N4 assets must also be available when the only online visit was N5 home.
+    await page.evaluate((save) => localStorage.setItem("kanji-dash-v1", JSON.stringify({
+      ...save, selectedLevel: "N4", gatesCleared: 6, clearedChapters: [1, 2, 3, 4, 5, 6],
+    })), savedProgress);
+    await page.goto(`${origin}/map`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
+    await page.goto(`${origin}/collection`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("searchbox").fill("わたし");
+    await expect(page.getByRole("button", { name: "私 — I; private · Unseen", exact: true })).toBeVisible();
+    await page.goto(`${origin}/run?gate=7`, { waitUntil: "domcontentloaded" });
+    await completePreparation(page, { advanceClock: true });
+    await expect(page.getByLabel("Kanji runner game")).toBeVisible();
+    await expect(page.getByText("Neighborhood of Connections — Checkpoint", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await stopServer();

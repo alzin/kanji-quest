@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { StrokePractice } from "@/components/StrokePractice";
 import { KanjiDetail } from "@/components/KanjiDetail";
-import { allKanji } from "@/data/n5";
-import { useSave, getCard, isChapterUnlocked } from "@/lib/srs";
+import { kanjiOfLevel } from "@/data";
+import { LevelSelector } from "@/components/LevelSelector";
+import { useSave, getCard, isChapterUnlocked, learningLevel } from "@/lib/srs";
 
 export const Route = createFileRoute("/practice")({
   head: () => ({
@@ -20,15 +21,17 @@ export const Route = createFileRoute("/practice")({
 
 function PracticePage() {
   const save = useSave();
-  // Practice with kanji you've seen but not mastered; fall back to chapter 1
+  const level = learningLevel(save);
+  // Practice the current road's seen cards, then its earliest unlocked cards.
   const candidates = useMemo(() => {
+    const allKanji = kanjiOfLevel(level);
     const seen = allKanji.filter((k) => {
       const p = save.progress[k.c];
       return p && p.mastery > 0 && p.mastery < 3;
     });
     if (seen.length) return seen;
     return allKanji.filter((k) => isChapterUnlocked(save, k.ch)).slice(0, 12);
-  }, [save]);
+  }, [save, level]);
 
   const [idx, setIdx] = useState(0);
   const currentIndex = Math.max(0, Math.min(idx, candidates.length - 1));
@@ -42,6 +45,7 @@ function PracticePage() {
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">
           Learn words before you run, or spend extra time practicing kanji shapes.
         </p>
+        <LevelSelector level={level} onChange={() => setIdx(0)} />
 
         <section aria-label="Guided word learning" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-card p-4">
           <div>

@@ -1,4 +1,4 @@
-import { allKanji, kanjiByChar, kanjiOfChapter, CHAPTER_COUNT } from "@/data/n5";
+import { allKanji, kanjiByChar, kanjiOfChapter, kanjiOfLevel, levelOfChapter, LEVEL_CHAPTERS, CHAPTER_COUNT, type JLPTLevel } from "@/data";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import {
   meaningChoices, readingChoices, vocabKana, wordSegments,
@@ -26,6 +26,7 @@ export type SaveData = {
   runsCompleted: number;
   gatesCleared: number; // chapter boss gates cleared
   clearedChapters: number[]; // exact seals earned (not the highest chapter)
+  selectedLevel: JLPTLevel;
 };
 
 const KEY = "kanji-dash-v1";
@@ -37,6 +38,7 @@ const emptySave = (): SaveData => ({
   runsCompleted: 0,
   gatesCleared: 0,
   clearedChapters: [],
+  selectedLevel: "N5",
 });
 
 const DAY_MS = 86_400_000;
@@ -78,7 +80,8 @@ export function normalizeSave(value: unknown): SaveData {
   }
   const clearedChapters = Array.isArray(raw["clearedChapters"])
     ? [...new Set(raw["clearedChapters"].filter((ch): ch is number => typeof ch === "number" && validChapter(ch)))].sort((a, b) => a - b)
-    : Array.from({ length: Math.min(CHAPTER_COUNT, count(raw["gatesCleared"])) }, (_, i) => i + 1);
+    // The old high-water mark only ever described the six N5 gates.
+    : LEVEL_CHAPTERS.N5.slice(0, count(raw["gatesCleared"]));
   const streak = record(raw["streak"]);
   const last = typeof streak["last"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(streak["last"])
     && Number.isFinite(Date.parse(`${streak["last"]}T12:00:00Z`))
@@ -91,6 +94,7 @@ export function normalizeSave(value: unknown): SaveData {
     runsCompleted: count(raw["runsCompleted"]),
     gatesCleared: clearedChapters.length,
     clearedChapters,
+    selectedLevel: raw["selectedLevel"] === "N4" ? "N4" : "N5",
   };
 }
 
@@ -222,7 +226,9 @@ function masteryPct(points: number, total: number): number {
 
 export function isChapterUnlocked(s: SaveData, ch: number): boolean {
   if (!validChapter(ch)) return false;
-  if (ch === 1) return true;
+  const level = levelOfChapter(ch)!;
+  if (!isLevelUnlocked(s, level)) return false;
+  if (ch === LEVEL_CHAPTERS[level][0]) return true;
   const previous = kanjiOfChapter(ch - 1);
   const points = previous.reduce((sum, k) => sum + getCard(s, k.c).mastery, 0);
   return points * 100 >= previous.length * 3 * 55;
@@ -232,9 +238,36 @@ export function isGateCleared(s: SaveData, ch: number): boolean {
   return validChapter(ch) && s.clearedChapters.includes(ch);
 }
 
+export function isLevelCleared(s: SaveData, level: JLPTLevel): boolean {
+  return LEVEL_CHAPTERS[level].every((ch) => isGateCleared(s, ch));
+}
+
+export function isLevelUnlocked(s: SaveData, level: JLPTLevel): boolean {
+  return level === "N5" || isLevelCleared(s, "N5");
+}
+
+/** Browsing a locked road never changes the level of a daily lesson. */
+export function learningLevel(s: SaveData): JLPTLevel {
+  return s.selectedLevel === "N4" && isLevelUnlocked(s, "N4") ? "N4" : "N5";
+}
+
+export function selectLevel(level: JLPTLevel) {
+  if (level !== "N5" && level !== "N4") return;
+  mutate((s) => { s.selectedLevel = level; });
+}
+
+export function levelMasteryPct(s: SaveData, level: JLPTLevel): number {
+  const kanji = kanjiOfLevel(level);
+  const pts = kanji.reduce((acc, k) => acc + getCard(s, k.c).mastery, 0);
+  return masteryPct(pts, kanji.length * 3);
+}
+
 export function n5MasteryPct(s: SaveData): number {
-  const pts = allKanji.reduce((acc, k) => acc + getCard(s, k.c).mastery, 0);
-  return masteryPct(pts, allKanji.length * 3);
+  return levelMasteryPct(s, "N5");
+}
+
+export function newKanji(s: SaveData): Kanji[] {
+  return kanjiOfLevel(learningLevel(s)).filter((k) => getCard(s, k.c).mastery === 0 && isChapterUnlocked(s, k.ch)).slice(0, NEW_PER_RUN);
 }
 
 export function dueCount(s: SaveData, now = Date.now()): number {
@@ -331,9 +364,7 @@ export function buildRunQueue(s: SaveData, now = Date.now()): Question[] {
   seen.sort((a, b) => getCard(s, a.c).due - getCard(s, b.c).due);
   const reviews = seen.slice(0, MAX_REVIEWS);
 
-  const fresh = allKanji.filter((k) => getCard(s, k.c).mastery === 0 && isChapterUnlocked(s, k.ch));
-  fresh.sort((a, b) => a.ch - b.ch);
-  const news = fresh.slice(0, NEW_PER_RUN);
+  const news = newKanji(s);
 
   const queue = shuffle([...reviews, ...news]).map((k) => buildQuestion(k));
   return queue;
@@ -403,6 +434,7 @@ export function finishRun(earned: number) {
 export function clearGate(ch: number): number {
   load();
   if (!validChapter(ch) || isGateCleared(state, ch)) return 0;
+  if (levelOfChapter(ch) === "N4" && !isChapterUnlocked(state, ch)) return 0;
   const earned = Math.min(50, Number.MAX_SAFE_INTEGER - state.coins);
   mutate((s) => {
     s.clearedChapters = [...s.clearedChapters, ch].sort((a, b) => a - b);
