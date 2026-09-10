@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { kanjiOfLevel } from "../src/data";
+import { kanjiOfLevel, kanjiOfChapter, LEVEL_CHAPTERS } from "../src/data";
 import { completePreparation, studyWords } from "./helpers/preparation";
 
 async function unlockN4(page: Page, reviews = false) {
@@ -37,7 +37,7 @@ test("the selected road persists across home, searchable collection, dojo, and d
   await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Kanji", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText(`${kanjiOfLevel("N4").length} kanji · All regions`);
-  await page.getByRole("button", { name: "Region 7", exact: true }).click();
+  await page.getByRole("button", { name: "Region 1", exact: true }).click();
   await page.getByRole("searchbox").fill("わたし");
   await page.getByRole("button", { name: "私 — I; private · Unseen", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -70,15 +70,16 @@ test("an N4 checkpoint prepares, grades, stamps its own seal and only rewards th
     await page.clock.fastForward(40_000);
     await expect(page.getByRole("heading", { name: "Checkpoint cleared!", exact: true })).toBeVisible();
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!));
-    expect(saved.clearedChapters).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(saved.clearedChapters).toEqual([...LEVEL_CHAPTERS.N5, 7].sort((a, b) => a - b));
     expect(saved.coins).toBe(350);
     expect(saved.runsCompleted).toBe(7 + run);
-    expect(Object.keys(saved.progress)).toHaveLength(12);
+    expect(Object.keys(saved.progress)).toHaveLength(kanjiOfChapter(7).length);
+    await expect(page.getByRole("link", { name: "Prepare next region", exact: true })).toHaveAttribute("href", /gate=26/);
     if (run === 0) await page.reload({ waitUntil: "domcontentloaded" });
   }
   await page.getByRole("button", { name: "Back to map", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
-  await expect(page.getByText("1 / 6 earned", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 / 36 earned", { exact: true })).toBeVisible();
   await page.goto("run?gate=8", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "This N4 checkpoint is locked" })).toBeVisible();
 });
@@ -90,6 +91,6 @@ test("the N5 seal opens the N4 road without resetting either level", async ({ pa
   await expect(page.getByText("JLPT N5 kanji seal earned!", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Start the N4 road →", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(1);
-  await expect(page.getByText("0 / 6 earned", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(6); // Access to the old first N4 theme is preserved.
+  await expect(page.getByText("0 / 36 earned", { exact: true })).toBeVisible();
 });

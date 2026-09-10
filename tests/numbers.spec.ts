@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { allKanji, kanjiOfChapter } from "../src/data/n5";
+import { CHAPTER_COUNT, LEVEL_CHAPTERS } from "../src/data";
 
 type Progress = { mastery: number; ivl: number; ease: number; due: number; correct: number; wrong: number };
 
@@ -12,6 +13,7 @@ async function seedSave(page: Page, cards: Record<string, Progress>, clearedChap
     localStorage.setItem("kanji-dash-v1", JSON.stringify(save));
   }, {
     progress: cards,
+    curriculumVersion: 2,
     streak: { count: 0, last: "" },
     coins: 37,
     runsCompleted: 4,
@@ -22,22 +24,22 @@ async function seedSave(page: Page, cards: Record<string, Progress>, clearedChap
 
 test("keeps due reviews, partial mastery, and exact checkpoint seals consistent across screens", async ({ page }) => {
   const cards = Object.fromEntries(kanjiOfChapter(1).map((kanji) => [kanji.c, progress(2)]));
-  cards["半"] = progress(3, Date.now() - 1_000);
+  cards["六"] = progress(3, Date.now() - 1_000);
   await seedSave(page, cards, [3]);
   await page.goto("./", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
-  await expect(page.getByRole("img", { name: "N5 mastery progress 12%", exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "N5 mastery progress 5%", exact: true })).toBeVisible();
   await expect(page.getByText(`1/${allKanji.length}`, { exact: true })).toBeVisible();
   await expect(page.getByText("4 runs", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Map", exact: true }).click();
-  await expect(page.getByText("1 / 6 earned", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 / 19 earned", { exact: true })).toBeVisible();
   const regions = page.getByRole("main").locator("ol > li");
   await expect(regions.nth(0).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
-  await expect(regions.nth(0).getByText("67% progress · 0/16 mastered", { exact: true })).toBeVisible();
+  await expect(regions.nth(0).getByText("67% progress · 0/5 mastered", { exact: true })).toBeVisible();
   await expect(regions.nth(0).getByText("Seal stamped ✓", { exact: true })).toHaveCount(0);
   await expect(regions.nth(1).getByRole("link", { name: "Prepare checkpoint" })).toBeVisible();
-  await expect(regions.nth(2).getByText("Seal stamped ✓", { exact: true })).toBeVisible();
+  await expect(regions.nth(LEVEL_CHAPTERS.N5.indexOf(3)).getByText("Seal stamped ✓", { exact: true })).toBeVisible();
   await expect(page.getByText("JLPT N5 kanji seal earned!", { exact: true })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Kanji", exact: true }).click();
@@ -56,7 +58,7 @@ test("does not display 100% before every kanji is mastered", async ({ page }) =>
   await expect(page.getByText("Caught up", { exact: true })).toBeVisible();
 });
 
-test("shows an empty run when all eligible kanji are waiting for their review date", async ({ page }) => {
+test("offers a short checkpoint when all eligible kanji are waiting for their review date", async ({ page }) => {
   const cards = Object.fromEntries(kanjiOfChapter(1).map((kanji) => [kanji.c, progress(1)]));
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -64,7 +66,8 @@ test("shows an empty run when all eligible kanji are waiting for their review da
   await page.goto("./", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Caught up", { exact: true })).toBeVisible();
   await page.goto("run", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Nothing to run right now", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ready for your checkpoint", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Prepare checkpoint", exact: true })).toHaveAttribute("href", /gate=1/);
   await expect(page.getByLabel("Kanji runner game")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -72,7 +75,7 @@ test("shows an empty run when all eligible kanji are waiting for their review da
 test("ignores checkpoint numbers outside the integer chapter range", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  for (const gate of ["1.5", "0", "13", "-1"]) {
+  for (const gate of ["1.5", "0", String(CHAPTER_COUNT + 1), "-1"]) {
     await page.goto(`run?gate=${gate}`, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Learn before you run", exact: true })).toBeVisible();
     await expect(page.getByText("Daily run · Dojo preparation", { exact: true })).toBeVisible();

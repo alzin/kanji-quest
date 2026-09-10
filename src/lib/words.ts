@@ -1,4 +1,4 @@
-import { allKanji, kanjiByChar } from "@/data";
+import { allKanji, kanjiByChar, REGIONS } from "@/data";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import { hasKanji, isHiragana, isKanji, isPlausibleReading, phoneticVariants, readingList } from "./kana";
 
@@ -122,13 +122,15 @@ export function readingsOf(character: string): string[] {
 
 // ---------- Display ----------
 
+const chapterOrder = new Map(REGIONS.map((region, index) => [region.id, index]));
+
 /** A supporting kanji is glossed when the learner cannot be expected to read it
  *  yet: outside the curriculum, or from a later chapter than the card's kanji. */
 function needsFurigana(text: string, focus: Kanji): boolean {
   return [...text].some((character) => {
     if (!isKanji(character)) return false;
     const other = kanjiByChar.get(character);
-    return !other || other.ch > focus.ch;
+    return !other || (chapterOrder.get(other.ch) ?? Infinity) > (chapterOrder.get(focus.ch) ?? -1);
   });
 }
 

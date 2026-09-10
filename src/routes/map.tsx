@@ -12,7 +12,7 @@ export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
       { title: "World Map — Kanji Dash" },
-      { name: "description", content: "Journey through the N5 and N4 kanji roads, with six regions and a checkpoint seal for each road." },
+      { name: "description", content: `Explore ${LEVEL_CHAPTERS.N5.length} N5 and ${LEVEL_CHAPTERS.N4.length} N4 regions, with 4–6 kanji and a checkpoint seal in each.` },
       { property: "og:title", content: "World Map — Kanji Dash" },
       { property: "og:description", content: "Earn your N5 seal and continue along the N4 road." },
     ],
@@ -64,7 +64,7 @@ function MapPage() {
         <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your journey</p>
         <h1 className="mt-2 font-serif text-3xl font-bold">The {level} Road</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Reach 55% mastery progress in a region to open the next. Learning and reviewing kanji contribute partial progress. Stamp each checkpoint gate to earn your {level} seal.
+          Small wins, 4–6 kanji at a time. Clear a checkpoint or reach 55% mastery progress to open the next region.
         </p>
         <LevelSelector level={level} preview />
 
@@ -73,9 +73,12 @@ function MapPage() {
             <span className="text-sm font-bold">One road. {chapters.length} seals.</span>
             <span className="text-xs font-bold text-primary">{seals} / {chapters.length} earned</span>
           </div>
-          <div className="mt-3 flex gap-1.5" aria-hidden="true">
-            {chapters.map((ch) => <span key={ch} className={`h-1.5 flex-1 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
+          <div className="mt-3 grid grid-cols-10 gap-1.5" aria-hidden="true">
+            {chapters.map((ch) => <span key={ch} className={`h-1.5 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
           </div>
+          {levelUnlocked && nextCheckpoint !== undefined && <Link to="/run" search={{ gate: nextCheckpoint }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
+            Next: {CHAPTER_NAMES[nextCheckpoint]!.name} · {kanjiOfChapter(nextCheckpoint).length} words <AppIcon name="arrow" className="h-4 w-4 shrink-0" />
+          </Link>}
           {levelUnlocked ? <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform">
             Learn words & prepare a run <AppIcon name="arrow" className="h-4 w-4" />
           </Link> : <button type="button" onClick={() => selectLevel("N5")} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">Continue the N5 road</button>}
@@ -112,23 +115,24 @@ function MapPage() {
                   <div aria-hidden="true" className={`z-10 flex h-10 w-10 shrink-0 rotate-[-6deg] items-center justify-center rounded-full border-2 font-serif text-lg font-bold sm:h-14 sm:w-14 sm:border-4 sm:text-xl ${
                     cleared ? "border-primary bg-primary/10 text-primary" : unlocked ? "border-accent bg-card text-accent" : "border-border bg-card text-muted-foreground"
                   }${sealIndex >= 0 ? " relative seal-in" : ""}`} style={sealIndex >= 0 ? { animationDelay: `${200 + sealIndex * 80}ms` } : undefined}>
-                    {cleared ? "印" : unlocked ? ch : <AppIcon name="lock" className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    {cleared ? "印" : unlocked ? i + 1 : <AppIcon name="lock" className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className={`mb-1 text-[10px] font-bold uppercase tracking-widest ${ch === nextCheckpoint ? "text-primary" : "text-muted-foreground"}`}>
-                      Region {ch}{ch === nextCheckpoint ? " · Next checkpoint" : ""}
+                      Region {i + 1}{ch === nextCheckpoint ? " · Next checkpoint" : ""}
                     </p>
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h2 className="font-serif text-lg font-bold">
                         {CHAPTER_NAMES[ch]!.name} <span className="mt-0.5 block text-sm text-muted-foreground">{CHAPTER_NAMES[ch]!.jp}</span>
                       </h2>
-                      <span className="text-xs font-bold text-muted-foreground">{count} kanji</span>
+                      <span className="text-xs font-bold text-muted-foreground">{count} kanji · {count}-word checkpoint</span>
                     </div>
+                    <p className="mt-2 font-serif text-lg tracking-[0.2em]" aria-label={`Kanji in this region: ${kanji.map((k) => k.c).join("、")}`}>{kanji.map((k) => k.c).join(" ")}</p>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${CHAPTER_NAMES[ch]!.name} mastery`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="mt-3 flex flex-col items-stretch gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-muted-foreground">{unlocked ? `${pct}% progress · ${mastered}/${count} mastered` : !levelUnlocked ? "Locked — earn all six N5 checkpoint seals" : "Locked — reach 55% progress in the previous region"}</span>
+                      <span className="text-muted-foreground">{unlocked ? `${pct}% progress · ${mastered}/${count} mastered` : !levelUnlocked ? `Locked — earn all ${LEVEL_CHAPTERS.N5.length} N5 checkpoint seals` : "Locked — clear the previous checkpoint or reach 55% progress"}</span>
                       {unlocked && !cleared && (
                         <Link
                           to="/run"

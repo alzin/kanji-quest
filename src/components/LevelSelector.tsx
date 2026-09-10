@@ -1,4 +1,4 @@
-import { LEVELS, kanjiOfLevel, type JLPTLevel } from "@/data";
+import { LEVELS, LEVEL_CHAPTERS, kanjiOfLevel, type JLPTLevel } from "@/data";
 import { isLevelUnlocked, selectLevel, useSave } from "@/lib/srs";
 
 export function LevelSelector({ level, preview = false, onChange }: { level: JLPTLevel; preview?: boolean; onChange?: () => void }) {
@@ -18,7 +18,7 @@ export function LevelSelector({ level, preview = false, onChange }: { level: JLP
           );
         })}
       </div>
-      {!n4Unlocked && <p className="mt-2 text-xs text-muted-foreground">Earn all six N5 checkpoint seals to unlock N4 lessons and runs.</p>}
+      {!n4Unlocked && <p className="mt-2 text-xs text-muted-foreground">Earn all {LEVEL_CHAPTERS.N5.length} N5 checkpoint seals to unlock N4 lessons and runs.</p>}
       {n4Unlocked && level === "N4" && <p className="mt-2 text-xs text-muted-foreground">New N4 words, with due N5 reviews to keep your foundation strong.</p>}
     </div>
   );

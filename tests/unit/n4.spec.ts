@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { allKanji, CHAPTER_COUNT, CHAPTER_NAMES, kanjiByChar, kanjiOfChapter, kanjiOfLevel, LEVEL_CHAPTERS, levelOfChapter } from "../../src/data";
+import { allKanji, CHAPTER_COUNT, CHAPTER_NAMES, CURRICULUM_VERSION, kanjiByChar, kanjiOfChapter, kanjiOfLevel, LEVEL_CHAPTERS, levelOfChapter } from "../../src/data";
 import { allKanji as n5Kanji } from "../../src/data/n5";
 import { buildGateQuiz, buildRunQueue, chapterMasteryPct, dueCount, isChapterUnlocked, isLevelCleared, isLevelUnlocked, learningLevel, levelMasteryPct, newKanji, normalizeSave, type CardProgress } from "../../src/lib/srs";
 import { correctReadings, meaningChoices, vocabKana } from "../../src/lib/words";
 
 const NOW = 1_800_000_000_000;
 const card = (mastery: CardProgress["mastery"], due = NOW + 86_400_000): CardProgress => ({ mastery, due, ivl: 30, ease: 2.5, correct: 4, wrong: 1 });
-const unlocked = () => normalizeSave({ selectedLevel: "N4", clearedChapters: LEVEL_CHAPTERS.N5 });
+const unlocked = () => normalizeSave({ curriculumVersion: CURRICULUM_VERSION, selectedLevel: "N4", clearedChapters: LEVEL_CHAPTERS.N5 });
 
 test("N4 adds complete, unique cards while preserving every N5 identity", () => {
   expect(kanjiOfLevel("N5")).toBe(n5Kanji);
@@ -14,14 +14,15 @@ test("N4 adds complete, unique cards while preserving every N5 identity", () => 
   expect(kanjiOfLevel("N4")).toHaveLength(189);
   expect(allKanji).toHaveLength(285);
   expect(kanjiByChar.size).toBe(285);
-  expect(CHAPTER_COUNT).toBe(12);
+  expect(CHAPTER_COUNT).toBe(55);
   for (const ch of LEVEL_CHAPTERS.N4) {
     expect(levelOfChapter(ch)).toBe("N4");
     expect(CHAPTER_NAMES[ch]?.name).toBeTruthy();
-    expect(kanjiOfChapter(ch).length).toBeGreaterThanOrEqual(12);
+    expect(kanjiOfChapter(ch).length).toBeGreaterThanOrEqual(4);
+    expect(kanjiOfChapter(ch).length).toBeLessThanOrEqual(6);
     const quiz = buildGateQuiz(ch);
-    expect(quiz).toHaveLength(12);
-    expect(new Set(quiz.map((q) => q.kanji.c)).size).toBe(12);
+    expect(quiz).toHaveLength(kanjiOfChapter(ch).length);
+    expect(new Set(quiz.map((q) => q.kanji.c)).size).toBe(quiz.length);
     expect(quiz.every((q) => q.kanji.ch === ch)).toBe(true);
   }
   for (const k of kanjiOfLevel("N4")) {
@@ -42,20 +43,20 @@ test("N4 adds complete, unique cards while preserving every N5 identity", () => 
 
 test("legacy saves preserve totals and can never grant N4 seals implicitly", () => {
   const legacy = normalizeSave({ gatesCleared: 999, coins: 42, runsCompleted: 8, progress: { 一: card(3), 私: card(2) } });
-  expect(legacy.clearedChapters).toEqual([1, 2, 3, 4, 5, 6]);
+  expect(legacy.clearedChapters).toEqual([...LEVEL_CHAPTERS.N5].sort((a, b) => a - b));
   expect(legacy.selectedLevel).toBe("N5");
   expect(legacy.coins).toBe(42);
   expect(legacy.runsCompleted).toBe(8);
   expect(legacy.progress["一"]).toEqual(card(3));
   expect(legacy.progress["私"]).toEqual(card(2));
   const current = normalizeSave({ ...legacy, selectedLevel: "N4", clearedChapters: [12, 7, 7, ...LEVEL_CHAPTERS.N5, 13] });
-  expect(current.clearedChapters).toEqual([1, 2, 3, 4, 5, 6, 7, 12]);
-  expect(current.gatesCleared).toBe(8);
+  expect(current.clearedChapters).toEqual([...new Set([7, 12, ...LEVEL_CHAPTERS.N5])].sort((a, b) => a - b));
+  expect(current.gatesCleared).toBe(21);
   expect(normalizeSave(current)).toEqual(current);
   expect(normalizeSave({ selectedLevel: "N3" }).selectedLevel).toBe("N5");
 });
 
-test("N4 opens only after the exact six N5 seals, then uses the unrounded region threshold", () => {
+test("N4 opens only after every N5 seal, then uses road order and the unrounded threshold", () => {
   const locked = normalizeSave({ selectedLevel: "N4", clearedChapters: [1, 2, 3, 4, 6, 7] });
   for (const k of allKanji) locked.progress[k.c] = card(3);
   expect(isLevelUnlocked(locked, "N4")).toBe(false);
@@ -68,11 +69,12 @@ test("N4 opens only after the exact six N5 seals, then uses the unrounded region
   expect(isChapterUnlocked(save, 7)).toBe(true);
   expect(isChapterUnlocked(save, 8)).toBe(false);
   const region = kanjiOfChapter(7);
+  const second = LEVEL_CHAPTERS.N4[1]!;
   const minimum = Math.ceil(region.length * 3 * 0.55);
   for (let points = 0; points < minimum; points++) {
     const k = region[Math.floor(points / 3)]!;
     save.progress[k.c] = card(((points % 3) + 1) as CardProgress["mastery"]);
-    expect(isChapterUnlocked(save, 8)).toBe(points + 1 >= minimum);
+    expect(isChapterUnlocked(save, second)).toBe(points + 1 >= minimum);
   }
   expect(chapterMasteryPct(save, 7)).toBeGreaterThanOrEqual(55);
 });
@@ -87,9 +89,9 @@ test("level progress and completion have independent denominators", () => {
   save.progress["私"] = card(2);
   expect(levelMasteryPct(save, "N4")).toBe(99);
   expect(levelMasteryPct(save, "N5")).toBe(100);
-  save.clearedChapters.push(7, 8, 9, 10, 11);
+  save.clearedChapters.push(...LEVEL_CHAPTERS.N4.slice(0, -1));
   expect(isLevelCleared(save, "N4")).toBe(false);
-  save.clearedChapters.push(12);
+  save.clearedChapters.push(LEVEL_CHAPTERS.N4.at(-1)!);
   expect(isLevelCleared(save, "N4")).toBe(true);
 });
 
@@ -106,12 +108,12 @@ test("N4 queues retain N5 reviews and select new cards only from the current unl
   expect(newKanji(save)).toHaveLength(5);
   expect(newKanji(save).every((k) => k.ch === 7 && !save.progress[k.c])).toBe(true);
   save.selectedLevel = "N5";
-  expect(newKanji(save).every((k) => k.ch <= 6)).toBe(true);
+  expect(newKanji(save).every((k) => levelOfChapter(k.ch) === "N5")).toBe(true);
   expect(buildRunQueue(save, NOW).some((q) => q.kanji.c === "私")).toBe(true);
   save.selectedLevel = "N4";
   save.clearedChapters = [];
   expect(newKanji(save).every((k) => k.ch === 1)).toBe(true);
-  expect(buildRunQueue(save, NOW).every((q) => q.kanji.ch <= 6)).toBe(true);
+  expect(buildRunQueue(save, NOW).every((q) => levelOfChapter(q.kanji.ch) === "N5")).toBe(true);
 });
 
 test("N4 homographs and irregular words retain accepted readings", () => {

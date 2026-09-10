@@ -190,7 +190,7 @@ function CollectionPage() {
           >
             All
           </button>
-          {LEVEL_CHAPTERS[level].map((ch) => (
+          {LEVEL_CHAPTERS[level].map((ch, index) => (
             <button
               key={ch}
               type="button"
@@ -199,7 +199,7 @@ function CollectionPage() {
               title={CHAPTER_NAMES[ch]?.name}
               className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${activeFilter === ch ? "border-ink bg-ink text-paper" : "border-border bg-card hover:bg-secondary"}`}
             >
-              Region {ch}
+              Region {index + 1}
             </button>
           ))}
         </div>

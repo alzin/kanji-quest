@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { allKanji, CHAPTER_COUNT, CHAPTER_NAMES, kanjiByChar, kanjiOfChapter } from "../../src/data/n5";
-import { CHAPTER_COUNT as TOTAL_CHAPTERS } from "../../src/data";
+import { CHAPTER_COUNT as TOTAL_CHAPTERS, CURRICULUM_VERSION, LEVEL_CHAPTERS } from "../../src/data";
 import type { Kanji } from "../../src/data/n5/types";
 import {
   buildGateQuiz,
@@ -33,6 +33,8 @@ const NOW = new Date(2026, 8, 6, 12).getTime();
 
 function emptySave(): SaveData {
   return {
+    curriculumVersion: CURRICULUM_VERSION,
+    unlockedChapters: [],
     progress: {},
     streak: { count: 0, last: "" },
     coins: 0,
@@ -85,14 +87,15 @@ test("curriculum has unique cards and complete chapter, reading, and vocabulary 
   expect(kanjiByChar.size).toBe(allKanji.length);
   expect(Object.keys(CHAPTER_NAMES)).toHaveLength(CHAPTER_COUNT);
 
-  for (let ch = 1; ch <= CHAPTER_COUNT; ch += 1) {
-    expect(kanjiOfChapter(ch), `chapter ${ch}`).toHaveLength(16);
+  for (const ch of LEVEL_CHAPTERS.N5) {
+    expect(kanjiOfChapter(ch).length, `chapter ${ch}`).toBeGreaterThanOrEqual(4);
+    expect(kanjiOfChapter(ch).length, `chapter ${ch}`).toBeLessThanOrEqual(6);
     expect(CHAPTER_NAMES[ch]?.name).toBeTruthy();
   }
   for (const k of allKanji) {
     expect([...k.c], k.c).toHaveLength(1);
     expect(Number.isInteger(k.strokes) && k.strokes > 0, k.c).toBe(true);
-    expect(Number.isInteger(k.ch) && k.ch >= 1 && k.ch <= CHAPTER_COUNT, k.c).toBe(true);
+    expect(LEVEL_CHAPTERS.N5.includes(k.ch), k.c).toBe(true);
     expect(k.m.trim(), k.c).toBeTruthy();
     expect(validReadings(k).size, k.c).toBeGreaterThan(0);
     expect(k.vocab.length, k.c).toBeGreaterThan(0);
@@ -121,17 +124,17 @@ test("mastery uses every card's weight and only reaches 100% when all cards are 
   save.progress["一"] = card({ mastery: 1 });
   save.progress["二"] = card({ mastery: 2 });
   save.progress["三"] = card({ mastery: 3 });
-  expect(chapterMasteryPct(save, 1)).toBe(13); // 6 / (16 * 3) = 12.5%, rounded.
+  expect(chapterMasteryPct(save, 1)).toBe(40); // 6 / (5 * 3).
   expect(n5MasteryPct(save)).toBe(2); // 6 / (96 * 3), rounded.
   save.progress["not-in-curriculum"] = card({ mastery: 3 });
   expect(n5MasteryPct(save)).toBe(2);
 
   const complete = masterAll();
   expect(n5MasteryPct(complete)).toBe(100);
-  for (let ch = 1; ch <= CHAPTER_COUNT; ch += 1) expect(chapterMasteryPct(complete, ch)).toBe(100);
+  for (const ch of LEVEL_CHAPTERS.N5) expect(chapterMasteryPct(complete, ch)).toBe(100);
   complete.progress[allKanji.at(-1)!.c]!.mastery = 2;
   expect(n5MasteryPct(complete)).toBe(99); // 287 / 288 must not claim completion.
-  expect(chapterMasteryPct(complete, CHAPTER_COUNT)).toBeLessThan(100);
+  expect(chapterMasteryPct(complete, LEVEL_CHAPTERS.N5.at(-1)!)).toBeLessThan(100);
 });
 
 test("chapter unlock thresholds and chapter identifiers are bounded", () => {
@@ -139,11 +142,12 @@ test("chapter unlock thresholds and chapter identifiers are bounded", () => {
   expect(isChapterUnlocked(save, 1)).toBe(true);
   expect(isChapterUnlocked(save, 2)).toBe(false);
   const chapter = kanjiOfChapter(1);
-  for (const k of chapter.slice(0, 8)) save.progress[k.c] = card({ mastery: 3 });
-  save.progress[chapter[8]!.c] = card({ mastery: 2 });
-  expect(isChapterUnlocked(save, 2)).toBe(false); // 26/48 < 55%.
-  save.progress[chapter[8]!.c]!.mastery = 3;
-  expect(isChapterUnlocked(save, 2)).toBe(true); // 27/48 >= 55%.
+  for (const k of chapter.slice(0, 2)) save.progress[k.c] = card({ mastery: 3 });
+  save.progress[chapter[2]!.c] = card({ mastery: 2 });
+  expect(isChapterUnlocked(save, 13)).toBe(false); // 8/15 < 55%.
+  save.progress[chapter[2]!.c]!.mastery = 3;
+  expect(isChapterUnlocked(save, 13)).toBe(true); // 9/15 >= 55%.
+  expect(isChapterUnlocked(save, 2)).toBe(false); // The next legacy theme is further along the road.
 
   const complete = masterAll();
   for (const ch of [-1, 0, 1.5, TOTAL_CHAPTERS + 1, NaN, Infinity]) {
@@ -174,7 +178,7 @@ test("due totals and queues include mastered cards and exclude locked or future 
   expect(queue.map((q) => q.kanji.c)).toContain("一");
   expect(queue.map((q) => q.kanji.c)).not.toContain("二");
   expect(queue.map((q) => q.kanji.c)).not.toContain("半");
-  expect(queue).toHaveLength(6); // One review and five fresh cards.
+  expect(queue).toHaveLength(4); // One review and three fresh cards from this region.
 });
 
 test("saved mastery-zero cards remain eligible as fresh cards", () => {
@@ -186,21 +190,21 @@ test("saved mastery-zero cards remain eligible as fresh cards", () => {
   expect(new Set(queue.map((q) => q.kanji.c))).toEqual(new Set(kanjiOfChapter(1).slice(0, 5).map((k) => k.c)));
 });
 
-test("a run selects the fifteen oldest eligible reviews and at most five fresh cards", () => {
+test("a short run selects the five oldest eligible reviews and new cards from one region", () => {
   const save = emptySave();
-  const reviews = [...kanjiOfChapter(1), ...kanjiOfChapter(2).slice(0, 4)];
+  const reviews = [...kanjiOfChapter(1), ...kanjiOfChapter(13), ...kanjiOfChapter(14).slice(0, 4)];
   reviews.forEach((k, index) => { save.progress[k.c] = card({ mastery: 2, due: NOW - (index + 1) * DAY, ivl: 1 }); });
   save.progress[reviews[0]!.c]!.mastery = 3;
-  expect(dueCount(save, NOW)).toBe(20);
+  expect(dueCount(save, NOW)).toBe(14);
   const queue = withSeed(30, () => buildRunQueue(save, NOW));
   const queuedReviews = queue.filter((question) => getCard(save, question.kanji.c).mastery > 0);
   const queuedFresh = queue.filter((question) => getCard(save, question.kanji.c).mastery === 0);
-  expect(queue).toHaveLength(20);
-  expect(new Set(queue.map((question) => question.kanji.c)).size).toBe(20);
-  expect(queuedReviews).toHaveLength(15);
-  expect(new Set(queuedReviews.map((question) => question.kanji.c))).toEqual(new Set(reviews.slice(5).map((k) => k.c)));
-  expect(queuedFresh).toHaveLength(5);
-  expect(queuedFresh.every((question) => question.kanji.ch === 2)).toBe(true);
+  expect(queue).toHaveLength(7);
+  expect(new Set(queue.map((question) => question.kanji.c)).size).toBe(7);
+  expect(queuedReviews).toHaveLength(5);
+  expect(new Set(queuedReviews.map((question) => question.kanji.c))).toEqual(new Set(reviews.slice(-5).map((k) => k.c)));
+  expect(queuedFresh).toHaveLength(2);
+  expect(queuedFresh.every((question) => question.kanji.ch === 14)).toBe(true);
 });
 
 test("fully learned cards produce no premature review and become reviewable at their due instant", () => {
@@ -208,14 +212,14 @@ test("fully learned cards produce no premature review and become reviewable at t
   expect(dueCount(save, NOW)).toBe(0);
   expect(buildRunQueue(save, NOW)).toEqual([]);
   expect(dueCount(save, NOW + DAY)).toBe(allKanji.length);
-  expect(buildRunQueue(save, NOW + DAY)).toHaveLength(15);
+  expect(buildRunQueue(save, NOW + DAY)).toHaveLength(5);
 });
 
-test("every chapter gate samples twelve unique cards from that chapter", () => {
-  for (let ch = 1; ch <= CHAPTER_COUNT; ch += 1) {
+test("every chapter checkpoint covers its entire small set exactly once", () => {
+  for (const ch of LEVEL_CHAPTERS.N5) {
     const quiz = withSeed(ch, () => buildGateQuiz(ch));
-    expect(quiz).toHaveLength(12);
-    expect(new Set(quiz.map((question) => question.kanji.c)).size).toBe(12);
+    expect(quiz).toHaveLength(kanjiOfChapter(ch).length);
+    expect(new Set(quiz.map((question) => question.kanji.c)).size).toBe(quiz.length);
     expect(quiz.every((question) => question.kanji.ch === ch)).toBe(true);
   }
 });
@@ -248,6 +252,7 @@ test("streaks follow local dates across midnight, month/year boundaries, and day
 test("save normalization repairs invalid math and discards unsupported progress", () => {
   for (const raw of [null, undefined, 4, "bad", []]) expect(normalizeSave(raw)).toEqual(emptySave());
   const save = normalizeSave({
+    curriculumVersion: CURRICULUM_VERSION,
     coins: -40,
     runsCompleted: Infinity,
     gatesCleared: 99,
@@ -278,19 +283,19 @@ test("save normalization repairs invalid math and discards unsupported progress"
 });
 
 test("legacy gate saves migrate while explicit chapter completion remains authoritative", () => {
-  expect(normalizeSave({ gatesCleared: 2 }).clearedChapters).toEqual([1, 2]);
-  expect(normalizeSave({ gatesCleared: 999 }).clearedChapters).toEqual([1, 2, 3, 4, 5, 6]);
+  expect(normalizeSave({ gatesCleared: 2 }).clearedChapters).toEqual([1, 2, 13, 14, 15, 16]);
+  expect(normalizeSave({ gatesCleared: 999 }).clearedChapters).toEqual([...LEVEL_CHAPTERS.N5].sort((a, b) => a - b));
   expect(normalizeSave({ gatesCleared: -1 }).clearedChapters).toEqual([]);
   const explicit = normalizeSave({ gatesCleared: 6, clearedChapters: [5, 2, 5] });
-  expect(explicit.clearedChapters).toEqual([2, 5]);
-  expect(explicit.gatesCleared).toBe(2);
+  expect(explicit.clearedChapters).toEqual([2, 5, 15, 16, 22, 23]);
+  expect(explicit.gatesCleared).toBe(6);
   expect(normalizeSave({ streak: { count: 8, last: "2026-02-30" } }).streak).toEqual({ count: 0, last: "" });
 });
 
 test("store grading, rewards, persistence, and streak updates preserve exact totals and immutable snapshots", () => {
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const originalTimezone = process.env.TZ;
-  let stored = JSON.stringify({ ...emptySave(), clearedChapters: undefined, gatesCleared: 2, coins: 7, runsCompleted: 3 });
+  let stored = JSON.stringify({ ...emptySave(), curriculumVersion: undefined, clearedChapters: undefined, gatesCleared: 2, coins: 7, runsCompleted: 3 });
   let notifications = 0;
   let unsubscribe = () => {};
   Object.defineProperty(globalThis, "window", {
@@ -300,7 +305,7 @@ test("store grading, rewards, persistence, and streak updates preserve exact tot
   try {
     unsubscribe = subscribe(() => { notifications += 1; });
     const initial = getSnapshot();
-    expect(initial.clearedChapters).toEqual([1, 2]);
+    expect(initial.clearedChapters).toEqual([1, 2, 13, 14, 15, 16]);
     expect(getSnapshot()).toBe(initial);
     expect(getServerSnapshot()).toBe(getServerSnapshot());
 
@@ -371,11 +376,12 @@ test("store grading, rewards, persistence, and streak updates preserve exact tot
     expect(getSnapshot().runsCompleted).toBe(5);
 
     expect(clearGate(2)).toBe(0); // Legacy cleared gate cannot pay again.
-    expect(clearGate(5)).toBe(50);
-    expect(clearGate(5)).toBe(0);
-    expect(clearGate(3)).toBe(50); // Clearing 5 never silently clears 3 or 4.
-    expect(getSnapshot().clearedChapters).toEqual([1, 2, 3, 5]);
-    expect(getSnapshot().gatesCleared).toBe(4);
+    expect(clearGate(5)).toBe(0); // Locked N5 checkpoints cannot be skipped.
+    expect(clearGate(3)).toBe(50);
+    expect(clearGate(3)).toBe(0);
+    expect(clearGate(17)).toBe(50); // The new road order advances immediately after a seal.
+    expect(getSnapshot().clearedChapters).toEqual([1, 2, 3, 13, 14, 15, 16, 17]);
+    expect(getSnapshot().gatesCleared).toBe(8);
     expect(getSnapshot().coins).toBe(120);
     expect(getSnapshot().runsCompleted).toBe(5);
     expect(isGateCleared(getSnapshot(), 4)).toBe(false);
