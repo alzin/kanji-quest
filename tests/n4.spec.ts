@@ -52,7 +52,7 @@ test("the selected road persists across home, searchable collection, dojo, and d
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto("run", { waitUntil: "domcontentloaded" });
   const words = page.getByRole("region", { name: "Words in this run" });
-  await expect(words.getByRole("status")).toHaveText("0 / 6 words studied");
+  await expect(words.getByRole("status")).toHaveText("1 / 6 words viewed");
   const before = await page.evaluate(() => localStorage.getItem("kanji-dash-v1"));
   await studyWords(page);
   expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBe(before);

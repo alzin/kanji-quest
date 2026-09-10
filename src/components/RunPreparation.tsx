@@ -16,10 +16,9 @@ export function RunPreparation({ questions, title, onStart }: {
   title: string;
   onStart: () => void;
 }) {
-  const [stage, setStage] = useState<"learn" | "recall" | "ready">("learn");
+  const [stage, setStage] = useState<"learn" | "recall">("learn");
   const [index, setIndex] = useState(0);
-  const [seen, setSeen] = useState<Set<number>>(() => new Set());
-  const [writing, setWriting] = useState(false);
+  const [seen, setSeen] = useState<Set<number>>(() => new Set([0]));
   const [recallIndex, setRecallIndex] = useState(0);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -31,22 +30,25 @@ export function RunPreparation({ questions, title, onStart }: {
     if (stage !== "recall" || feedback !== "correct") return;
     const timeout = window.setTimeout(() => {
       setFeedback(null);
-      if (recallIndex + 1 === checks.length) setStage("ready");
+      if (recallIndex + 1 === checks.length) onStart();
       else setRecallIndex(recallIndex + 1);
     }, 800);
     return () => window.clearTimeout(timeout);
-  }, [stage, feedback, recallIndex, checks.length]);
+  }, [stage, feedback, recallIndex, checks.length, onStart]);
   const word = questions[index]!;
   const check = checks[recallIndex]!;
   const allSeen = seen.size === questions.length;
-  const selectWord = (next: number) => { setIndex(next); setWriting(false); };
+  const selectWord = (next: number) => {
+    setIndex(next);
+    setSeen((current) => current.has(next) ? current : new Set(current).add(next));
+  };
 
   return (
     <div className="app-shell min-h-screen bg-paper">
       <Nav />
       <main className="mx-auto max-w-4xl px-4 pb-12">
         <p className="mt-5 text-xs font-bold uppercase tracking-widest text-primary">{title} · Dojo preparation</p>
-        <h1 ref={heading} tabIndex={-1} className="mt-2 font-serif text-3xl font-bold outline-none">{stage === "learn" ? "Learn before you run" : stage === "recall" ? "Recall without the rush" : "Ready for your run"}</h1>
+        <h1 ref={heading} tabIndex={-1} className="mt-2 font-serif text-3xl font-bold outline-none">{stage === "learn" ? "Learn before you run" : "Recall without the rush"}</h1>
         <ol aria-label="Learning steps" className="my-5 grid grid-cols-3 gap-2 text-sm">
           {["Learn & write", "Recall", "Run"].map((label, i) => (
             <li key={label} aria-current={i === (stage === "learn" ? 0 : stage === "recall" ? 1 : 2) ? "step" : undefined}
@@ -55,22 +57,22 @@ export function RunPreparation({ questions, title, onStart }: {
             </li>
           ))}
         </ol>
-        {stage !== "ready" && <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <WordAudio reading={vocabKana((stage === "learn" ? word : check).vocab)} wordKey={`${stage}-${stage === "learn" ? index : recallIndex}`} />
           <SoundToggle variant="inline" />
           <span className="text-xs text-muted-foreground">Japanese readings play automatically when voice is on. Game sound is separate.</span>
-        </div>}
+        </div>
 
         {stage === "learn" && <>
-          <p className="text-sm leading-relaxed text-muted-foreground">Meet all {questions.length} words in this run. Read each word aloud, connect it to its meaning, and try writing its highlighted kanji. Then check what you remember.</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">Open each of the {questions.length} words in this run. Read it aloud, connect it to its meaning, and try writing its highlighted kanji. Then check what you remember.</p>
           <div className="mt-5 grid items-start gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             <section aria-label="Words in this run" className="rounded-xl border border-border bg-card p-4">
               <h2 className="font-serif text-lg font-bold">Your word list</h2>
-              <p role="status" className="mt-1 text-xs text-muted-foreground">{seen.size} / {questions.length} words studied</p>
+              <p role="status" className="mt-1 text-xs text-muted-foreground">{seen.size} / {questions.length} words viewed</p>
               <ol className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-1">
                 {questions.map((q, i) => <li key={i}>
                   <button type="button" onClick={() => selectWord(i)} aria-current={i === index ? "true" : undefined}
-                    aria-label={`Study word ${i + 1}: ${q.vocab.w}${seen.has(i) ? ", studied" : ""}`}
+                    aria-label={`View word ${i + 1}: ${q.vocab.w}${seen.has(i) ? ", viewed" : ""}`}
                     className="h-full min-h-12 w-full rounded-lg border border-border px-3 py-2 text-left aria-[current=true]:border-primary aria-[current=true]:bg-primary/5">
                     <span className="font-serif text-lg font-bold">{q.vocab.w}</span>
                     <span className="ml-2 text-xs text-muted-foreground">{seen.has(i) ? "✓" : i + 1}</span>
@@ -89,23 +91,14 @@ export function RunPreparation({ questions, title, onStart }: {
                 <p><b className="font-serif text-xl text-primary">{word.kanji.c}</b> · {word.kanji.m}</p>
                 <p className="mt-2">{word.kanji.mn}</p>
               </div>
-              <button type="button" aria-expanded={writing} onClick={() => setWriting(!writing)} className={`${secondary} mt-4 w-full`}>
-                {writing ? "Close writing practice" : "Practice writing this kanji"}
-              </button>
-              {writing && <div className="mt-4">
+              <div className="mt-4">
                 <p className="mb-3 text-xs leading-relaxed text-muted-foreground">Trace {word.kanji.c}, then say the whole word: {vocabKana(word.vocab)}. This checks guide coverage, not stroke order. Writing is optional; you can also use paper.</p>
                 <StrokePractice key={word.kanji.c} kanji={word.kanji} />
-              </div>}
-              <button type="button" className={`${primary} mt-5 w-full`} onClick={() => {
-                const nextSeen = new Set(seen).add(index);
-                setSeen(nextSeen);
-                const next = questions.findIndex((_, i) => !nextSeen.has(i));
-                if (next >= 0) selectWord(next);
-              }}>{seen.has(index) ? "Word studied ✓" : "I’ve studied this word"}</button>
+              </div>
             </section>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">{allSeen ? "Every word covered. Try recalling them with the readings hidden." : "Study each word to unlock the recall check."}</p>
+            <p className="text-sm text-muted-foreground">{allSeen ? "Every word covered. Try recalling them with the readings hidden." : "Open each word to unlock the recall check."}</p>
             <button type="button" className={primary} disabled={!allSeen} onClick={() => { setRecallIndex(0); setFeedback(null); setStage("recall"); }}>Check my recall</button>
           </div>
         </>}
@@ -131,14 +124,6 @@ export function RunPreparation({ questions, title, onStart }: {
           </div>
         </section>}
 
-        {stage === "ready" && <section className="mx-auto max-w-lg rounded-xl border border-border bg-card p-6 text-center">
-          <div aria-hidden="true" className="font-serif text-5xl text-primary">走</div>
-          <h2 className="mt-4 font-serif text-2xl font-bold">Now put your words into motion</h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">You studied all {questions.length} words and recalled their readings and meanings. Your run uses this same word list.</p>
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Preparation is practice. Run answers schedule your reviews; mastery grows through spaced repetition over time.</p>
-          <button type="button" className={`${primary} mt-6 w-full`} onClick={onStart}>Start run</button>
-          <button type="button" className={`${secondary} mt-3 w-full`} onClick={() => setStage("learn")}>Review the words again</button>
-        </section>}
         <Link to="/" className="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-muted-foreground">Leave preparation · Back home</Link>
       </main>
     </div>
