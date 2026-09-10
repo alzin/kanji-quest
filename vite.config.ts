@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    server: {
+      proxy: { "/api": { target: "http://localhost:3001", changeOrigin: true } },
+    },
     plugins: [
       tailwindcss(),
       tanstackStart({
@@ -37,6 +40,9 @@ export default defineConfig(({ mode }) => {
       }),
       viteReact(),
       nitro({
+        devProxy: {
+          "/api/**": { target: "http://127.0.0.1:3001", changeOrigin: true },
+        },
         routeRules: {
           "/sw.js": { headers: { "cache-control": "no-cache" } },
           "/offline.html": { headers: { "cache-control": "no-cache" } },

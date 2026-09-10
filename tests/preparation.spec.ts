@@ -7,7 +7,7 @@ test("requires every word and both recall checks without grading preparation", a
   await page.addInitScript(() => { Math.random = () => 0.999; });
   await page.goto("run", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toBeVisible();
-  const before = await page.evaluate(() => localStorage.getItem("kanji-dash-v1"));
+  const before = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
   await expect(page.getByRole("button", { name: "Check my recall" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Start run", exact: true })).toHaveCount(0);
   await page.clock.fastForward(100_000);
@@ -50,7 +50,7 @@ test("requires every word and both recall checks without grading preparation", a
   await expect(page.getByRole("heading", { name: "Learn before you run", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Check my recall", exact: true }).click();
   await recallWords(page, answers);
-  expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBe(before);
+  expect(await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"))).toBe(before);
   await expect(page.getByRole("button", { name: "Start run", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await page.keyboard.press("ArrowUp");

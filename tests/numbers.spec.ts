@@ -10,7 +10,7 @@ function progress(mastery: number, due = Date.now() + 86_400_000): Progress {
 
 async function seedSave(page: Page, cards: Record<string, Progress>, clearedChapters: number[] = []) {
   await page.addInitScript((save) => {
-    localStorage.setItem("kanji-dash-v1", JSON.stringify(save));
+    sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify(save));
   }, {
     progress: cards,
     curriculumVersion: 2,
@@ -83,7 +83,7 @@ test("ignores checkpoint numbers outside the integer chapter range", async ({ pa
   expect(errors).toEqual([]);
 });
 
-test("refreshes due reviews over time and saved totals from another tab", async ({ page, context }) => {
+test("refreshes due reviews over time while guest progress stays isolated to its tab", async ({ page, context }) => {
   const start = new Date("2026-09-06T03:00:00Z");
   await page.clock.install({ time: start });
   await seedSave(page, { "一": progress(1, start.getTime() + 60_000) });
@@ -95,16 +95,23 @@ test("refreshes due reviews over time and saved totals from another tab", async 
 
   const other = await context.newPage();
   await other.goto("./", { waitUntil: "domcontentloaded" });
+  await expect(other.getByText("0 runs", { exact: true })).toBeVisible();
+  await expect(other.getByRole("img", { name: "N5 mastery progress 0%", exact: true })).toBeVisible();
   await other.evaluate(() => {
-    const save = JSON.parse(localStorage.getItem("kanji-dash-v1")!);
-    save.coins = 123;
-    save.runsCompleted = 9;
-    save.progress["一"].mastery = 3;
-    localStorage.setItem("kanji-dash-v1", JSON.stringify(save));
+    sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({
+      coins: 123,
+      runsCompleted: 9,
+      progress: { 一: { mastery: 3, ivl: 21, ease: 2.5, due: 0, correct: 4, wrong: 1 } },
+    }));
   });
-  await expect(page.getByText("123 mon", { exact: false })).toBeVisible();
-  await expect(page.getByText("9 runs", { exact: true })).toBeVisible();
-  await expect(page.getByRole("img", { name: "N5 mastery progress 1%", exact: true })).toBeVisible();
-  await expect(page.getByText(`1/${allKanji.length}`, { exact: true })).toBeVisible();
+  await other.reload({ waitUntil: "domcontentloaded" });
+  await expect(other.getByText("123 mon", { exact: false })).toBeVisible();
+  await expect(other.getByText("9 runs", { exact: true })).toBeVisible();
+  await expect(other.getByRole("img", { name: "N5 mastery progress 1%", exact: true })).toBeVisible();
+  await expect(page.getByText("37 mon", { exact: false })).toBeVisible();
+  await expect(page.getByText("4 runs", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "N5 mastery progress 0%", exact: true })).toBeVisible();
+  await expect(page.getByText(`0/${allKanji.length}`, { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBeNull();
   await other.close();
 });

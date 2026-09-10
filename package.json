@@ -4,6 +4,13 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "backend:install": "npm ci --prefix backend",
+    "backend:dev": "npm run dev --prefix backend",
+    "backend:build": "npm run build --prefix backend",
+    "backend:start": "npm start --prefix backend",
+    "backend:typecheck": "npm run typecheck --prefix backend",
+    "backend:test": "npm test --prefix backend",
+    "db:migrate": "npm run db:migrate --prefix backend",
     "test": "playwright test --config playwright.unit.config.ts",
     "dev": "vite dev --host 0.0.0.0",
     "build": "vite build",

@@ -5,6 +5,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const log: { text: string; lang: string; voice: string }[] = [];
     (window as any).__speechLog = log;
+    (window as any).__runSpeechLog = [] as string[];
     (window as any).__speechCancels = 0;
     Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: class {
       text: string;
@@ -12,7 +13,10 @@ test.beforeEach(async ({ page }) => {
     } });
     Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
       getVoices: () => [{ lang: "en-US", name: "English" }, { lang: "ja-JP", name: "Japanese" }],
-      speak: (u: SpeechSynthesisUtterance) => log.push({ text: u.text, lang: u.lang, voice: u.voice?.name ?? "" }),
+      speak: (u: SpeechSynthesisUtterance) => {
+        log.push({ text: u.text, lang: u.lang, voice: u.voice?.name ?? "" });
+        if (document.querySelector('[aria-label="Kanji runner game"]')) (window as any).__runSpeechLog.push(u.text);
+      },
       cancel: () => { (window as any).__speechCancels++; },
     } });
     Math.random = () => 0.999;
@@ -52,9 +56,10 @@ test("run speaks active gates and cancels speech on pause", async ({ page }) => 
   await page.clock.install();
   await page.goto("run");
   await completePreparation(page, { advanceClock: true });
-  await page.evaluate(() => { (window as any).__speechLog.length = 0; });
+  // Keep real test/CPU time from advancing a gate while speech is inspected.
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 100)));
   await page.clock.runFor(500);
-  await expect.poll(() => page.evaluate(() => (window as any).__speechLog.length)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => (window as any).__runSpeechLog.length)).toBeGreaterThan(0);
   const cancels = await page.evaluate(() => (window as any).__speechCancels);
   await page.getByRole("button", { name: "Pause game", exact: true }).click();
   await expect(page.getByRole("button", { name: "Replay Japanese pronunciation" })).toBeDisabled();

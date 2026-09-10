@@ -1,0 +1,11 @@
+# Upload only the files needed by the container build.
+# Never send runtime credentials, local tooling, or test data to Cloud Build.
+*
+!Dockerfile
+!.dockerignore
+!.gcloudignore
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**

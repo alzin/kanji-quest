@@ -292,15 +292,26 @@ test("legacy gate saves migrate while explicit chapter completion remains author
   expect(normalizeSave({ streak: { count: 8, last: "2026-02-30" } }).streak).toEqual({ count: 0, last: "" });
 });
 
-test("store grading, rewards, persistence, and streak updates preserve exact totals and immutable snapshots", () => {
+test("guest grading, rewards, session persistence, and streak updates preserve exact totals and immutable snapshots", () => {
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const originalTimezone = process.env.TZ;
   let stored = JSON.stringify({ ...emptySave(), curriculumVersion: undefined, clearedChapters: undefined, gatesCleared: 2, coins: 7, runsCompleted: 3 });
   let notifications = 0;
   let unsubscribe = () => {};
+  const sessionWrites: string[] = [];
+  const durableWrites: string[] = [];
   Object.defineProperty(globalThis, "window", {
     configurable: true,
-    value: { localStorage: { getItem: () => stored, setItem: (_key: string, value: string) => { stored = value; } } },
+    value: {
+      sessionStorage: {
+        getItem: (key: string) => key === "kanji-dash-guest-v1" ? stored : null,
+        setItem: (key: string, value: string) => { sessionWrites.push(key); stored = value; },
+      },
+      localStorage: {
+        getItem: () => JSON.stringify({ ...emptySave(), coins: 999 }),
+        setItem: (key: string) => { durableWrites.push(key); },
+      },
+    },
   });
   try {
     unsubscribe = subscribe(() => { notifications += 1; });
@@ -402,6 +413,9 @@ test("store grading, rewards, persistence, and streak updates preserve exact tot
     touchStreak(new Date(2027, 0, 4, 0, 1).getTime());
     expect(getSnapshot().streak).toEqual({ count: 1, last: "2027-01-04" });
     expect(JSON.parse(stored)).toEqual(getSnapshot());
+    expect(sessionWrites.length).toBeGreaterThan(0);
+    expect(new Set(sessionWrites)).toEqual(new Set(["kanji-dash-guest-v1"]));
+    expect(durableWrites).toEqual([]);
     expect(notifications).toBeGreaterThan(0);
   } finally {
     unsubscribe();

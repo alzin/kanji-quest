@@ -84,7 +84,7 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     const savedProgress = {
       progress: {}, streak: { count: 0, last: "" }, coins: 37, runsCompleted: 4, gatesCleared: 0,
     };
-    await page.evaluate((save) => localStorage.setItem("kanji-dash-v1", JSON.stringify(save)), savedProgress);
+    await page.evaluate((save) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify(save)), savedProgress);
     await stopServer();
     await expect(fetch(origin)).rejects.toThrow();
     if (browserName === "chromium") await context.setOffline(true);
@@ -100,22 +100,25 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     }
 
     await page.goto(`${origin}/run?gate=1`, { waitUntil: "domcontentloaded" });
-    await completePreparation(page, { advanceClock: true });
+    await completePreparation(page, { advanceClock: true, pauseClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await expect(page.getByText("The First Five — Checkpoint", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/run\/?\?gate=1$/);
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
     await expect(page.getByRole("button", { name: "Resume game", exact: true })).toHaveAttribute("aria-pressed", "true");
 
+    // Let the next document hydrate; preparation pauses its clock again.
+    await page.clock.resume();
     await page.goto(`${origin}/run`, { waitUntil: "domcontentloaded" });
-    await completePreparation(page, { advanceClock: true });
+    await completePreparation(page, { advanceClock: true, pauseClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
+    await page.clock.resume();
     await page.goto(`${origin}/`, { waitUntil: "domcontentloaded" });
     await expect(page.getByText("4 runs", { exact: true })).toBeVisible();
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!))).toEqual(savedProgress);
+    expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!))).toEqual(savedProgress);
     // N4 assets must also be available when the only online visit was N5 home.
-    await page.evaluate((save) => localStorage.setItem("kanji-dash-v1", JSON.stringify({
+    await page.evaluate((save) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({
       ...save, selectedLevel: "N4", gatesCleared: 6, clearedChapters: [1, 2, 3, 4, 5, 6],
     })), savedProgress);
     await page.goto(`${origin}/map`, { waitUntil: "domcontentloaded" });
@@ -124,7 +127,7 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await page.getByRole("searchbox").fill("わたし");
     await expect(page.getByRole("button", { name: "私 — I; private · Unseen", exact: true })).toBeVisible();
     await page.goto(`${origin}/run?gate=7`, { waitUntil: "domcontentloaded" });
-    await completePreparation(page, { advanceClock: true });
+    await completePreparation(page, { advanceClock: true, pauseClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await expect(page.getByText("Me & My Neighborhood — Checkpoint", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);

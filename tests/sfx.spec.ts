@@ -75,9 +75,9 @@ async function prepare(page: Page) {
   await page.addInitScript(() => { Math.random = () => 0.999; });
 }
 
-async function startRun(page: Page, url = "run") {
+async function startRun(page: Page, url = "run", pauseClock = false) {
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  await completePreparation(page);
+  await completePreparation(page, { advanceClock: pauseClock, pauseClock });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");
 }
@@ -111,7 +111,7 @@ test("a miss schedules the taiko and the paper fwip, the third miss adds the tem
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await prepare(page);
-  await startRun(page);
+  await startRun(page, "run", true);
   // No steering: a lane-neutral key is still a user activation that unlocks audio,
   // and the runner then misses every gate on its own.
   await page.keyboard.press("Shift");
@@ -136,6 +136,8 @@ test("a miss schedules the taiko and the paper fwip, the third miss adds the tem
     if (miss >= 2) expect(Math.abs(bell[0]!.at - 0.35)).toBeLessThan(0.001);
     if (miss === 3) break;
 
+    // Advance frames through the lesson entrance before testing its button.
+    await page.clock.runFor(1_000);
     const plucksBefore = log.filter((voice) => voice.type === "triangle" && Math.abs(voice.freq - 293.66) < 0.01).length;
     await page.getByRole("button", { name: "Keep running", exact: true }).click();
     await expect(page.getByRole("button", { name: "Keep running", exact: true })).toHaveCount(0);
@@ -152,13 +154,14 @@ test("a miss schedules the taiko and the paper fwip, the third miss adds the tem
 test("mute persists under its own key and creates no context", async ({ page }) => {
   await prepare(page);
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  const saveBefore = await page.evaluate(() => localStorage.getItem("kanji-dash-v1"));
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+  const saveBefore = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
   const mute = page.getByRole("button", { name: "Mute sounds", exact: true });
   await expect(mute).toBeVisible();
   await mute.click();
   await expect(page.getByRole("button", { name: "Unmute sounds", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => localStorage.getItem("kanji-dash-sound"))).toBe("off");
-  expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBe(saveBefore);
+  expect(await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"))).toBe(saveBefore);
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "Unmute sounds", exact: true })).toHaveAttribute("aria-pressed", "true");

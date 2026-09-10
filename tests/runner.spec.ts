@@ -1,13 +1,13 @@
 import { completePreparation } from "./helpers/preparation";
 import { expect, test, type Page } from "@playwright/test";
 
-async function startDeterministicRun(page: Page, url = "run") {
+async function startDeterministicRun(page: Page, url = "run", pauseClock = false) {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.clock.install();
   // Identity shuffles put each answer in the top lane for these integration tests.
   await page.addInitScript(() => { Math.random = () => 0.999; });
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  await completePreparation(page, { advanceClock: true });
+  await completePreparation(page, { advanceClock: true, pauseClock });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");
 }
@@ -18,7 +18,7 @@ async function expectResult(page: Page, label: string, value: string) {
 
 async function savedTotals(page: Page) {
   return page.evaluate(() => {
-    const saved = JSON.parse(localStorage.getItem("kanji-dash-v1")!);
+    const saved = JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!);
     const cards = Object.values(saved.progress) as { correct: number; wrong: number }[];
     return {
       correct: cards.reduce((sum, card) => sum + card.correct, 0),
@@ -46,7 +46,7 @@ test("combo score, correct answers, remaining questions and saved rewards agree"
 });
 
 test("lesson pauses and three hearts preserve attempted counts and restart state", async ({ page }) => {
-  await startDeterministicRun(page);
+  await startDeterministicRun(page, "run", true);
   for (let wrong = 1; wrong <= 2; wrong++) {
     await page.clock.fastForward(100_000);
     await expect(page.getByRole("button", { name: "Keep running", exact: true })).toBeVisible();
@@ -87,7 +87,7 @@ test("a repeated checkpoint earns one exact seal and bonus without advancing rev
     await expectResult(page, label!, value!);
   }
   expect(await savedTotals(page)).toEqual({ correct: 5, wrong: 0, coins: 50, runsCompleted: 1 });
-  const initial = await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!));
+  const initial = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
   expect(initial.clearedChapters).toEqual([1]);
   expect(initial.gatesCleared).toBe(1);
   const initialCards = initial.progress as Record<string, { mastery: number; due: number }>;
@@ -104,7 +104,7 @@ test("a repeated checkpoint earns one exact seal and bonus without advancing rev
   await expectResult(page, "Score", "1,500");
   await expectResult(page, "Mon earned", "+0");
   expect(await savedTotals(page)).toEqual({ correct: 10, wrong: 0, coins: 50, runsCompleted: 2 });
-  const repeated = await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!));
+  const repeated = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
   expect(repeated.clearedChapters).toEqual([1]);
   expect(repeated.gatesCleared).toBe(1);
   for (const [character, before] of Object.entries(initialCards)) {

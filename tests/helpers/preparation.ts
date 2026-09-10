@@ -13,7 +13,12 @@ export async function studyWords(page: Page) {
   return answers;
 }
 
-export async function recallWords(page: Page, answers: { reading: string; meaning: string }[], { advanceClock = false } = {}) {
+export async function recallWords(page: Page, answers: { reading: string; meaning: string }[], { advanceClock = false, pauseClock = false } = {}) {
+  if (pauseClock) {
+    // Assertion and browser time must not advance the run after the final recall.
+    // fastForward below still drives feedback and gameplay at explicit times.
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1_000)));
+  }
   let checkIndex = 0;
   for (const type of ["reading", "meaning"] as const) {
     for (const answer of answers) {
@@ -28,6 +33,6 @@ export async function recallWords(page: Page, answers: { reading: string; meanin
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
 }
 
-export async function completePreparation(page: Page, options: { advanceClock?: boolean } = {}) {
+export async function completePreparation(page: Page, options: { advanceClock?: boolean; pauseClock?: boolean } = {}) {
   await recallWords(page, await studyWords(page), options);
 }

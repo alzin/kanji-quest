@@ -23,7 +23,7 @@ test("short checkpoints open the next focused set immediately and survive reload
   await expect(page.getByRole("region", { name: "Words in this run" }).getByRole("button")).toHaveCount(5);
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Learn before you run", exact: true })).toBeVisible();
-  const save = await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!));
+  const save = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
   expect(save.curriculumVersion).toBe(2);
   expect(save.clearedChapters).toEqual([1]);
   expect(save.coins).toBe(50);

@@ -5,8 +5,8 @@ import { completePreparation, studyWords } from "./helpers/preparation";
 async function unlockN4(page: Page, reviews = false) {
   await page.addInitScript(({ reviews }) => {
     Math.random = () => 0.999;
-    if (localStorage.getItem("kanji-dash-v1")) return;
-    localStorage.setItem("kanji-dash-v1", JSON.stringify({
+    if (sessionStorage.getItem("kanji-dash-guest-v1")) return;
+    sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({
       selectedLevel: "N4", clearedChapters: [1, 2, 3, 4, 5, 6], gatesCleared: 6,
       coins: 300, runsCompleted: 6, streak: { count: 0, last: "" },
       progress: reviews ? { 一: { mastery: 3, due: 0, ivl: 30, ease: 2.5, correct: 6, wrong: 0 } } : {},
@@ -16,6 +16,8 @@ async function unlockN4(page: Page, reviews = false) {
 
 test("N4 previews explain the unlock and direct checkpoint links cannot bypass it", async ({ page }) => {
   await page.goto("map", { waitUntil: "domcontentloaded" });
+  // Wait for hydration before clicking an SSR-rendered level button.
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
   await page.getByRole("button", { name: /^N4 / }).click();
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(0);
@@ -23,7 +25,7 @@ test("N4 previews explain the unlock and direct checkpoint links cannot bypass i
   await page.goto("run?gate=7", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "This N4 checkpoint is locked" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toHaveCount(0);
-  const save = await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!));
+  const save = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
   expect(save.progress).toEqual({});
   expect(save.coins).toBe(0);
   expect(save.clearedChapters).toEqual([]);
@@ -53,9 +55,9 @@ test("the selected road persists across home, searchable collection, dojo, and d
   await page.goto("run", { waitUntil: "domcontentloaded" });
   const words = page.getByRole("region", { name: "Words in this run" });
   await expect(words.getByRole("status")).toHaveText("1 / 6 words viewed");
-  const before = await page.evaluate(() => localStorage.getItem("kanji-dash-v1"));
+  const before = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
   await studyWords(page);
-  expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBe(before);
+  expect(await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"))).toBe(before);
 });
 
 test("an N4 checkpoint prepares, grades, stamps its own seal and only rewards the first clearance", async ({ page }) => {
@@ -69,7 +71,7 @@ test("an N4 checkpoint prepares, grades, stamps its own seal and only rewards th
     await page.keyboard.press("ArrowUp");
     await page.clock.fastForward(40_000);
     await expect(page.getByRole("heading", { name: "Checkpoint cleared!", exact: true })).toBeVisible();
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-v1")!));
+    const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
     expect(saved.clearedChapters).toEqual([...LEVEL_CHAPTERS.N5, 7].sort((a, b) => a - b));
     expect(saved.coins).toBe(350);
     expect(saved.runsCompleted).toBe(7 + run);

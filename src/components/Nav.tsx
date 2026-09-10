@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useSave, streakCount } from "@/lib/srs";
 import { AppIcon } from "@/components/AppIcon";
+import { AccountStatus } from "@/components/AccountStatus";
 
 const links = [
   { to: "/", label: "Home", icon: "home" },
@@ -47,6 +48,7 @@ export function Nav() {
           </span>
         </div>
       </div>
+      <AccountStatus />
     </header>
   );
 }

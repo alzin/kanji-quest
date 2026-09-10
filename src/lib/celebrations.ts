@@ -1,9 +1,9 @@
 import type { SaveData } from "@/lib/srs";
 
 /*
- * Celebration bookkeeping under its own localStorage key, so a reload or
+ * Celebration bookkeeping under its own sessionStorage key, so a reload or
  * backgrounding between the results card and the map never loses a ceremony
- * and revisiting never repeats one. Pure helpers (normalizeFx, diffFx,
+ * and revisiting in the same tab never repeats one. Pure helpers (normalizeFx, diffFx,
  * toFxRecord) are unit-tested; readFx/rememberFx are client-only and meant to
  * be called from useEffect after hydration.
  */
@@ -56,7 +56,7 @@ export function toFxRecord(save: SaveData, today: string): FxRecord {
 export function readFx(): FxRecord {
   try {
     if (typeof window === "undefined") return normalizeFx(null);
-    const raw = window.localStorage.getItem(FX_KEY);
+    const raw = window.sessionStorage.getItem(FX_KEY);
     return normalizeFx(raw ? JSON.parse(raw) : null);
   } catch {
     return normalizeFx(null);
@@ -66,7 +66,7 @@ export function readFx(): FxRecord {
 export function rememberFx(save: SaveData, today: string): void {
   try {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(FX_KEY, JSON.stringify(toFxRecord(save, today)));
+    window.sessionStorage.setItem(FX_KEY, JSON.stringify(toFxRecord(save, today)));
   } catch {
     /* ignore */
   }

@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { InstallAppProvider } from "@/components/InstallApp";
 import { boot } from "@/lib/sfx";
+import { initializeAccount } from "@/lib/account";
 
 import appCss from "../styles.css?url";
 
@@ -137,6 +138,7 @@ function RootComponent() {
 
   // Audio unlockers, the [data-sfx] click delegate and the visibility suspend; boot() returns its disposer.
   useEffect(() => boot(), []);
+  useEffect(() => initializeAccount(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

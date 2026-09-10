@@ -4,6 +4,8 @@ Do you know the JLPTs required Kanji lists? Do you know the best way / method to
 
 ## Development
 
+The project includes an Express/TypeScript API with PostgreSQL on Neon, Google sign-in, and account progress saving. Guests can play freely with temporary progress in their current tab. See the [backend setup and deployment guide](backend/README.md) to configure Google OAuth and Neon, migrate the database, and start both applications.
+
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh

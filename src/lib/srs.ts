@@ -31,7 +31,8 @@ export type SaveData = {
   selectedLevel: JLPTLevel;
 };
 
-const KEY = "kanji-dash-v1";
+const LEGACY_KEY = "kanji-dash-v1";
+export const GUEST_SAVE_KEY = "kanji-dash-guest-v1";
 
 const emptySave = (): SaveData => ({
   curriculumVersion: CURRICULUM_VERSION,
@@ -132,6 +133,7 @@ export function normalizeSave(value: unknown): SaveData {
 
 let state: SaveData = emptySave();
 let hydrated = false;
+let persistAccount: ((save: SaveData) => void) | undefined;
 const listeners = new Set<() => void>();
 let timeUpdate: number | undefined;
 
@@ -164,27 +166,49 @@ function load() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.sessionStorage.getItem(GUEST_SAVE_KEY);
     if (raw) state = normalizeSave(JSON.parse(raw));
   } catch {
     state = emptySave();
   }
-  window.addEventListener?.("storage", (event) => {
-    if ((event.key !== KEY && event.key !== null) || event.storageArea !== window.localStorage) return;
-    try {
-      state = event.newValue ? normalizeSave(JSON.parse(event.newValue)) : emptySave();
-      notify();
-    } catch {
-      // An invalid external write cannot replace the current valid snapshot.
-    }
-  });
 }
 
 function save() {
+  if (persistAccount) {
+    persistAccount(state);
+    return;
+  }
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(GUEST_SAVE_KEY, JSON.stringify(state));
   } catch {
     /* ignore */
+  }
+}
+
+/** Account transport owns persistence only after the server identifies its user. */
+export function setProgressPersistence(writer?: (save: SaveData) => void) {
+  persistAccount = writer;
+}
+
+/** Loading a cloud snapshot is not a gameplay mutation and must not enqueue a write. */
+export function replaceSave(value: unknown) {
+  load();
+  state = normalizeSave(value);
+  notify();
+}
+
+export function resetGuestSave() {
+  persistAccount = undefined;
+  try { window.sessionStorage.removeItem(GUEST_SAVE_KEY); } catch { /* Private browsing may deny storage. */ }
+  replaceSave(emptySave());
+}
+
+export function readLegacySave(): SaveData | null {
+  try {
+    const raw = window.localStorage.getItem(LEGACY_KEY);
+    return raw ? normalizeSave(JSON.parse(raw)) : null;
+  } catch {
+    return null;
   }
 }
 

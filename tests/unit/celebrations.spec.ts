@@ -70,13 +70,18 @@ test("toFxRecord remembers the streak's own day so a pre-run Home visit cannot h
   expect(toFxRecord(save({ clearedChapters: [3, 1, 3] }), TODAY).seenSeals).toEqual([1, 3]);
 });
 
-test("rememberFx round-trips through normalizeFx", () => {
+test("rememberFx round-trips through tab storage without reading or writing durable progress", () => {
   const store = new Map<string, string>();
+  const durable = new Map([[FX_KEY, JSON.stringify({ seenSeals: [55], lastCoins: 999, lastStreakDay: TODAY })]]);
   const g = globalThis as { window?: unknown };
   g.window = {
-    localStorage: {
+    sessionStorage: {
       getItem: (key: string) => store.get(key) ?? null,
       setItem: (key: string, value: string) => { store.set(key, String(value)); },
+    },
+    localStorage: {
+      getItem: (key: string) => durable.get(key) ?? null,
+      setItem: (key: string, value: string) => { durable.set(key, String(value)); },
     },
   };
   try {
@@ -88,6 +93,7 @@ test("rememberFx round-trips through normalizeFx", () => {
     expect(stored).toEqual(toFxRecord(s, TODAY));
     expect(readFx()).toEqual({ seenSeals: [1, 2], lastCoins: 77, lastStreakDay: TODAY });
     expect(diffFx(readFx(), s, TODAY)).toEqual({ newSeals: [], coinsChanged: false, streakDayChanged: false });
+    expect([...durable]).toEqual([[FX_KEY, JSON.stringify({ seenSeals: [55], lastCoins: 999, lastStreakDay: TODAY })]]);
 
     store.set(FX_KEY, "{not json");
     expect(readFx()).toEqual(empty);

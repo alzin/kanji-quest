@@ -17,6 +17,9 @@ dist-ssr
 playwright-report/
 test-results/
 *.local
+.env
+.env.*
+!.env.example
 
 # Wrangler / Cloudflare
 .wrangler/
