@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { allKanji, kanjiByChar } from "../../src/data";
+import { allKanji, kanjiByChar, REGIONS } from "../../src/data";
 import type { Kanji, Vocab } from "../../src/data/n5/types";
 import {
   isHiragana, phoneticVariants, readingList, toHiragana, voicingVariants,
@@ -106,7 +106,7 @@ test("word segments rebuild the word, mark the studied kanji and gloss only hard
       const source = vocab.f[i]!;
       const harder = [...segment.t].some((character) => {
         const other = kanjiByChar.get(character);
-        return KANJI.test(character) && (!other || other.ch > kanji.ch);
+        return KANJI.test(character) && (!other || REGIONS.findIndex((r) => r.id === other.ch) > REGIONS.findIndex((r) => r.id === kanji.ch));
       });
       if (segment.furigana !== undefined) {
         expect(segment.furigana, `${where}: ${segment.t}`).toBe(source.r);

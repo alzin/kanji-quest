@@ -1,4 +1,4 @@
-import { allKanji, kanjiByChar, kanjiOfChapter, kanjiOfLevel, levelOfChapter, LEVEL_CHAPTERS, CHAPTER_COUNT, type JLPTLevel } from "@/data";
+import { allKanji, kanjiByChar, kanjiOfChapter, kanjiOfLevel, levelOfChapter, LEVEL_CHAPTERS, CHAPTER_COUNT, CURRICULUM_VERSION, REGIONS, LEGACY_CHAPTERS, type JLPTLevel } from "@/data";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import {
   meaningChoices, readingChoices, vocabKana, wordSegments,
@@ -20,6 +20,8 @@ export type CardProgress = {
 };
 
 export type SaveData = {
+  curriculumVersion: number;
+  unlockedChapters: number[]; // access retained across migration and later review mistakes
   progress: Record<string, CardProgress>;
   streak: { count: number; last: string }; // last = YYYY-MM-DD
   coins: number;
@@ -32,6 +34,8 @@ export type SaveData = {
 const KEY = "kanji-dash-v1";
 
 const emptySave = (): SaveData => ({
+  curriculumVersion: CURRICULUM_VERSION,
+  unlockedChapters: [],
   progress: {},
   streak: { count: 0, last: "" },
   coins: 0,
@@ -59,7 +63,13 @@ function count(value: unknown): number {
 }
 
 function validChapter(ch: number): boolean {
-  return Number.isInteger(ch) && ch >= 1 && ch <= CHAPTER_COUNT;
+  return levelOfChapter(ch) !== undefined;
+}
+
+function chapterIds(value: unknown, valid = validChapter): number[] {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((ch): ch is number => typeof ch === "number" && valid(ch)))].sort((a, b) => a - b)
+    : [];
 }
 
 // Validate the persistence boundary so old/partial saves cannot poison arithmetic.
@@ -78,16 +88,34 @@ export function normalizeSave(value: unknown): SaveData {
       wrong: count(p["wrong"]),
     };
   }
-  const clearedChapters = Array.isArray(raw["clearedChapters"])
-    ? [...new Set(raw["clearedChapters"].filter((ch): ch is number => typeof ch === "number" && validChapter(ch)))].sort((a, b) => a - b)
-    // The old high-water mark only ever described the six N5 gates.
-    : LEVEL_CHAPTERS.N5.slice(0, count(raw["gatesCleared"]));
+  const currentCurriculum = raw["curriculumVersion"] === CURRICULUM_VERSION;
+  const legacySeals = Array.isArray(raw["clearedChapters"])
+    ? chapterIds(raw["clearedChapters"], (ch) => LEGACY_CHAPTERS.includes(ch))
+    // A legacy high-water mark can only describe the original six N5 gates.
+    : LEGACY_CHAPTERS.slice(0, Math.min(6, count(raw["gatesCleared"])));
+  const clearedChapters = currentCurriculum
+    ? chapterIds(raw["clearedChapters"])
+    : REGIONS.filter((r) => legacySeals.includes(r.legacyChapter)).map((r) => r.id).sort((a, b) => a - b);
+  const unlockedChapters = currentCurriculum ? chapterIds(raw["unlockedChapters"]) : [];
+  if (!currentCurriculum && (Object.keys(progress).length || legacySeals.length || count(raw["runsCompleted"]))) {
+    const n4Open = LEGACY_CHAPTERS.slice(0, 6).every((ch) => legacySeals.includes(ch));
+    for (const ch of LEGACY_CHAPTERS) {
+      if (ch > 6 && !n4Open) continue;
+      const previous = REGIONS.filter((r) => r.legacyChapter === ch - 1).flatMap((r) => [...r.chars]);
+      const points = previous.reduce((sum, c) => sum + (progress[c]?.mastery ?? 0), 0);
+      if (ch === 1 || ch === 7 || legacySeals.includes(ch) || points * 100 >= previous.length * 3 * 55) {
+        unlockedChapters.push(...REGIONS.filter((r) => r.legacyChapter === ch).map((r) => r.id));
+      }
+    }
+  }
   const streak = record(raw["streak"]);
   const last = typeof streak["last"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(streak["last"])
     && Number.isFinite(Date.parse(`${streak["last"]}T12:00:00Z`))
     && new Date(`${streak["last"]}T12:00:00Z`).toISOString().slice(0, 10) === streak["last"]
     ? streak["last"] : "";
-  return {
+  const normalized: SaveData = {
+    curriculumVersion: CURRICULUM_VERSION,
+    unlockedChapters,
     progress,
     streak: { count: last ? count(streak["count"]) : 0, last },
     coins: count(raw["coins"]),
@@ -96,6 +124,8 @@ export function normalizeSave(value: unknown): SaveData {
     clearedChapters,
     selectedLevel: raw["selectedLevel"] === "N4" ? "N4" : "N5",
   };
+  retainChapterAccess(normalized);
+  return normalized;
 }
 
 // ---------- Store ----------
@@ -198,8 +228,10 @@ export function useSave(): SaveData {
 function mutate(fn: (s: SaveData) => void) {
   load();
   // useSyncExternalStore requires a new snapshot identity for every change.
-  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, clearedChapters: [...state.clearedChapters] };
+  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, clearedChapters: [...state.clearedChapters], unlockedChapters: [...state.unlockedChapters] };
+  retainChapterAccess(next);
   fn(next);
+  retainChapterAccess(next);
   state = next;
   emit();
 }
@@ -228,10 +260,19 @@ export function isChapterUnlocked(s: SaveData, ch: number): boolean {
   if (!validChapter(ch)) return false;
   const level = levelOfChapter(ch)!;
   if (!isLevelUnlocked(s, level)) return false;
-  if (ch === LEVEL_CHAPTERS[level][0]) return true;
-  const previous = kanjiOfChapter(ch - 1);
+  const road = LEVEL_CHAPTERS[level];
+  if (ch === road[0] || isGateCleared(s, ch) || s.unlockedChapters.includes(ch)) return true;
+  const previousId = road[road.indexOf(ch) - 1]!;
+  if (isGateCleared(s, previousId)) return true;
+  const previous = kanjiOfChapter(previousId);
   const points = previous.reduce((sum, k) => sum + getCard(s, k.c).mastery, 0);
   return points * 100 >= previous.length * 3 * 55;
+}
+
+function retainChapterAccess(s: SaveData) {
+  s.unlockedChapters = [...new Set([...s.unlockedChapters, ...REGIONS
+    .filter((r) => r.id !== LEVEL_CHAPTERS[r.level][0] && isChapterUnlocked(s, r.id))
+    .map((r) => r.id)])].sort((a, b) => a - b);
 }
 
 export function isGateCleared(s: SaveData, ch: number): boolean {
@@ -267,7 +308,12 @@ export function n5MasteryPct(s: SaveData): number {
 }
 
 export function newKanji(s: SaveData): Kanji[] {
-  return kanjiOfLevel(learningLevel(s)).filter((k) => getCard(s, k.c).mastery === 0 && isChapterUnlocked(s, k.ch)).slice(0, NEW_PER_RUN);
+  for (const ch of LEVEL_CHAPTERS[learningLevel(s)]) {
+    if (!isChapterUnlocked(s, ch)) continue;
+    const fresh = kanjiOfChapter(ch).filter((k) => getCard(s, k.c).mastery === 0);
+    if (fresh.length) return fresh.slice(0, NEW_PER_RUN);
+  }
+  return [];
 }
 
 export function dueCount(s: SaveData, now = Date.now()): number {
@@ -354,7 +400,7 @@ export function buildQuestion(
 // ---------- Run queue ----------
 
 export const NEW_PER_RUN = 5;
-export const MAX_REVIEWS = 15;
+export const MAX_REVIEWS = 5;
 
 export function buildRunQueue(s: SaveData, now = Date.now()): Question[] {
   const seen = allKanji.filter((k) => {
@@ -371,7 +417,7 @@ export function buildRunQueue(s: SaveData, now = Date.now()): Question[] {
 }
 
 export function buildGateQuiz(ch: number): Question[] {
-  return shuffle(kanjiOfChapter(ch)).slice(0, 12).map((k) => buildQuestion(k));
+  return shuffle(kanjiOfChapter(ch)).map((k) => buildQuestion(k));
 }
 
 // ---------- Grading ----------
@@ -434,7 +480,7 @@ export function finishRun(earned: number) {
 export function clearGate(ch: number): number {
   load();
   if (!validChapter(ch) || isGateCleared(state, ch)) return 0;
-  if (levelOfChapter(ch) === "N4" && !isChapterUnlocked(state, ch)) return 0;
+  if (!isChapterUnlocked(state, ch)) return 0;
   const earned = Math.min(50, Number.MAX_SAFE_INTEGER - state.coins);
   mutate((s) => {
     s.clearedChapters = [...s.clearedChapters, ch].sort((a, b) => a - b);

@@ -99,11 +99,11 @@ test("opens every game screen offline after visiting only home", async ({ page, 
       await expect(page.getByRole("heading", { name: heading!, exact: true })).toBeVisible();
     }
 
-    await page.goto(`${origin}/run?gate=3`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${origin}/run?gate=1`, { waitUntil: "domcontentloaded" });
     await completePreparation(page, { advanceClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
-    await expect(page.getByText("Town of People — Checkpoint", { exact: true })).toBeVisible();
-    await expect(page).toHaveURL(/\/run\/?\?gate=3$/);
+    await expect(page.getByText("The First Five — Checkpoint", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/run\/?\?gate=1$/);
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
     await expect(page.getByRole("button", { name: "Resume game", exact: true })).toHaveAttribute("aria-pressed", "true");
 
@@ -126,7 +126,7 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await page.goto(`${origin}/run?gate=7`, { waitUntil: "domcontentloaded" });
     await completePreparation(page, { advanceClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
-    await expect(page.getByText("Neighborhood of Connections — Checkpoint", { exact: true })).toBeVisible();
+    await expect(page.getByText("Me & My Neighborhood — Checkpoint", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await stopServer();
@@ -163,12 +163,12 @@ test("shows platform installation help and handles the Android prompt", async ({
 });
 
 test("opens a checkpoint directly before any service worker is installed", async ({ page }) => {
-  const response = await page.goto("run?gate=3", { waitUntil: "domcontentloaded" });
+  const response = await page.goto("run?gate=1", { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200);
   await completePreparation(page);
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
-  await expect(page.getByText("Town of People — Checkpoint", { exact: true })).toBeVisible();
-  await expect(page).toHaveURL(/\/run\/?\?gate=3$/);
+  await expect(page.getByText("The First Five — Checkpoint", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/run\/?\?gate=1$/);
   await page.getByRole("button", { name: "Pause game", exact: true }).click();
 });
 

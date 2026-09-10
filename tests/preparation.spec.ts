@@ -57,8 +57,8 @@ test("requires every word and both recall checks without grading preparation", a
   await page.clock.fastForward(20_000);
   await expect(page.getByRole("heading", { name: "Run complete!", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Run again", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Learn before you run" })).toBeVisible();
-  await expect(list.getByRole("status")).toHaveText("1 / 5 words viewed");
+  await expect(page.getByRole("heading", { name: "Ready for your checkpoint" })).toBeVisible();
+  // The region's five words are scheduled; its short checkpoint is available on the map.
 });
 
 test("reload and checkpoint links always enter preparation", async ({ page }) => {
@@ -67,6 +67,6 @@ test("reload and checkpoint links always enter preparation", async ({ page }) =>
   await page.getByRole("region", { name: "Words in this run" }).getByRole("button").last().click();
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Words in this run" }).getByRole("status")).toHaveText("1 / 12 words viewed");
+  await expect(page.getByRole("region", { name: "Words in this run" }).getByRole("status")).toHaveText("1 / 5 words viewed");
   await expect(page.getByLabel("Kanji runner game")).toHaveCount(0);
 });

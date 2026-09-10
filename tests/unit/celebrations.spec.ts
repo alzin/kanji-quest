@@ -15,6 +15,8 @@ function save(over: Partial<SaveData> = {}): SaveData {
     gatesCleared: 2,
     clearedChapters: [1, 2],
     selectedLevel: "N5",
+    curriculumVersion: 2,
+    unlockedChapters: [],
     ...over,
   };
 }

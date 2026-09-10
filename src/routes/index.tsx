@@ -4,10 +4,10 @@ import { Nav } from "@/components/Nav";
 import { InstallApp } from "@/components/InstallApp";
 import { SoundToggle } from "@/components/SoundToggle";
 import { LevelSelector } from "@/components/LevelSelector";
-import { useSave, dueCount, getSnapshot, learningLevel, levelMasteryPct, newKanji, selectLevel, streakCount } from "@/lib/srs";
+import { useSave, dueCount, getSnapshot, learningLevel, levelMasteryPct, newKanji, selectLevel, streakCount, MAX_REVIEWS, isChapterUnlocked, isGateCleared } from "@/lib/srs";
 import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
 import { isAudioRunning, play } from "@/lib/sfx";
-import { kanjiOfLevel } from "@/data";
+import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfLevel, kanjiOfChapter } from "@/data";
 import { AppIcon } from "@/components/AppIcon";
 
 export const Route = createFileRoute("/")({
@@ -42,6 +42,7 @@ function Home() {
   const pct = levelMasteryPct(save, level);
   const streak = streakCount(save);
   const fresh = newKanji(save).length;
+  const checkpoint = LEVEL_CHAPTERS[level].find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
   const mastered = allKanji.filter((k) => save.progress[k.c]?.mastery === 3).length;
 
   const R = 42;
@@ -114,12 +115,13 @@ function Home() {
             <p className="mt-2 text-sm text-muted-foreground">
               {due > 0
                 ? fresh > 0
-                  ? `Prepare words for your due reviews and up to ${fresh} new kanji, then test your recall in a run.`
-                  : "Prepare the words for your due reviews, then put them into practice in a run."
+                  ? `A short set: ${Math.min(due, MAX_REVIEWS)} due reviews and ${fresh} new kanji from one region.`
+                  : `Review ${Math.min(due, MAX_REVIEWS)} words in this short run. Any remaining reviews will wait for your next run.`
                 : fresh > 0
                   ? `You're up to date on reviews. Learn words using ${fresh} fresh kanji before your next run.`
                   : "No new kanji or reviews are ready right now. Visit the dojo for extra practice."}
             </p>
+            {checkpoint !== undefined && <Link to="/run" search={{ gate: checkpoint }} className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-primary">Earn your next seal: {CHAPTER_NAMES[checkpoint]!.name} · {kanjiOfChapter(checkpoint).length} words →</Link>}
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-xs sm:text-sm">
               <span className="flex items-center gap-1.5 font-bold">
                 <AppIcon name="flame" className={`h-4 w-4 text-primary${streak >= 1 ? " flicker" : ""}${pops.streak ? " ignite" : ""}`} />

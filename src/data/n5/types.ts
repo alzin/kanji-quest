@@ -16,6 +16,6 @@ export type Kanji = {
   rad: string; // main radical
   mn: string; // mnemonic
   strokes: number;
-  ch: number; // permanent region ID: N5 1–6, N4 7–12
+  ch: number; // runtime region ID from regions.ts; source cards retain their legacy theme ID
   vocab: Vocab[]; // 2 words using this kanji
 };

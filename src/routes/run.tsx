@@ -10,15 +10,15 @@ import { WordAudio } from "@/components/WordAudio";
 import { play } from "@/lib/sfx";
 import {
   buildRunQueue, buildGateQuiz, grade, finishRun, clearGate,
-  getCard, getSnapshot, isChapterUnlocked, learningLevel, selectLevel, streakCount, vocabKana, type Question,
+  getCard, getSnapshot, isChapterUnlocked, isGateCleared, learningLevel, selectLevel, streakCount, vocabKana, type Question,
 } from "@/lib/srs";
-import { CHAPTER_NAMES, CHAPTER_COUNT, levelOfChapter } from "@/data";
+import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter, levelOfChapter, nextChapter } from "@/data";
 
 export const Route = createFileRoute("/run")({
   validateSearch: (s: Record<string, unknown>) => {
     const g = s["gate"];
     const n = typeof g === "number" ? g : typeof g === "string" && /^\d+$/.test(g) ? parseInt(g) : NaN;
-    return { gate: Number.isInteger(n) && n >= 1 && n <= CHAPTER_COUNT ? n : undefined };
+    return { gate: levelOfChapter(n) ? n : undefined };
   },
   head: () => ({
     meta: [
@@ -47,7 +47,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
   const { questions, level, blockedGate } = useMemo(() => {
     void session;
     const s = getSnapshot();
-    const blockedGate = gate !== undefined && levelOfChapter(gate) === "N4" && !isChapterUnlocked(s, gate);
+    const blockedGate = gate !== undefined && !isChapterUnlocked(s, gate);
     return {
       level: learningLevel(s),
       blockedGate,
@@ -68,6 +68,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
   };
 
   const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : level === "N4" ? "Daily run · N4" : "Daily run";
+  const pendingCheckpoint = !gate ? LEVEL_CHAPTERS[level].find((ch) => isChapterUnlocked(getSnapshot(), ch) && !isGateCleared(getSnapshot(), ch)) : undefined;
 
   // One ceremony per results object: the hanko thump for 合格, an open question for 再挑戦,
   // the rising koto phrase for 完了 and a quiet page turn when the hearts ran out.
@@ -80,11 +81,12 @@ function RunSession({ gate }: { gate: number | undefined }) {
   }, [results, gate, questions]);
 
   if (blockedGate && !results) {
+    const gateLevel = levelOfChapter(gate!)!;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 text-center">
-        <h1 className="font-serif text-2xl font-bold">This N4 checkpoint is locked</h1>
-        <p className="mt-3 max-w-sm text-muted-foreground">Earn all six N5 seals first, then reach 55% progress in the previous N4 region to continue.</p>
-        <Link to="/map" onClick={() => selectLevel("N4")} className="mt-6 min-h-11 rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">View the N4 road</Link>
+        <h1 className="font-serif text-2xl font-bold">This {gateLevel} checkpoint is locked</h1>
+        <p className="mt-3 max-w-sm text-muted-foreground">{gateLevel === "N4" ? `Earn all ${LEVEL_CHAPTERS.N5.length} N5 seals first. ` : ""}Clear the previous checkpoint or reach 55% mastery progress in that region to continue.</p>
+        <Link to="/map" onClick={() => selectLevel(gateLevel)} className="mt-6 min-h-11 rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">View the {gateLevel} road</Link>
       </div>
     );
   }
@@ -93,10 +95,11 @@ function RunSession({ gate }: { gate: number | undefined }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 text-center">
         <div className="font-serif text-6xl font-bold text-primary">完</div>
-        <h1 className="mt-4 font-serif text-2xl font-bold">Nothing to run right now</h1>
+        <h1 className="mt-4 font-serif text-2xl font-bold">{pendingCheckpoint !== undefined ? "Ready for your checkpoint" : "Nothing to run right now"}</h1>
         <p className="mt-2 max-w-sm text-muted-foreground">
-          There are no new kanji or reviews due in your unlocked regions. Come back later, or visit the dojo to practice strokes.
+          {pendingCheckpoint !== undefined ? `You’ve met this region’s words. Prepare its ${kanjiOfChapter(pendingCheckpoint).length}-word checkpoint to earn a seal and open the next region.` : "There are no new kanji or reviews due in your unlocked regions. Come back later, or visit the dojo to practice strokes."}
         </p>
+        {pendingCheckpoint !== undefined && <Link to="/run" search={{ gate: pendingCheckpoint }} className="mt-5 rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">Prepare checkpoint</Link>}
         <div className="mt-6 flex gap-3">
           <Link to="/" className="rounded-lg bg-primary px-5 py-2.5 font-bold text-primary-foreground">Home</Link>
           <Link to="/practice" className="rounded-lg border border-border px-5 py-2.5 font-bold">Stroke dojo</Link>
@@ -108,6 +111,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
   if (!prepared) return <RunPreparation key={session} questions={questions} title={title} onStart={() => setPrepared(true)} />;
 
   const pass = results ? checkpointPassed(results.correct, questions.length) : false;
+  const next = gate && pass ? nextChapter(gate) : undefined;
   const attempted = results ? results.correct + results.wrong : 0;
   const unattempted = results ? questions.length - attempted : 0;
   const accuracy = results && attempted > 0 ? Math.round(results.correct / attempted * 100) : 0;
@@ -205,6 +209,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
               </p>
             )}
             {gate && <p className="mt-1 text-xs text-muted-foreground">Pass: at least {Math.ceil(questions.length * 0.7)} correct out of {questions.length}.</p>}
+            {next !== undefined && <p className="mt-2 text-sm font-bold text-primary">Next region open: {CHAPTER_NAMES[next]!.name} · {kanjiOfChapter(next).length} kanji</p>}
             <div className="mt-5 grid grid-cols-3 gap-1.5 text-center sm:mt-6 sm:gap-3">
               <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(0)}>
                 <div className="stamp-pop font-serif text-xl font-bold text-[#2e5238] sm:text-2xl" style={tileDelay(0)}>{results.correct}</div>
@@ -237,6 +242,8 @@ function RunSession({ gate }: { gate: number | undefined }) {
               </div>
             </div>
             <div className="results-actions mt-6 flex flex-col gap-2">
+              {next !== undefined && <Link to="/run" search={{ gate: next }} data-sfx="tap" className="breathe-ring rounded-lg bg-primary py-3 text-center font-serif font-bold text-primary-foreground">Prepare next region</Link>}
+              {pendingCheckpoint !== undefined && <Link to="/run" search={{ gate: pendingCheckpoint }} data-sfx="tap" className="rounded-lg bg-accent py-3 text-center font-serif font-bold text-accent-foreground">Earn a seal · Prepare checkpoint</Link>}
               {!gate && (
                 <button
                   onClick={restart}

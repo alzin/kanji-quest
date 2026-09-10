@@ -164,10 +164,10 @@ test("mute persists under its own key and creates no context", async ({ page }) 
   await expect(page.getByRole("button", { name: "Unmute sounds", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect(await ctxCount(page)).toBe(0);
 
-  // A checkpoint run lasts well past 20 s, so the HUD toggle is still on screen afterwards.
-  await startRun(page, "run?gate=3");
+  // Check the HUD before this short checkpoint finishes.
+  await startRun(page, "run?gate=1");
   await page.keyboard.press("ArrowUp");
-  await page.clock.fastForward(20_000);
+  await page.clock.fastForward(1_000);
   expect(await readLog(page)).toEqual([]);
   expect(await ctxCount(page)).toBe(0);
 
