@@ -30,7 +30,7 @@ test("preparation speaks exact kana, replays, and respects saved mute", async ({
   await page.getByRole("button", { name: "Mute Japanese voice", exact: true }).click();
   expect(await page.evaluate(() => (window as any).__speechCancels)).toBeGreaterThan(cancels);
   await expect(page.getByRole("button", { name: "Mute sounds", exact: true })).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("button", { name: "I’ve studied this word", exact: true }).click();
+  await page.getByRole("region", { name: "Words in this run" }).getByRole("button").nth(1).click();
   expect(await page.evaluate(() => (window as any).__speechLog.length)).toBe(count + 1);
   await page.reload();
   await expect(page.getByRole("button", { name: "Replay Japanese pronunciation" })).toBeDisabled();
@@ -40,7 +40,7 @@ test("preparation speaks exact kana, replays, and respects saved mute", async ({
   await page.getByRole("button", { name: "Unmute Japanese voice", exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__speechLog.length)).toBe(1);
   await expect(page.getByRole("button", { name: "Unmute sounds", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "I’ve studied this word", exact: true }).click();
+  await page.getByRole("region", { name: "Words in this run" }).getByRole("button").nth(1).click();
   await expect.poll(() => page.evaluate(() => (window as any).__speechLog.length)).toBe(2);
   await page.reload();
   await expect(page.getByRole("button", { name: "Replay Japanese pronunciation" })).toBeEnabled();
