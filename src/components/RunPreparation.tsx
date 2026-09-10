@@ -116,13 +116,12 @@ export function RunPreparation({ questions, title, onStart }: {
           <h2 className="mt-5 text-center font-serif text-4xl font-bold">{check.vocab.w}</h2>
           <p className="mt-4 text-center font-bold">{check.sub}</p>
           <div className="mt-5 grid gap-2">
-            {check.choices.map((choice) => <button key={choice} type="button" disabled={feedback !== null} className={secondary}
+            {check.choices.map((choice) => <button key={choice} type="button" disabled={feedback === "correct"} className={secondary}
               onClick={() => setFeedback(choice === check.answer ? "correct" : "wrong")}>{choice}</button>)}
           </div>
           {feedback && <div role="status" className="mt-4 rounded-lg bg-secondary p-3 text-sm leading-relaxed">
             {feedback === "correct" ? "Correct." : "Let’s learn that once more."} <b>{check.vocab.w}</b> — {vocabKana(check.vocab)} — {check.vocab.m}
           </div>}
-          {feedback === "wrong" && <button type="button" className={`${primary} mt-4 w-full`} onClick={() => setFeedback(null)}>Try this word again</button>}
           <div className="mt-6 border-t border-border pt-2">
             <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
               onClick={() => { setStage("learn"); selectWord(0); }}>
