@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { completePreparation } from "./helpers/preparation";
+import { silenceSavePrompt } from "./helpers/savePrompt";
+
+test.beforeEach(({ page }) => silenceSavePrompt(page));
 
 test("short checkpoints open the next focused set immediately and survive reload", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });

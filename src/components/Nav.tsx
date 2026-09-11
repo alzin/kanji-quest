@@ -46,9 +46,9 @@ export function Nav() {
             <AppIcon name="coin" className="h-4 w-4 text-gold" />
             {Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(save.coins)}
           </span>
+          <AccountStatus />
         </div>
       </div>
-      <AccountStatus />
     </header>
   );
 }

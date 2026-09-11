@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { kanjiOfLevel, kanjiOfChapter, LEVEL_CHAPTERS } from "../src/data";
 import { completePreparation, studyWords } from "./helpers/preparation";
+import { silenceSavePrompt } from "./helpers/savePrompt";
+
+test.beforeEach(({ page }) => silenceSavePrompt(page));
 
 async function unlockN4(page: Page, reviews = false) {
   await page.addInitScript(({ reviews }) => {
@@ -17,7 +20,7 @@ async function unlockN4(page: Page, reviews = false) {
 test("N4 previews explain the unlock and direct checkpoint links cannot bypass it", async ({ page }) => {
   await page.goto("map", { waitUntil: "domcontentloaded" });
   // Wait for hydration before clicking an SSR-rendered level button.
-  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Save your progress" })).toBeEnabled();
   await page.getByRole("button", { name: /^N4 / }).click();
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(0);

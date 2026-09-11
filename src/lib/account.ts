@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { GUEST_SAVE_KEY, getSnapshot, normalizeSave, readLegacySave, replaceSave, resetGuestSave, setProgressPersistence, type SaveData } from "./srs";
+import { GUEST_SAVE_KEY, getSnapshot, normalizeSave, readLegacySave, replaceSave, resetGuestSave, setProgressPersistence, subscribe, type SaveData } from "./srs";
 
 export type AccountUser = { id: string; email: string; name: string; picture: string | null };
 type CloudSave = { save: SaveData | null; version: number };
@@ -12,10 +12,20 @@ type AccountState = {
   legacyAvailable: boolean;
   guestAvailable: boolean;
   conflict: { source: Conflict["source"]; cloudRuns: number; deviceRuns: number } | null;
+  /** The save dialog is the only place account actions appear; nothing else nags the player. */
+  prompt: boolean;
 };
 
 const API = (import.meta.env["VITE_API_URL"] || "/api").replace(/\/$/, "");
-const initial: AccountState = { user: null, phase: "checking", message: "Checking cloud saves…", legacyAvailable: false, guestAvailable: false, conflict: null };
+const initial: AccountState = { user: null, phase: "checking", message: "Checking cloud saves…", legacyAvailable: false, guestAvailable: false, conflict: null, prompt: false };
+
+/** Guests are asked to save after this many finished runs or checkpoints, then every PROMPT_EVERY more. */
+const PROMPT_AFTER = 1;
+const PROMPT_EVERY = 3;
+const PROMPT_KEY = "kanji-dash-save-prompt-v1";
+const RESTORE_KEY = "kanji-dash-restore-prompt-v1";
+/** The ordinary guest state; any other guest message is news worth showing in the dialog. */
+export const GUEST_MESSAGE = "Progress lasts in this tab. Sign in with Google to save across devices.";
 let snapshot = initial;
 const listeners = new Set<() => void>();
 let started = false;
@@ -29,6 +39,7 @@ let revision = 0;
 let generation = 0;
 let timer: number | undefined;
 let conflict: Conflict | null = null;
+let seenAchievements = -1;
 
 function update(patch: Partial<AccountState>) {
   snapshot = { ...snapshot, ...patch };
@@ -41,6 +52,54 @@ export function useAccount() {
 
 function hasProgress(save: SaveData) {
   return save.runsCompleted > 0 || save.coins > 0 || Object.keys(save.progress).length > 0 || save.clearedChapters.length > 0;
+}
+
+/** Finished runs and cleared checkpoints: the progress a guest would actually mind losing. */
+function achievements(save: SaveData) {
+  return save.runsCompleted + save.gatesCleared;
+}
+
+function readPromptThreshold() {
+  try {
+    const raw = Number(window.sessionStorage.getItem(PROMPT_KEY));
+    return Number.isSafeInteger(raw) && raw > PROMPT_AFTER ? raw : PROMPT_AFTER;
+  } catch { return PROMPT_AFTER; }
+}
+
+function snoozePrompt() {
+  try { window.sessionStorage.setItem(PROMPT_KEY, String(achievements(getSnapshot()) + PROMPT_EVERY)); } catch { /* The tab simply asks again next milestone. */ }
+}
+
+/** Ask the moment a guest earns something new, then only after more milestones. */
+function considerPrompt() {
+  const earned = achievements(getSnapshot());
+  const previous = seenAchievements;
+  seenAchievements = earned;
+  // Only when signing in is actually possible: never while checking, loading or offline.
+  if (snapshot.user || snapshot.prompt || snapshot.phase !== "guest") return;
+  // Nothing new happened, so nothing interrupts: the offer follows an achievement, not a visit.
+  if (previous < 0 || earned <= previous || earned < readPromptThreshold()) return;
+  update({ prompt: true });
+}
+
+/** A signed-in player is offered an earlier save once per tab, never on repeat. */
+function considerRestorePrompt() {
+  if (snapshot.prompt || !snapshot.user || snapshot.phase !== "synced") return;
+  if (!snapshot.legacyAvailable && !snapshot.guestAvailable) return;
+  try {
+    if (window.sessionStorage.getItem(RESTORE_KEY)) return;
+    window.sessionStorage.setItem(RESTORE_KEY, "asked");
+  } catch { /* Without storage the offer simply reappears on reload. */ }
+  update({ prompt: true });
+}
+
+export function openAccountPrompt() {
+  update({ prompt: true });
+}
+
+export function dismissAccountPrompt() {
+  if (!snapshot.user) snoozePrompt();
+  update({ prompt: false });
 }
 
 const cacheKey = (id: string) => `kanji-dash-account-v1:${encodeURIComponent(id)}`;
@@ -85,7 +144,7 @@ function normalizeCloud(value: CloudSave): CloudSave {
 function presentConflict(source: Conflict["source"], cloud: CloudSave) {
   conflict = { source, cloud };
   cache();
-  update({ phase: "conflict", message: "Choose which progress to keep before cloud saving resumes.", conflict: {
+  update({ phase: "conflict", message: "Choose which progress to keep before cloud saving resumes.", prompt: true, conflict: {
     source, cloudRuns: cloud.save?.runsCompleted ?? 0, deviceRuns: getSnapshot().runsCompleted,
   } });
 }
@@ -107,7 +166,7 @@ function onProgress() {
   }
 }
 
-function becomeGuest(message = "Progress lasts in this tab. Sign in with Google to save across devices.") {
+function becomeGuest(message = GUEST_MESSAGE, notify = false) {
   generation += 1;
   window.clearTimeout(timer);
   owner = null;
@@ -115,7 +174,7 @@ function becomeGuest(message = "Progress lasts in this tab. Sign in with Google 
   dirty = false;
   conflict = null;
   resetGuestSave();
-  update({ user: null, phase: "guest", message, conflict: null, guestAvailable: false });
+  update({ user: null, phase: "guest", message, conflict: null, guestAvailable: false, prompt: notify });
 }
 
 async function flush() {
@@ -135,7 +194,10 @@ async function flush() {
     version = result.version;
     dirty = revision !== sentRevision;
     cache();
-    if (!dirty) update({ phase: "synced", message: "Progress saved to your account." });
+    if (!dirty) {
+      update({ phase: "synced", message: "Progress saved to your account." });
+      considerRestorePrompt();
+    }
   } catch (error) {
     if (generation !== currentGeneration || owner !== id) return;
     if (error instanceof ApiError && error.status === 409) {
@@ -144,7 +206,7 @@ async function flush() {
         presentConflict("device", normalizeCloud(body.current));
       } catch { update({ phase: "offline", message: "Cloud save unavailable. Your changes are waiting on this device." }); }
     } else if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-      becomeGuest("Your session ended. Sign in again to recover this account’s pending progress.");
+      becomeGuest("Your session ended. Sign in again to recover this account’s pending progress.", true);
     } else {
       update({ phase: "offline", message: "Not saved to the cloud. Your changes are waiting on this device. Retry when connected." });
     }
@@ -164,8 +226,8 @@ export async function refreshAccount() {
     const session = await request<{ user: AccountUser | null; csrfToken?: string }>("/auth/session");
     if (generation !== currentGeneration) return;
     if (!session.user) {
-      if (owner) becomeGuest("Your session ended. Sign in again to recover your account’s progress.");
-      else update({ user: null, phase: "guest", message: snapshot.message.startsWith("Google sign-in") ? snapshot.message : "Progress lasts in this tab. Sign in with Google to save across devices.", conflict: null });
+      if (owner) becomeGuest("Your session ended. Sign in again to recover your account’s progress.", true);
+      else update({ user: null, phase: "guest", message: snapshot.message.startsWith("Google sign-in") ? snapshot.message : GUEST_MESSAGE, conflict: null });
       return;
     }
     if (!session.csrfToken) throw new Error("Missing session protection");
@@ -208,6 +270,7 @@ export async function refreshAccount() {
     if (!conflict) {
       update({ phase: dirty ? "saving" : "synced", message: dirty ? "Saving progress…" : "Progress saved to your account." });
       shouldSave = dirty;
+      considerRestorePrompt();
     }
   } catch {
     update({ phase: "offline", message: owner ? "Cloud saves are unavailable. Your changes are waiting on this device." : "Cloud saves are unavailable. You can keep playing in this tab and retry." });
@@ -227,8 +290,11 @@ export function initializeAccount() {
     url.searchParams.delete("auth");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }
-  update({ legacyAvailable: !!readLegacySave(), ...(authError ? { message: "Google sign-in did not finish. You can try again and continue playing." } : {}) });
+  update({ legacyAvailable: !!readLegacySave(), ...(authError ? { message: "Google sign-in did not finish. You can try again and continue playing.", prompt: true } : {}) });
   void refreshAccount();
+  // Milestones are the only unprompted moment the save offer appears.
+  considerPrompt();
+  subscribe(considerPrompt);
   window.addEventListener("online", () => { void refreshAccount(); });
   window.addEventListener("focus", () => { void refreshAccount(); });
   window.addEventListener("storage", (event) => {
@@ -243,6 +309,7 @@ export function beginGoogleSignIn() {
   window.location.assign(`${API}/auth/google`);
 }
 
+/** Kept for the cross-tab sign-out contract and the API; no chrome surfaces it. */
 export async function signOut() {
   if (!snapshot.user || refreshing || saving) return;
   const previousPhase = snapshot.phase;
@@ -271,7 +338,7 @@ export function resolveProgress(choice: "cloud" | "device") {
   conflict = null;
   if (source === "guest") { clearGuest(); update({ guestAvailable: false }); }
   cache();
-  update({ conflict: null, phase: dirty ? "saving" : "synced", message: dirty ? "Saving your chosen progress…" : "Cloud progress restored." });
+  update({ conflict: null, prompt: false, phase: dirty ? "saving" : "synced", message: dirty ? "Saving your chosen progress…" : "Cloud progress restored." });
   if (dirty) scheduleSave();
 }
 

@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { studyWords, recallWords } from "./helpers/preparation";
+import { silenceSavePrompt } from "./helpers/savePrompt";
+
+test.beforeEach(({ page }) => silenceSavePrompt(page));
 
 test("requires every word and both recall checks without grading preparation", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });

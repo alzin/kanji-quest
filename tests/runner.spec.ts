@@ -1,9 +1,11 @@
 import { completePreparation } from "./helpers/preparation";
+import { silenceSavePrompt } from "./helpers/savePrompt";
 import { expect, test, type Page } from "@playwright/test";
 
-async function startDeterministicRun(page: Page, url = "run", pauseClock = false) {
+async function startDeterministicRun(page: Page, url = "run", pauseClock = false, offerToSave = false) {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.clock.install();
+  if (!offerToSave) await silenceSavePrompt(page);
   // Identity shuffles put each answer in the top lane for these integration tests.
   await page.addInitScript(() => { Math.random = () => 0.999; });
   await page.goto(url, { waitUntil: "domcontentloaded" });
@@ -111,4 +113,22 @@ test("a repeated checkpoint earns one exact seal and bonus without advancing rev
     expect(repeated.progress[character].mastery).toBe(1);
     expect(repeated.progress[character].due).toBe(before.due);
   }
+});
+
+test("a finished run offers to save it, and declining leaves the game untouched", async ({ page }) => {
+  // A reachable backend with no session is the state a real guest plays in.
+  await page.route("**/api/auth/session", (route) => route.fulfill({ json: { user: null } }));
+  await startDeterministicRun(page, "run", false, true);
+  await page.keyboard.press("ArrowUp");
+  await page.clock.fastForward(20_000);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Keep your progress" })).toBeVisible();
+  await expect(dialog.getByText("1 run and 15 mon — saved only in this tab, and gone once you close it. Sign in to keep everything on every device.")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Not now — keep learning" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Run complete!", exact: true })).toBeVisible();
+  expect(await savedTotals(page)).toEqual({ correct: 5, wrong: 0, coins: 15, runsCompleted: 1 });
+  // Declining snoozes the offer until three more runs or checkpoints are earned.
+  expect(await page.evaluate(() => sessionStorage.getItem("kanji-dash-save-prompt-v1"))).toBe("4");
 });
