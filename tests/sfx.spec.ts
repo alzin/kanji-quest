@@ -1,5 +1,8 @@
 import { completePreparation } from "./helpers/preparation";
 import { expect, test, type Page } from "@playwright/test";
+import { silenceSavePrompt } from "./helpers/savePrompt";
+
+test.beforeEach(({ page }) => silenceSavePrompt(page));
 
 type VoiceLog = { type: string; freq: number; at: number };
 
@@ -154,7 +157,7 @@ test("a miss schedules the taiko and the paper fwip, the third miss adds the tem
 test("mute persists under its own key and creates no context", async ({ page }) => {
   await prepare(page);
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Save your progress" })).toBeEnabled();
   const saveBefore = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
   const mute = page.getByRole("button", { name: "Mute sounds", exact: true });
   await expect(mute).toBeVisible();

@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { PwaRegistration } from "@/components/PwaRegistration";
+import { SaveProgressDialog } from "@/components/SaveProgressDialog";
 import { InstallAppProvider } from "@/components/InstallApp";
 import { boot } from "@/lib/sfx";
 import { initializeAccount } from "@/lib/account";
@@ -144,6 +145,8 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <InstallAppProvider>
         <PwaRegistration />
+        {/* Account actions live here alone: the header only shows who you are. */}
+        <SaveProgressDialog />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </InstallAppProvider>

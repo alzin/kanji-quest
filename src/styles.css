@@ -588,3 +588,49 @@ dialog.sheet-up::backdrop { animation: fade-only 200ms ease-out; }
 .sound-toggle-slash {
   transition: stroke-dashoffset 160ms ease, stroke-dasharray 160ms ease;
 }
+
+/* Google's sign-in button, to their branding guidelines: their colours, mark and
+   Roboto Medium wording stay fixed regardless of the app's own palette. */
+.google-signin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #747775;
+  border-radius: 22px;
+  background: #fff;
+  color: #1f1f1f;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.25px;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+.google-signin-mark { width: 18px; height: 18px; flex: none; }
+.google-signin:disabled { opacity: 0.38; }
+.google-signin:focus-visible { outline: 2px solid #0b57d0; outline-offset: 2px; }
+
+@media (hover: hover) {
+  .google-signin:hover:not(:disabled) {
+    background: #f7f8f8;
+    box-shadow: 0 1px 2px rgb(60 64 67 / 30%), 0 1px 3px 1px rgb(60 64 67 / 15%);
+  }
+}
+
+.dark .google-signin {
+  border-color: #8e918f;
+  background: #131314;
+  color: #e3e3e3;
+}
+.dark .google-signin:hover:not(:disabled) { background: #1e1f20; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes save-dialog-in {
+    from { opacity: 0; scale: .96; }
+    to { opacity: 1; scale: 1; }
+  }
+  dialog[open].save-dialog { animation: save-dialog-in 200ms cubic-bezier(.2,.9,.3,1); }
+}

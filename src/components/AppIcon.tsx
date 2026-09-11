@@ -1,6 +1,6 @@
 import type { ReactNode, SVGProps } from "react";
 
-export type AppIconName = "home" | "map" | "brush" | "kanji" | "flame" | "coin" | "arrow" | "lock";
+export type AppIconName = "home" | "map" | "brush" | "kanji" | "flame" | "coin" | "arrow" | "lock" | "cloud" | "alert";
 
 const paths: Record<AppIconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></>,
@@ -11,6 +11,8 @@ const paths: Record<AppIconName, ReactNode> = {
   coin: <><circle cx="12" cy="12" r="9" /><rect x="9" y="9" width="6" height="6" rx="1" /></>,
   arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
   lock: <><rect x="5" y="10" width="14" height="11" rx="3" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" /></>,
+  cloud: <><path d="M7 19a4.5 4.5 0 0 1-.36-8.99 6 6 0 0 1 11.53 1.54A3.75 3.75 0 0 1 17.5 19Z" /><path d="M12 16v-5m0 0-2 2m2-2 2 2" /></>,
+  alert: <><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5M12 16h.01" /></>,
 };
 
 export function AppIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: AppIconName }) {
