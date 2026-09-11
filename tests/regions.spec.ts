@@ -10,7 +10,7 @@ test("short checkpoints open the next focused set immediately and survive reload
   await page.goto("map", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 2 })).toHaveCount(19);
   await expect(page.getByText("0 / 19 earned", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: /^Next: The First Five/ }).click();
+  await page.getByRole("link", { name: "Prepare checkpoint" }).first().click();
   await expect(page.getByRole("region", { name: "Words in this run" }).getByRole("button")).toHaveCount(5);
   await completePreparation(page, { advanceClock: true });
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");

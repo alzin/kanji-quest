@@ -76,12 +76,7 @@ function MapPage() {
           <div className="mt-3 grid grid-cols-10 gap-1.5" aria-hidden="true">
             {chapters.map((ch) => <span key={ch} className={`h-1.5 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
           </div>
-          {levelUnlocked && nextCheckpoint !== undefined && <Link to="/run" search={{ gate: nextCheckpoint }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground">
-            Next: {CHAPTER_NAMES[nextCheckpoint]!.name} · {kanjiOfChapter(nextCheckpoint).length} words <AppIcon name="arrow" className="h-4 w-4 shrink-0" />
-          </Link>}
-          {levelUnlocked ? <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable mt-4 flex min-h-12 items-center justify-between gap-3 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform">
-            Learn words & prepare a run <AppIcon name="arrow" className="h-4 w-4" />
-          </Link> : <button type="button" onClick={() => selectLevel("N5")} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">Continue the N5 road</button>}
+          {!levelUnlocked && <button type="button" onClick={() => selectLevel("N5")} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">Continue the N5 road</button>}
         </section>
 
         {allCleared && (
