@@ -82,7 +82,8 @@ jobs:
       - name: Build API image
         run: |
           gcloud builds submit backend --project "$PROJECT" \
-            --tag "$IMAGE_BASE/api:$SHA" \
+            --config cloudbuild.api.yaml \
+            --substitutions=_TAG="$SHA" \
             --gcs-source-staging-dir "$STAGING" --suppress-logs
 
       - name: Build web image

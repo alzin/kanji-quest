@@ -1,0 +1,22 @@
+# Build config for the production API image.
+#
+# This exists rather than a plain `gcloud builds submit --tag` so that
+# `logging: CLOUD_LOGGING_ONLY` applies. With the default logging, build logs go
+# to a GCS bucket that only a project Viewer/Owner can read, and gcloud fails the
+# command when it cannot reach them - even though the build itself succeeds.
+# cloudbuild.web.yaml carries the same option for the same reason.
+substitutions:
+  _REGION: asia-southeast1
+  _REPO: kanji-quest
+  _TAG: bootstrap
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:${_TAG}
+      - .
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:${_TAG}
+options:
+  logging: CLOUD_LOGGING_ONLY
