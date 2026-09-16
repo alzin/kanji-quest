@@ -8,7 +8,7 @@ passed testing is the same code that ships.
 | --- | --- | --- |
 | Frontend | GitHub Pages, `https://alzin.github.io/kanji-quest/` | Cloud Run `kanji-quest-web`, `https://kanji.nipporia.com` |
 | Frontend build | `npm run build:pages` (static) | `npm run build` (SSR, `Dockerfile`) |
-| API | Cloud Run `kanji-quest-api` | Cloud Run `kanji-quest-api-prod`, `https://apikanji.nipporia.com` |
+| API | Cloud Run `kanji-quest-api` | Cloud Run `kanji-quest-api-prod`, `https://kanji-api.nipporia.com` |
 | Database | Neon *Kanji Quest Test* | Neon *Kanji Quest Production* |
 | Google OAuth | `Kanji Quest Cloud Run Test`, Testing mode | `Kanji Quest` production client, published |
 | Cookies | `SameSite=None` (cross-site) | `SameSite=Lax` (same-site) |
@@ -17,7 +17,7 @@ passed testing is the same code that ships.
 
 ## Why two subdomains of one domain
 
-`kanji.nipporia.com` and `apikanji.nipporia.com` share the registrable domain
+`kanji.nipporia.com` and `kanji-api.nipporia.com` share the registrable domain
 `nipporia.com`, so browsers treat API calls between them as **same-site**. Session
 cookies are first-party and work with `SameSite=Lax`, which removes the
 third-party-cookie problem that makes sign-in unreliable on the Pages test site
@@ -44,22 +44,21 @@ export REGION=asia-southeast1
 gcloud config set project "$PROJECT_ID"
 ```
 
-## 1. Verify you own nipporia.com
+## 1. Domain ownership (already done)
 
-Cloud Run will not map a domain you have not verified.
+`nipporia.com` is already verified with Google — two `google-site-verification`
+TXT records are on the domain, and `ai.nipporia.com` and `ai-api.nipporia.com`
+are already mapped to Cloud Run through `ghs.googlehosted.com`. Nothing to do here.
 
-1. Open [Google Search Console](https://search.google.com/search-console) and add a
-   **Domain** property for `nipporia.com`.
-2. It gives you a `google-site-verification=...` TXT record.
-3. In **GoDaddy → My Products → nipporia.com → DNS → Add Record**: type `TXT`,
-   name `@`, value = the string Search Console gave you.
-4. Wait a few minutes, then press **Verify** in Search Console.
-
-Confirm the account you verified with is the same one you use in Cloud Shell:
+If a mapping is ever refused as unverified, confirm the Cloud Shell account is one
+of the verified owners:
 
 ```bash
 gcloud domains list-user-verified
 ```
+
+Add missing owners in [Search Console](https://search.google.com/search-console)
+under Settings → Users and permissions.
 
 ## 2. Create the production database on Neon
 
@@ -103,7 +102,7 @@ In **Google Auth Platform** for project `nipporia-lp-493210`:
    Google's lengthy security review.
 3. **Clients → Create client → Web application**, named `Kanji Quest Production`:
    - Authorised JavaScript origin: `https://kanji.nipporia.com`
-   - Authorised redirect URI: `https://apikanji.nipporia.com/api/auth/google/callback`
+   - Authorised redirect URI: `https://kanji-api.nipporia.com/api/auth/google/callback`
 4. Keep the **client ID** (public, goes in Cloud Run env vars) and the **client
    secret** (goes only into Secret Manager, in step 5).
 
@@ -181,7 +180,7 @@ gcloud run deploy kanji-quest-api-prod \
   --source backend --region "$REGION" \
   --service-account "kanji-quest-api-prod@$PROJECT_ID.iam.gserviceaccount.com" \
   --allow-unauthenticated \
-  --set-env-vars "NODE_ENV=production,HOST=0.0.0.0,FRONTEND_URL=https://kanji.nipporia.com/,GOOGLE_CLIENT_ID=YOUR_PRODUCTION_CLIENT_ID,GOOGLE_REDIRECT_URI=https://apikanji.nipporia.com/api/auth/google/callback,COOKIE_SAME_SITE=lax,SESSION_DAYS=30,TRUST_PROXY_HOPS=1" \
+  --set-env-vars "NODE_ENV=production,HOST=0.0.0.0,FRONTEND_URL=https://kanji.nipporia.com/,GOOGLE_CLIENT_ID=YOUR_PRODUCTION_CLIENT_ID,GOOGLE_REDIRECT_URI=https://kanji-api.nipporia.com/api/auth/google/callback,COOKIE_SAME_SITE=lax,SESSION_DAYS=30,TRUST_PROXY_HOPS=1" \
   --set-secrets "DATABASE_URL=kanji-quest-prod-database-url:1,GOOGLE_CLIENT_SECRET=kanji-quest-prod-google-client-secret:1,COOKIE_SECRET=kanji-quest-prod-cookie-secret:1" \
   --cpu=1 --memory=512Mi --concurrency=40 --timeout=60 \
   --min-instances=0 --max-instances=4
@@ -192,7 +191,7 @@ Cloud Build rather than `--source`:
 
 ```bash
 gcloud builds submit --config cloudbuild.web.yaml \
-  --substitutions=_API_URL=https://apikanji.nipporia.com/api,_TAG=bootstrap
+  --substitutions=_API_URL=https://kanji-api.nipporia.com/api,_TAG=bootstrap
 
 gcloud run deploy kanji-quest-web \
   --image "$REGION-docker.pkg.dev/$PROJECT_ID/kanji-quest/web:bootstrap" \
@@ -214,7 +213,7 @@ gcloud beta run domain-mappings create --service=kanji-quest-web \
   --domain=kanji.nipporia.com --region="$REGION"
 
 gcloud beta run domain-mappings create --service=kanji-quest-api-prod \
-  --domain=apikanji.nipporia.com --region="$REGION"
+  --domain=kanji-api.nipporia.com --region="$REGION"
 ```
 
 Each command prints the DNS record to create. For subdomains it is a `CNAME` to
@@ -223,7 +222,7 @@ Each command prints the DNS record to create. For subdomains it is a `CNAME` to
 | Type | Name | Value | TTL |
 | --- | --- | --- | --- |
 | CNAME | `kanji` | `ghs.googlehosted.com` | 600 |
-| CNAME | `apikanji` | `ghs.googlehosted.com` | 600 |
+| CNAME | `kanji-api` | `ghs.googlehosted.com` | 600 |
 
 Use whatever the command actually printed if it differs. Google then issues managed
 TLS certificates automatically — this usually takes 15–60 minutes. Watch with:

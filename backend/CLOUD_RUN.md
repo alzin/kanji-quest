@@ -2,7 +2,7 @@
 
 > This document describes the **test** backend (`kanji-quest-api`), which serves the
 > GitHub Pages site. The production environment — `kanji-quest-api-prod` and
-> `kanji-quest-web` behind `apikanji.nipporia.com` and `kanji.nipporia.com` — is set up
+> `kanji-quest-web` behind `kanji-api.nipporia.com` and `kanji.nipporia.com` — is set up
 > and operated from [docs/PRODUCTION.md](../docs/PRODUCTION.md).
 
 Project: `nipporia-lp-493210` (Nipporia LP), region `asia-southeast1`, service `kanji-quest-api`.

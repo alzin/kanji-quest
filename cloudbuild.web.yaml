@@ -4,9 +4,9 @@
 # Identity Federation is wired up.
 #
 #   gcloud builds submit --config cloudbuild.web.yaml \
-#     --substitutions=_API_URL=https://apikanji.nipporia.com/api,_TAG=bootstrap
+#     --substitutions=_API_URL=https://kanji-api.nipporia.com/api,_TAG=bootstrap
 substitutions:
-  _API_URL: https://apikanji.nipporia.com/api
+  _API_URL: https://kanji-api.nipporia.com/api
   _REGION: asia-southeast1
   _REPO: kanji-quest
   _TAG: bootstrap

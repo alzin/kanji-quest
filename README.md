@@ -43,7 +43,7 @@ inputs and the cloud resources they target.
   `https://alzin.github.io/kanji-quest/`, backed by the `kanji-quest-api` Cloud Run
   service and the Neon test project.
 - **Production** — pushes to `production` build both containers and deploy them to
-  Cloud Run behind `https://kanji.nipporia.com` and `https://apikanji.nipporia.com`,
+  Cloud Run behind `https://kanji.nipporia.com` and `https://kanji-api.nipporia.com`,
   after an approval on the `production` GitHub environment.
 
 Promote a release by fast-forwarding the branch to a commit already verified on the
