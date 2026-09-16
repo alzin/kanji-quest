@@ -39,10 +39,13 @@ case "$OWNER_URL" in
   *-pooler.*) echo "That is the pooled URL. Migrations need the direct one." >&2; exit 1 ;;
 esac
 
+echo "==> Installing backend dependencies"
+# Dev dependencies are needed: db:migrate runs through tsx, which is one of them.
+( cd "$(dirname "$0")/../backend" && npm ci --no-audit --no-fund --loglevel=error )
+
 echo "==> Applying migrations as the owner"
 ( cd "$(dirname "$0")/../backend" \
-  && npm ci --omit=dev --silent >/dev/null 2>&1 || npm install --silent >/dev/null 2>&1
-  DIRECT_DATABASE_URL="$OWNER_URL" npm run --silent db:migrate )
+  && DIRECT_DATABASE_URL="$OWNER_URL" npm run --silent db:migrate )
 
 echo "==> Creating $RUNTIME_ROLE and granting on the tables that now exist"
 # Alphanumeric only, so the password never needs URL-encoding in the DSN.
