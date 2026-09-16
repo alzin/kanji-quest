@@ -69,10 +69,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO $RUNTIME_ROLE;
 SQL
 )
-printf '%s' "$PGPASSWORD_SQL" | psql "$OWNER_URL" -v ON_ERROR_STOP=1 --quiet >/dev/null
+echo "    (Neon suspends idle computes; a cold start here can take ~15s - let it run)"
+printf '%s' "$PGPASSWORD_SQL" | PGCONNECT_TIMEOUT=30 psql "$OWNER_URL" -v ON_ERROR_STOP=1 --quiet >/dev/null
+echo "    role ready"
 
 echo "==> Confirming the role can only read and write, not alter schema"
-psql "$OWNER_URL" -tAc "SELECT rolcreatedb OR rolcreaterole OR rolsuper FROM pg_roles WHERE rolname='$RUNTIME_ROLE';" \
+PGCONNECT_TIMEOUT=30 psql "$OWNER_URL" -tAc "SELECT rolcreatedb OR rolcreaterole OR rolsuper FROM pg_roles WHERE rolname='$RUNTIME_ROLE';" \
   | grep -qx 'f' || { echo "Role has more privilege than expected." >&2; exit 1; }
 
 # Neon's pooled endpoint is the direct host with -pooler on the endpoint id.
@@ -83,7 +85,7 @@ POOLED_HOST="$(printf '%s' "$OWNER_HOST" | sed -E 's|^(ep-[A-Za-z0-9-]+)\.|\1-po
 RUNTIME_URL="postgresql://${RUNTIME_ROLE}:${ROLE_PW}@${POOLED_HOST}/${DB_NAME}?sslmode=require"
 
 echo "==> Checking the runtime role can actually connect through the pooler"
-psql "$RUNTIME_URL" -tAc 'SELECT 1;' >/dev/null
+PGCONNECT_TIMEOUT=30 psql "$RUNTIME_URL" -tAc 'SELECT 1;' >/dev/null
 
 echo "==> Storing $SECRET_NAME"
 printf '%s' "$RUNTIME_URL" \
