@@ -101,7 +101,7 @@ Project **Kanji Quest Production** exists in the **Nipporia** org (Launch plan):
 | Region | AWS Asia Pacific 1 (Singapore), matching Cloud Run |
 | Postgres | 18 |
 | Branch | `production` (`br-soft-wind-b3g0odqc`), database `neondb` |
-| Compute | `ep-wispy-lab-b1zv71a6`, autoscale **0.25–2 CU** |
+| Compute | `ep-wispy-lab-b3zv7ia6`, autoscale **0.25–2 CU** |
 
 The 2 CU ceiling is a deliberate cost guard — Neon's default was 8 CU. Raise it
 if real traffic needs it, but do so knowingly.
