@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
+import { SiteFooter } from "@/components/SiteFooter";
 import { InstallApp } from "@/components/InstallApp";
 import { SoundToggle } from "@/components/SoundToggle";
 import { LevelSelector } from "@/components/LevelSelector";
@@ -176,6 +177,7 @@ function Home() {
         </section>
         <InstallApp />
       </main>
+      <SiteFooter />
     </div>
   );
 }

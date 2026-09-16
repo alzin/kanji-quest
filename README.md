@@ -33,3 +33,24 @@ Save curriculum version 2 distinguishes new region seals from original theme sea
 ## Verification
 
 `npm test` runs deterministic calculation and curriculum tests without a browser. `npm run typecheck` checks application types. `npm run test:pwa` builds the app and runs browser, gameplay, progress, mobile, and offline tests in Chromium and WebKit. `npm run test:pages` checks the static Pages build with the same browser suite.
+
+## Environments
+
+The test and production environments share this repository and differ only in build
+inputs and the cloud resources they target.
+
+- **Test** — pushes to `main` publish the static build to GitHub Pages at
+  `https://alzin.github.io/kanji-quest/`, backed by the `kanji-quest-api` Cloud Run
+  service and the Neon test project.
+- **Production** — pushes to `production` build both containers and deploy them to
+  Cloud Run behind `https://kanji.nipporia.com` and `https://kanji-api.nipporia.com`,
+  after an approval on the `production` GitHub environment.
+
+Promote a release by fast-forwarding the branch to a commit already verified on the
+test site:
+
+```sh
+git checkout production && git merge --ff-only main && git push origin production
+```
+
+Setup and operational procedures are in the [production runbook](docs/PRODUCTION.md).
