@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CollectionRouteImport } from './routes/collection'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as PracticeRouteImport } from './routes/practice'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RunRouteImport } from './routes/run'
+import { Route as TermsRouteImport } from './routes/terms'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,9 +37,19 @@ const PracticeRoute = PracticeRouteImport.update({
   path: '/practice',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RunRoute = RunRouteImport.update({
   id: '/run',
   path: '/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -46,14 +58,18 @@ export interface FileRoutesByFullPath {
   '/collection': typeof CollectionRoute
   '/map': typeof MapRoute
   '/practice': typeof PracticeRoute
+  '/privacy': typeof PrivacyRoute
   '/run': typeof RunRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/collection': typeof CollectionRoute
   '/map': typeof MapRoute
   '/practice': typeof PracticeRoute
+  '/privacy': typeof PrivacyRoute
   '/run': typeof RunRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,14 +77,26 @@ export interface FileRoutesById {
   '/collection': typeof CollectionRoute
   '/map': typeof MapRoute
   '/practice': typeof PracticeRoute
+  '/privacy': typeof PrivacyRoute
   '/run': typeof RunRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/collection' | '/map' | '/practice' | '/run'
+  fullPaths:
+    '/' | '/collection' | '/map' | '/practice' | '/privacy' | '/run' | '/terms'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/collection' | '/map' | '/practice' | '/run'
-  id: '__root__' | '/' | '/collection' | '/map' | '/practice' | '/run'
+  to:
+    '/' | '/collection' | '/map' | '/practice' | '/privacy' | '/run' | '/terms'
+  id:
+    | '__root__'
+    | '/'
+    | '/collection'
+    | '/map'
+    | '/practice'
+    | '/privacy'
+    | '/run'
+    | '/terms'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,7 +104,9 @@ export interface RootRouteChildren {
   CollectionRoute: typeof CollectionRoute
   MapRoute: typeof MapRoute
   PracticeRoute: typeof PracticeRoute
+  PrivacyRoute: typeof PrivacyRoute
   RunRoute: typeof RunRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,11 +139,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PracticeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/run': {
       id: '/run'
       path: '/run'
       fullPath: '/run'
       preLoaderRoute: typeof RunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -124,7 +168,9 @@ const rootRouteChildren: RootRouteChildren = {
   CollectionRoute: CollectionRoute,
   MapRoute: MapRoute,
   PracticeRoute: PracticeRoute,
+  PrivacyRoute: PrivacyRoute,
   RunRoute: RunRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
