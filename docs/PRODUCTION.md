@@ -34,6 +34,27 @@ already allows exactly one origin via `FRONTEND_URL`.
 
 # One-time setup
 
+> **Provisioned as of 16 September 2026.** The steps below record how each piece
+> was built, so they stay useful for rebuilding or for disaster recovery. What is
+> already live:
+>
+> | Resource | State |
+> | --- | --- |
+> | Domain ownership of `nipporia.com` | verified (pre-existing) |
+> | Neon `Kanji Quest Production` | created, Singapore, PG18, 0.25–2 CU |
+> | GCP `kanji-quest-prod` consent screen | **In production**, External |
+> | OAuth client `Kanji Quest Production` | created, origins and redirect set |
+> | Artifact Registry `kanji-quest` | created in `asia-southeast1` |
+> | Deploy SA + Workload Identity Federation | created and bound to `alzin/kanji-quest` |
+> | Cloud Run `kanji-quest-web` | deployed, serving 200 |
+> | Domain mapping `kanji.nipporia.com` | created, certificate provisioning |
+> | DNS `kanji` + `kanji-api` CNAMEs | added in GoDaddy, resolving |
+>
+> Outstanding, all blocked on secret values: the Neon runtime role, the three
+> Secret Manager entries, the `kanji-quest-api-prod` service, its domain mapping,
+> and the first migration run.
+
+
 Run the `gcloud` blocks in **Cloud Shell** (open from the Cloud Console header).
 Cloud Shell is already authenticated, so no keys are stored on your laptop.
 
@@ -98,38 +119,54 @@ The runtime `DATABASE_URL` uses this role; migrations use the owner role.
 - the **pooled** URL (hostname contains `-pooler`), as `kq_cloud_run` → runtime secret
 - the **direct** URL (no `-pooler`), as the owner role → migrations only
 
-## 3. Production Google OAuth client
+## 3. Production Google OAuth client (done)
 
 **Why a separate project.** `nipporia-lp-493210` already has an OAuth consent
 screen, configured for an unrelated app (`n8n-sheets`, client `n8n local`). A GCP
 project has exactly one consent screen, so reusing it would rebrand that app's
 consent screen and change its publishing status. Google sign-in for Kanji Dash
-therefore lives in its own project, `kanji-quest-prod` — the same split already
-used for the test environment, and it needs no billing of its own.
+therefore lives in its own project, `kanji-quest-prod` (project number
+`673512470706`) — the same split already used for the test environment, and it
+needs no billing of its own.
 
 Compute stays in `nipporia-lp-493210`. An OAuth client works across projects; the
 backend only ever sees a client ID and secret.
 
-Configured so far in **kanji-quest-prod → Google Auth Platform**:
+| | |
+| --- | --- |
+| App name | `Kanji Dash` |
+| Publishing status | **In production**, user type External |
+| User support email | `ghaithalzein05@gmail.com` (shown on the consent screen) |
+| Developer contact | `info@nipporia.com` |
+| Home page | `https://kanji.nipporia.com` |
+| Privacy policy | `https://kanji.nipporia.com/privacy` |
+| Terms of service | `https://kanji.nipporia.com/terms` |
+| Authorised domain | `nipporia.com` |
+| Client name | `Kanji Quest Production` (Web application) |
+| JavaScript origin | `https://kanji.nipporia.com` |
+| Redirect URI | `https://kanji-api.nipporia.com/api/auth/google/callback` |
 
-- App name `Kanji Dash`, user support email `ghaithalzein05@gmail.com`
-- Audience **External**, developer contact `info@nipporia.com`
+Client ID, needed as `GOOGLE_CLIENT_ID` on Cloud Run — public, not a secret:
 
-Remaining:
+```
+673512470706-3ghfk10qhrnpcdmmvdqgrci9tetfr1am.apps.googleusercontent.com
+```
 
-1. Tick **I agree to the Google API Services: User Data Policy** and press
-   **Create**. This is a developer agreement, so it needs a human.
-2. **Branding** — app home page `https://kanji.nipporia.com`, privacy policy
-   `https://kanji.nipporia.com/privacy`, terms `https://kanji.nipporia.com/terms`,
-   authorised domain `nipporia.com`, plus the app logo.
-3. **Audience → Publish app**. In Testing mode only listed test users can sign in
-   and everyone sees an "unverified app" warning. Publishing with only `openid`,
-   `email` and `profile` does not trigger Google's lengthy security review.
-4. **Clients → Create client → Web application**, named `Kanji Quest Production`:
-   - Authorised JavaScript origin: `https://kanji.nipporia.com`
-   - Authorised redirect URI: `https://kanji-api.nipporia.com/api/auth/google/callback`
-5. Keep the **client ID** (public, goes in Cloud Run env vars) and the **client
-   secret** (goes only into Secret Manager, in step 5).
+Verification was not required: only `openid`, `email` and `profile` are requested,
+with one authorised domain and no logo. Adding a logo or a sensitive scope later
+would trigger Google's review, so treat the consent screen as frozen unless there
+is a reason to change it.
+
+> **Client secret.** Google shows a client secret **once, at creation**, and masks
+> it permanently afterwards. Add a fresh one under **Clients → Kanji Quest
+> Production → Add secret** when you are ready to store it, and paste it straight
+> into the Secret Manager prompt in step 5. Delete the unused original secret from
+> that same screen afterwards so only one live secret exists.
+
+The user support email is publicly visible on the consent screen. `info@nipporia.com`
+is a Microsoft 365 mailbox, and Google only accepts a Google account or a Group
+there, so it is currently a personal Gmail. Creating a Google Group for support
+and selecting it is the fix if that matters.
 
 Leave the existing test client alone — it keeps the Pages environment working.
 
@@ -282,7 +319,7 @@ gcloud iam workload-identity-pools providers create-oidc kanji-quest \
 
 gcloud iam service-accounts add-iam-policy-binding "$DEPLOY_SA" \
   --role=roles/iam.workloadIdentityUser \
-  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attributes/repository/alzin/kanji-quest"
+  --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/alzin/kanji-quest"
 ```
 
 The `attribute-condition` is what stops any other repository from assuming this
