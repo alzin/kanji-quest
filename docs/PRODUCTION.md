@@ -106,10 +106,28 @@ Project **Kanji Quest Production** exists in the **Nipporia** org (Launch plan):
 The 2 CU ceiling is a deliberate cost guard — Neon's default was 8 CU. Raise it
 if real traffic needs it, but do so knowingly.
 
-Still to do, because both steps involve credentials:
+Still to do, because it involves credentials:
 
-**a. Create the least-privilege runtime role.** In the Neon **SQL Editor**, replace
-the password with a long random one and run:
+Run [`scripts/bootstrap-prod-db.sh`](../scripts/bootstrap-prod-db.sh) from Cloud
+Shell. It prompts once for the Neon **owner** connection string (the direct one,
+without `-pooler`) and then does the rest without printing a secret:
+
+```bash
+cd ~/kanji-quest && git pull && bash scripts/bootstrap-prod-db.sh
+```
+
+It applies migrations, creates `kq_cloud_run` with a generated 40-character
+password, grants on the tables that now exist plus default privileges for future
+ones, verifies the role cannot create schema objects, checks it can connect
+through the pooler, and stores the runtime URL as `kanji-quest-prod-database-url`.
+
+> **Order matters.** `GRANT ... ON ALL TABLES IN SCHEMA public` only affects
+> tables that already exist. Migrations must run **before** the grants — an
+> earlier draft of this runbook had the role created first, against an empty
+> database, which would have granted nothing and left the API unable to read its
+> own tables.
+
+To do it by hand instead, run the migration from step 6 first, then:
 
 ```sql
 CREATE ROLE kq_cloud_run WITH LOGIN PASSWORD 'generate-a-long-random-password';
@@ -125,11 +143,6 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 
 `kq_cloud_run` cannot create or drop tables and cannot rewrite migration history.
 The runtime `DATABASE_URL` uses this role; migrations use the owner role.
-
-**b. Collect two connection strings** from **Connect** on the project dashboard:
-
-- the **pooled** URL (hostname contains `-pooler`), as `kq_cloud_run` → runtime secret
-- the **direct** URL (no `-pooler`), as the owner role → migrations only
 
 ## 3. Production Google OAuth client (done)
 
@@ -206,9 +219,11 @@ create_secret() {
   unset v
 }
 
-create_secret kanji-quest-prod-database-url        "Neon POOLED connection URL (kq_cloud_run role)"
 create_secret kanji-quest-prod-google-client-secret "Google production client secret"
 ```
+
+`kanji-quest-prod-database-url` is not created here — the bootstrap script in
+step 2 stores it, because it is the thing that generates the password.
 
 The cookie secret is generated in place, so its value is never displayed:
 
@@ -232,15 +247,16 @@ done
 
 ## 6. Apply migrations
 
-Run this from your laptop, using the Neon **direct** URL and the owner role — not
-the `kq_cloud_run` role, which deliberately cannot alter schema:
+The bootstrap script in step 2 already runs these, as the owner role, before it
+creates `kq_cloud_run`. Use this directly only for later migrations:
 
 ```bash
-DIRECT_DATABASE_URL="postgresql://OWNER:PASSWORD@HOST.neon.tech/neondb?sslmode=require" \
-  npm run db:migrate
+DIRECT_DATABASE_URL="postgresql://OWNER:PASSWORD@HOST.neon.tech/neondb?sslmode=require"   npm run db:migrate
 ```
 
-Repeat this step before any future deploy that adds a migration.
+Use the Neon **direct** URL and the owner role — not `kq_cloud_run`, which
+deliberately cannot alter schema. Run this before any deploy that adds a
+migration, and before pushing the `production` branch.
 
 ## 7. Bootstrap the two Cloud Run services
 
