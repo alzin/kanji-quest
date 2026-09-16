@@ -1,0 +1,16 @@
+.git
+.github
+node_modules
+backend
+.output
+.tanstack
+.nitro
+test-results
+playwright-report
+tests
+*.log
+.env
+.env.*
+!.env.example
+*.local
+.deployment.local

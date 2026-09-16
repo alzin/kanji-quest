@@ -1,0 +1,15 @@
+# Keep environment files and local state out of any uploaded build source.
+.git
+.github
+node_modules
+.output
+.tanstack
+.nitro
+test-results
+playwright-report
+.env
+.env.*
+!.env.example
+*.local
+.deployment.local
+*.log

@@ -1,0 +1,108 @@
+name: Deploy production
+
+# Production is promoted deliberately: fast-forward the `production` branch to a
+# commit on `main` that already passed CI and shipped to the Pages test site.
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: kanji
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: kanji_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U kanji -d kanji_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm ci --prefix backend
+      - run: npm run backend:build
+      - run: npm run backend:test
+        env:
+          TEST_DATABASE_URL: postgresql://kanji:test-only-password@localhost:5432/kanji_test
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    # Approval gate and production-only variables live on this environment.
+    environment:
+      name: production
+      url: https://kanji.nipporia.com
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE_BASE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.AR_REPOSITORY }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # Keyless auth via Workload Identity Federation: no service account JSON
+      # key is ever stored in GitHub.
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Artifact Registry auth
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push API image
+        run: |
+          docker build -t "$IMAGE_BASE/api:${{ github.sha }}" backend
+          docker push "$IMAGE_BASE/api:${{ github.sha }}"
+
+      - name: Build and push web image
+        run: |
+          docker build \
+            --build-arg VITE_API_URL="${{ vars.PROD_API_URL }}" \
+            -t "$IMAGE_BASE/web:${{ github.sha }}" .
+          docker push "$IMAGE_BASE/web:${{ github.sha }}"
+
+      # Runtime config (secrets, env vars, service account) is set once on the
+      # service; deploys only swap the image so nothing here can leak it.
+      - name: Deploy API
+        run: |
+          gcloud run deploy "${{ vars.API_SERVICE }}" \
+            --image "$IMAGE_BASE/api:${{ github.sha }}" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --quiet
+
+      - name: Deploy web
+        run: |
+          gcloud run deploy "${{ vars.WEB_SERVICE }}" \
+            --image "$IMAGE_BASE/web:${{ github.sha }}" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --quiet
+
+      # Checks the Cloud Run service URLs, so this passes on the first deploy
+      # too - before the custom domains resolve.
+      - name: Smoke check
+        run: |
+          api=$(gcloud run services describe "${{ vars.API_SERVICE }}"             --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION }}"             --format 'value(status.url)')
+          web=$(gcloud run services describe "${{ vars.WEB_SERVICE }}"             --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION }}"             --format 'value(status.url)')
+          curl -fsS --retry 5 --retry-delay 5 "$api/api/health"
+          curl -fsS --retry 5 --retry-delay 5 -o /dev/null "$web/"

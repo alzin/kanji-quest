@@ -1,0 +1,26 @@
+# Bootstrap build for the production web image.
+# Routine deploys go through .github/workflows/deploy-production.yml; this file
+# exists so the very first image can be built from Cloud Shell, before Workload
+# Identity Federation is wired up.
+#
+#   gcloud builds submit --config cloudbuild.web.yaml \
+#     --substitutions=_API_URL=https://apikanji.nipporia.com/api,_TAG=bootstrap
+substitutions:
+  _API_URL: https://apikanji.nipporia.com/api
+  _REGION: asia-southeast1
+  _REPO: kanji-quest
+  _TAG: bootstrap
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - VITE_API_URL=${_API_URL}
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/web:${_TAG}
+      - .
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/web:${_TAG}
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
