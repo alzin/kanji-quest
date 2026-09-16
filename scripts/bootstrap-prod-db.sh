@@ -49,7 +49,12 @@ echo "==> Applying migrations as the owner"
 
 echo "==> Creating $RUNTIME_ROLE and granting on the tables that now exist"
 # Alphanumeric only, so the password never needs URL-encoding in the DSN.
-ROLE_PW="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40)"
+# No `| head` here: head closes the pipe early, tr dies of SIGPIPE, and under
+# `set -o pipefail` that silently kills the script. tr reads all of its input
+# instead, and bash truncates afterwards.
+ROLE_PW_RAW="$(openssl rand -base64 60 | LC_ALL=C tr -dc 'A-Za-z0-9')"
+ROLE_PW="${ROLE_PW_RAW:0:40}"
+[ ${#ROLE_PW} -eq 40 ] || { echo "Could not generate a password." >&2; exit 1; }
 
 PGPASSWORD_SQL=$(cat <<SQL
 DO \$\$ BEGIN
