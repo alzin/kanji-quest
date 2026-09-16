@@ -54,6 +54,9 @@ jobs:
       id-token: write
     env:
       IMAGE_BASE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.AR_REPOSITORY }}
+      PROJECT: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v6
 
@@ -65,44 +68,39 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SA }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Configure Artifact Registry auth
-        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Build and push API image
-        run: |
-          docker build -t "$IMAGE_BASE/api:${{ github.sha }}" backend
-          docker push "$IMAGE_BASE/api:${{ github.sha }}"
+      # Images are built by Cloud Build, not `docker build` on the runner. The
+      # web image runs Nitro's prerenderer during `npm run build`, which fails on
+      # a GitHub-hosted runner with an immediate ECONNREFUSED 127.0.0.1:3000
+      # while succeeding in Cloud Build and locally. Building where it is known
+      # to work also keeps image pushes inside GCP.
+      - name: Build API image
+        run: gcloud builds submit backend --project "$PROJECT" --tag "$IMAGE_BASE/api:$SHA"
 
-      - name: Build and push web image
+      - name: Build web image
         run: |
-          docker build \
-            --build-arg VITE_API_URL="${{ vars.PROD_API_URL }}" \
-            -t "$IMAGE_BASE/web:${{ github.sha }}" .
-          docker push "$IMAGE_BASE/web:${{ github.sha }}"
+          gcloud builds submit --project "$PROJECT" --config cloudbuild.web.yaml \
+            --substitutions=_API_URL="${{ vars.PROD_API_URL }}",_TAG="$SHA"
 
       # Runtime config (secrets, env vars, service account) is set once on the
       # service; deploys only swap the image so nothing here can leak it.
       - name: Deploy API
         run: |
-          gcloud run deploy "${{ vars.API_SERVICE }}" \
-            --image "$IMAGE_BASE/api:${{ github.sha }}" \
-            --project "${{ vars.GCP_PROJECT_ID }}" \
-            --region "${{ vars.GCP_REGION }}" \
-            --quiet
+          gcloud run deploy "${{ vars.API_SERVICE }}" --image "$IMAGE_BASE/api:$SHA" \
+            --project "$PROJECT" --region "$REGION" --quiet
 
       - name: Deploy web
         run: |
-          gcloud run deploy "${{ vars.WEB_SERVICE }}" \
-            --image "$IMAGE_BASE/web:${{ github.sha }}" \
-            --project "${{ vars.GCP_PROJECT_ID }}" \
-            --region "${{ vars.GCP_REGION }}" \
-            --quiet
+          gcloud run deploy "${{ vars.WEB_SERVICE }}" --image "$IMAGE_BASE/web:$SHA" \
+            --project "$PROJECT" --region "$REGION" --quiet
 
-      # Checks the Cloud Run service URLs, so this passes on the first deploy
-      # too - before the custom domains resolve.
+      # Checks the Cloud Run service URLs, so this passes even before a custom
+      # domain's certificate has been issued.
       - name: Smoke check
         run: |
-          api=$(gcloud run services describe "${{ vars.API_SERVICE }}"             --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION }}"             --format 'value(status.url)')
-          web=$(gcloud run services describe "${{ vars.WEB_SERVICE }}"             --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION }}"             --format 'value(status.url)')
+          api=$(gcloud run services describe "${{ vars.API_SERVICE }}" \
+            --project "$PROJECT" --region "$REGION" --format 'value(status.url)')
+          web=$(gcloud run services describe "${{ vars.WEB_SERVICE }}" \
+            --project "$PROJECT" --region "$REGION" --format 'value(status.url)')
           curl -fsS --retry 5 --retry-delay 5 "$api/api/health"
           curl -fsS --retry 5 --retry-delay 5 -o /dev/null "$web/"
