@@ -47,12 +47,22 @@ already allows exactly one origin via `FRONTEND_URL`.
 > | Artifact Registry `kanji-quest` | created in `asia-southeast1` |
 > | Deploy SA + Workload Identity Federation | created and bound to `alzin/kanji-quest` |
 > | Cloud Run `kanji-quest-web` | deployed, serving 200 |
-> | Domain mapping `kanji.nipporia.com` | created, certificate provisioning |
+> | Domain mapping `kanji.nipporia.com` | **live** - HTTPS 200, Google Trust Services cert |
 > | DNS `kanji` + `kanji-api` CNAMEs | added in GoDaddy, resolving |
+> | `production` GitHub environment | required reviewer `alzin`, branch policy `production` |
+> | `COOKIE_SECRET` | generated in place, runtime account granted access |
 >
-> Outstanding, all blocked on secret values: the Neon runtime role, the three
-> Secret Manager entries, the `kanji-quest-api-prod` service, its domain mapping,
-> and the first migration run.
+> `https://kanji.nipporia.com` already serves the game, `/privacy` and `/terms`.
+>
+> Outstanding, and all of it waits on two secret values that only a human can
+> supply - the Neon `kq_cloud_run` password and a Google client secret:
+> the Neon runtime role (step 2a), the two remaining Secret Manager entries
+> (step 5), the `kanji-quest-api-prod` service (step 7), its domain mapping
+> (step 8), and the first migration run (step 6).
+>
+> **Do not push the `production` branch until `kanji-quest-api-prod` exists.** The
+> workflow only swaps images; it would otherwise create that service with no
+> environment or secrets and the container would fail to start.
 
 
 Run the `gcloud` blocks in **Cloud Shell** (open from the Cloud Console header).
