@@ -57,6 +57,9 @@ jobs:
       PROJECT: ${{ vars.GCP_PROJECT_ID }}
       REGION: ${{ vars.GCP_REGION }}
       SHA: ${{ github.sha }}
+      # Naming the staging bucket avoids storage.buckets.list, a project-level
+      # permission the deploy account deliberately does not hold.
+      STAGING: gs://${{ vars.GCP_PROJECT_ID }}_cloudbuild/source
     steps:
       - uses: actions/checkout@v6
 
@@ -74,13 +77,19 @@ jobs:
       # a GitHub-hosted runner with an immediate ECONNREFUSED 127.0.0.1:3000
       # while succeeding in Cloud Build and locally. Building where it is known
       # to work also keeps image pushes inside GCP.
+      # --suppress-logs: streaming build logs requires project Viewer, which the
+      # deploy account does not have. The build result is still awaited.
       - name: Build API image
-        run: gcloud builds submit backend --project "$PROJECT" --tag "$IMAGE_BASE/api:$SHA"
+        run: |
+          gcloud builds submit backend --project "$PROJECT" \
+            --tag "$IMAGE_BASE/api:$SHA" \
+            --gcs-source-staging-dir "$STAGING" --suppress-logs
 
       - name: Build web image
         run: |
           gcloud builds submit --project "$PROJECT" --config cloudbuild.web.yaml \
-            --substitutions=_API_URL="${{ vars.PROD_API_URL }}",_TAG="$SHA"
+            --substitutions=_API_URL="${{ vars.PROD_API_URL }}",_TAG="$SHA" \
+            --gcs-source-staging-dir "$STAGING" --suppress-logs
 
       # Runtime config (secrets, env vars, service account) is set once on the
       # service; deploys only swap the image so nothing here can leak it.
