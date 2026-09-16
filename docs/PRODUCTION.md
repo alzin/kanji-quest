@@ -34,46 +34,28 @@ already allows exactly one origin via `FRONTEND_URL`.
 
 # One-time setup
 
-> **Provisioned as of 16 September 2026.** The steps below record how each piece
-> was built, so they stay useful for rebuilding or for disaster recovery. What is
-> already live:
+> **Provisioned and live as of 16 September 2026.** The steps below record how
+> each piece was built, so they stay useful for rebuilding or for disaster
+> recovery.
 >
 > | Resource | State |
 > | --- | --- |
 > | Domain ownership of `nipporia.com` | verified (pre-existing) |
-> | Neon `Kanji Quest Production` | created, Singapore, PG18, 0.25–2 CU |
+> | Neon `Kanji Quest Production` | Singapore, PG18, 0.25-2 CU, migrated |
+> | Neon role `kq_cloud_run` | created, read/write only, verified through the pooler |
 > | GCP `kanji-quest-prod` consent screen | **In production**, External |
 > | OAuth client `Kanji Quest Production` | created, origins and redirect set |
-> | Artifact Registry `kanji-quest` | created in `asia-southeast1` |
-> | Deploy SA + Workload Identity Federation | created and bound to `alzin/kanji-quest` |
-> | Cloud Run `kanji-quest-web` | deployed, serving 200 |
-> | Domain mapping `kanji.nipporia.com` | **live** - HTTPS 200, Google Trust Services cert |
-> | DNS `kanji` + `kanji-api` CNAMEs | added in GoDaddy, resolving |
+> | Artifact Registry `kanji-quest` | `asia-southeast1`, holds `web` and `api` images |
+> | Deploy SA + Workload Identity Federation | bound, pinned to `refs/heads/production` |
+> | Secret Manager | all three production secrets stored, runtime account granted |
+> | Cloud Run `kanji-quest-web` | deployed, serving |
+> | Cloud Run `kanji-quest-api-prod` | deployed, `/api/health` ok, `/api/ready` ready |
+> | `kanji.nipporia.com` | **live**, Google-managed certificate |
+> | `kanji-api.nipporia.com` | mapped, certificate provisioning |
 > | `production` GitHub environment | required reviewer `alzin`, branch policy `production` |
-> | `COOKIE_SECRET` | generated in place, runtime account granted access |
 >
-> `https://kanji.nipporia.com` already serves the game, `/privacy` and `/terms`.
->
-> Outstanding, and all of it waits on two secret values that only a human can
-> supply - the Neon `kq_cloud_run` password and a Google client secret:
-> the Neon runtime role (step 2a), the two remaining Secret Manager entries
-> (step 5), the `kanji-quest-api-prod` service (step 7), its domain mapping
-> (step 8), and the first migration run (step 6).
->
-> **Do not push the `production` branch until `kanji-quest-api-prod` exists.** The
-> workflow only swaps images; it would otherwise create that service with no
-> environment or secrets and the container would fail to start.
-
-
-Run the `gcloud` blocks in **Cloud Shell** (open from the Cloud Console header).
-Cloud Shell is already authenticated, so no keys are stored on your laptop.
-
-```bash
-export PROJECT_ID=nipporia-lp-493210
-export PROJECT_NUMBER=345401791489
-export REGION=asia-southeast1
-gcloud config set project "$PROJECT_ID"
-```
+> Remaining: confirm the API certificate, verify a real sign-in, then create the
+> `production` branch so later releases go through the gated workflow.
 
 ## 1. Domain ownership (already done)
 
