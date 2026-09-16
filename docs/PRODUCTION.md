@@ -9,8 +9,8 @@ passed testing is the same code that ships.
 | Frontend | GitHub Pages, `https://alzin.github.io/kanji-quest/` | Cloud Run `kanji-quest-web`, `https://kanji.nipporia.com` |
 | Frontend build | `npm run build:pages` (static) | `npm run build` (SSR, `Dockerfile`) |
 | API | Cloud Run `kanji-quest-api` | Cloud Run `kanji-quest-api-prod`, `https://kanji-api.nipporia.com` |
-| Database | Neon *Kanji Quest Test* | Neon *Kanji Quest Production* |
-| Google OAuth | `Kanji Quest Cloud Run Test`, Testing mode | `Kanji Quest` production client, published |
+| Database | Neon *Kanji Quest Test* | Neon *Kanji Quest Production* (`gentle-violet-12126837`) |
+| Google OAuth | `kanji-quest-test` project, Testing mode | `kanji-quest-prod` project, published |
 | Cookies | `SameSite=None` (cross-site) | `SameSite=Lax` (same-site) |
 | Trigger | push to `main` | push to `production` |
 | Workflow | `.github/workflows/deploy-pages.yml` | `.github/workflows/deploy-production.yml` |
@@ -60,22 +60,25 @@ gcloud domains list-user-verified
 Add missing owners in [Search Console](https://search.google.com/search-console)
 under Settings → Users and permissions.
 
-## 2. Create the production database on Neon
+## 2. Production database on Neon (already created)
 
-In the [Neon console](https://console.neon.tech) under the **Nipporia Launch** org:
+Project **Kanji Quest Production** exists in the **Nipporia** org (Launch plan):
 
-1. **New Project** → name `Kanji Quest Production`, PostgreSQL 18, AWS Singapore
-   (`ap-southeast-1`, same region as Cloud Run).
-2. Keep the default `production` branch and `neondb` database.
-3. Set the compute to autoscale 0.25–1 CU. Leave scale-to-zero **off** for
-   production so the first request of the day is not slow.
-4. From **Connection Details**, copy two strings and keep them somewhere safe for
-   the next steps:
-   - the **pooled** URL (hostname contains `-pooler`) → runtime
-   - the **direct** URL (no `-pooler`) → migrations only
+| | |
+| --- | --- |
+| Project ID | `gentle-violet-12126837` |
+| Region | AWS Asia Pacific 1 (Singapore), matching Cloud Run |
+| Postgres | 18 |
+| Branch | `production` (`br-soft-wind-b3g0odqc`), database `neondb` |
+| Compute | `ep-wispy-lab-b1zv71a6`, autoscale **0.25–2 CU** |
 
-Then create a least-privilege runtime role, matching the test setup. In the Neon
-**SQL Editor**, replace the password and run:
+The 2 CU ceiling is a deliberate cost guard — Neon's default was 8 CU. Raise it
+if real traffic needs it, but do so knowingly.
+
+Still to do, because both steps involve credentials:
+
+**a. Create the least-privilege runtime role.** In the Neon **SQL Editor**, replace
+the password with a long random one and run:
 
 ```sql
 CREATE ROLE kq_cloud_run WITH LOGIN PASSWORD 'generate-a-long-random-password';
@@ -90,20 +93,42 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 `kq_cloud_run` cannot create or drop tables and cannot rewrite migration history.
 The runtime `DATABASE_URL` uses this role; migrations use the owner role.
 
-## 3. Create the production Google OAuth client
+**b. Collect two connection strings** from **Connect** on the project dashboard:
 
-In **Google Auth Platform** for project `nipporia-lp-493210`:
+- the **pooled** URL (hostname contains `-pooler`), as `kq_cloud_run` → runtime secret
+- the **direct** URL (no `-pooler`), as the owner role → migrations only
 
-1. **Branding** — app name `Kanji Quest`, support email, app home page
-   `https://kanji.nipporia.com`, privacy policy and terms URLs, and the app logo.
-2. **Audience** — External, then **Publish app**. While it stays in Testing mode
-   only listed test users can sign in and everyone sees an "unverified app" warning.
-   Publishing with only the `openid`, `email` and `profile` scopes does not require
-   Google's lengthy security review.
-3. **Clients → Create client → Web application**, named `Kanji Quest Production`:
+## 3. Production Google OAuth client
+
+**Why a separate project.** `nipporia-lp-493210` already has an OAuth consent
+screen, configured for an unrelated app (`n8n-sheets`, client `n8n local`). A GCP
+project has exactly one consent screen, so reusing it would rebrand that app's
+consent screen and change its publishing status. Google sign-in for Kanji Dash
+therefore lives in its own project, `kanji-quest-prod` — the same split already
+used for the test environment, and it needs no billing of its own.
+
+Compute stays in `nipporia-lp-493210`. An OAuth client works across projects; the
+backend only ever sees a client ID and secret.
+
+Configured so far in **kanji-quest-prod → Google Auth Platform**:
+
+- App name `Kanji Dash`, user support email `ghaithalzein05@gmail.com`
+- Audience **External**, developer contact `info@nipporia.com`
+
+Remaining:
+
+1. Tick **I agree to the Google API Services: User Data Policy** and press
+   **Create**. This is a developer agreement, so it needs a human.
+2. **Branding** — app home page `https://kanji.nipporia.com`, privacy policy
+   `https://kanji.nipporia.com/privacy`, terms `https://kanji.nipporia.com/terms`,
+   authorised domain `nipporia.com`, plus the app logo.
+3. **Audience → Publish app**. In Testing mode only listed test users can sign in
+   and everyone sees an "unverified app" warning. Publishing with only `openid`,
+   `email` and `profile` does not trigger Google's lengthy security review.
+4. **Clients → Create client → Web application**, named `Kanji Quest Production`:
    - Authorised JavaScript origin: `https://kanji.nipporia.com`
    - Authorised redirect URI: `https://kanji-api.nipporia.com/api/auth/google/callback`
-4. Keep the **client ID** (public, goes in Cloud Run env vars) and the **client
+5. Keep the **client ID** (public, goes in Cloud Run env vars) and the **client
    secret** (goes only into Secret Manager, in step 5).
 
 Leave the existing test client alone — it keeps the Pages environment working.
