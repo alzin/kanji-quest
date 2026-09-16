@@ -109,6 +109,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO kq_cloud_
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO kq_cloud_run;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO kq_cloud_run;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO kq_cloud_run;
 ```
 
 `kq_cloud_run` cannot create or drop tables and cannot rewrite migration history.
@@ -314,16 +316,20 @@ gcloud iam workload-identity-pools create github --location=global \
 gcloud iam workload-identity-pools providers create-oidc kanji-quest \
   --location=global --workload-identity-pool=github \
   --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
-  --attribute-condition="assertion.repository == 'alzin/kanji-quest'"
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
+  --attribute-condition="assertion.repository == 'alzin/kanji-quest' && assertion.ref == 'refs/heads/production'"
 
 gcloud iam service-accounts add-iam-policy-binding "$DEPLOY_SA" \
   --role=roles/iam.workloadIdentityUser \
   --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/alzin/kanji-quest"
 ```
 
-The `attribute-condition` is what stops any other repository from assuming this
-identity. The matching GitHub variables are already set on the `production`
+The `attribute-condition` is the security boundary. Matching only on the
+repository would let **any** workflow in `alzin/kanji-quest` mint a token for
+the deployer - including one added in a pull request branch - so the condition
+also pins the ref to `refs/heads/production`. With the required reviewer on the
+`production` environment, a deploy then needs both a push to that branch and a
+human approval.
 environment; verify with `gh variable list --env production`.
 
 ## 10. Require an approval before production deploys
