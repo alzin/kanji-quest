@@ -34,6 +34,25 @@ already allows exactly one origin via `FRONTEND_URL`.
 
 # One-time setup
 
+> **Verified end to end on 16 September 2026.** A real Google sign-in was
+> completed against `https://kanji.nipporia.com`:
+>
+> - the OAuth start sends PKCE `S256`, `scope=openid email profile`, and the
+>   registered client id and redirect URI
+> - the state cookie is `__Host-` prefixed, `HttpOnly`, `Secure`, `SameSite=Lax`
+> - Google's consent screen shows "continue to nipporia.com" with the published
+>   privacy policy and terms links, and no unverified-app warning
+> - after the callback, a cross-origin `fetch` from `kanji.nipporia.com` to
+>   `kanji-api.nipporia.com/api/auth/session` returned the signed-in user, proving
+>   the session cookie is sent between the two subdomains
+> - `document.cookie` cannot read the session cookie, confirming `HttpOnly`
+> - `/api/progress` returned this account's row, so the API reads Neon through the
+>   pooler as `kq_cloud_run`
+>
+> The `SameSite=Lax` result is the point of the two-subdomain design: on the
+> cross-site Pages setup this cookie had to be `SameSite=None`.
+
+
 > **Provisioned and live as of 16 September 2026.** The steps below record how
 > each piece was built, so they stay useful for rebuilding or for disaster
 > recovery.
