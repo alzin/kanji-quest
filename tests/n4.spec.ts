@@ -42,7 +42,7 @@ test("the selected road persists across home, searchable collection, dojo, and d
   await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Kanji", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText(`${kanjiOfLevel("N4").length} kanji · All regions`);
-  await page.getByRole("button", { name: "Region 1", exact: true }).click();
+  await page.getByRole("button", { name: /^1 / }).click();
   await page.getByRole("searchbox").fill("わたし");
   await page.getByRole("button", { name: "私 — I; private · Unseen", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();

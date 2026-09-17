@@ -14,7 +14,18 @@ async function startDeterministicRun(page: Page, url = "run", pauseClock = false
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");
 }
 
+const RESULT_TEST_IDS: Record<string, string> = {
+  Correct: "result-correct",
+  Missed: "result-missed",
+  "Answer accuracy": "result-accuracy",
+};
+
 async function expectResult(page: Page, label: string, value: string) {
+  const testId = RESULT_TEST_IDS[label];
+  if (testId) {
+    await expect(page.getByTestId(testId)).toHaveText(value);
+    return;
+  }
   await expect(page.getByText(label, { exact: true }).locator("..").getByText(value, { exact: true })).toBeVisible();
 }
 

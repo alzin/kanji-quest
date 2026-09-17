@@ -68,13 +68,13 @@ function Home() {
       <Nav />
       <main className="mx-auto max-w-4xl px-4 pb-8">
         {/* Hero */}
-        <section className="relative mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:mt-8">
+        <section className="relative mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-e2 sm:mt-8">
           <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/10" />
-          <div aria-hidden="true" className="absolute -right-4 top-6 font-serif text-[140px] font-bold leading-none text-primary/10 select-none">
+          <div aria-hidden="true" className="absolute -right-6 top-4 select-none font-serif text-[120px] font-bold leading-none text-primary/6 sm:text-[170px]">
             漢字
           </div>
           <div className="relative p-5 sm:p-10">
-            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary sm:text-xs">
+            <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:text-xs">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
               Your daily kanji adventure
             </p>
@@ -90,7 +90,7 @@ function Home() {
                 to="/run"
                 search={{ gate: undefined }}
                 data-sfx="tap"
-                className="pressable flex min-h-14 items-center justify-between gap-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-sm transition-transform sm:justify-center sm:px-6 sm:text-lg"
+                className="pressable flex min-h-14 items-center justify-between gap-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e2 transition-colors hover:bg-primary-hover sm:justify-center sm:px-6 sm:text-lg"
               >
                 Learn today’s words
                 <AppIcon name="arrow" className="h-5 w-5" />
@@ -108,7 +108,7 @@ function Home() {
 
         {/* Daily mission + stats */}
         <section className="mt-4 grid gap-3 sm:mt-6 sm:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] sm:gap-4" aria-label="Daily progress">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-e1 sm:p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-serif text-lg font-bold">Today's mission</h2>
               <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">{due > 0 ? `${due} to review` : fresh > 0 ? "Fresh start" : "Caught up"}</span>
@@ -123,17 +123,26 @@ function Home() {
                   : "No new kanji or reviews are ready right now. Visit the dojo for extra practice."}
             </p>
             {checkpoint !== undefined && <Link to="/run" search={{ gate: checkpoint }} className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-primary">Earn your next seal: {CHAPTER_NAMES[checkpoint]!.name} · {kanjiOfChapter(checkpoint).length} words →</Link>}
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-xs sm:text-sm">
-              <span className="flex items-center gap-1.5 font-bold">
-                <AppIcon name="flame" className={`h-4 w-4 text-primary${streak >= 1 ? " flicker" : ""}${pops.streak ? " ignite" : ""}`} />
-                <span className={pops.streak ? "hud-pop-left" : undefined}>{streak} day streak</span>
-              </span>
-              <span className={pops.coins ? "font-bold hud-pop-left" : "font-bold"}><span className="text-gold">●</span> {save.coins} mon</span>
-              <span className="text-muted-foreground">{save.runsCompleted} runs</span>
-            </div>
+            <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
+              <div>
+                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Streak</dt>
+                <dd data-testid="stat-streak" className="mt-0.5 flex items-center justify-center gap-1.5 font-serif text-lg font-bold">
+                  <AppIcon name="flame" className={`h-4 w-4 text-primary${streak >= 1 ? " flicker" : ""}${pops.streak ? " ignite" : ""}`} />
+                  <span className={`tabular-nums${pops.streak ? " hud-pop-left" : ""}`}>{streak}</span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mon</dt>
+                <dd data-testid="stat-mon" className={`mt-0.5 font-serif text-lg font-bold tabular-nums${pops.coins ? " hud-pop-left" : ""}`}>{save.coins}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Runs</dt>
+                <dd data-testid="stat-runs" className="mt-0.5 font-serif text-lg font-bold tabular-nums">{save.runsCompleted}</dd>
+              </div>
+            </dl>
           </div>
 
-          <div className="flex items-center justify-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex items-center justify-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:p-5">
             <svg className="h-20 w-20 shrink-0 lg:h-[104px] lg:w-[104px]" width="104" height="104" viewBox="0 0 104 104" role="img" aria-label={`${level} mastery progress ${pct}%`}>
               <circle cx="52" cy="52" r={R} fill="none" stroke="var(--color-border)" strokeWidth="9" />
               <circle
@@ -163,7 +172,7 @@ function Home() {
               { jp: "記", t: "2. Recall calmly", d: "Hide the readings and check what you remember. Practice both reading and meaning, with no timer or lost hearts." },
               { jp: "走", t: "3. Run & revisit", d: "Play with the words you just studied. Run answers schedule spaced reviews, so missed kanji return sooner." },
             ].map((f) => (
-              <div key={f.t} className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 sm:block sm:p-5">
+              <div key={f.t} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:block sm:p-5">
                 <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 font-serif text-xl font-bold text-accent">
                   {f.jp}
                 </div>

@@ -16,25 +16,39 @@ import { initializeAccount } from "@/lib/account";
 
 import appCss from "../styles.css?url";
 
-function NotFoundComponent() {
+/** The two full-page fallbacks share the app's paper, serif and vermillion rather than
+ *  the framework default, so a wrong turn still looks like the same product. */
+function Fallback({ mark, title, body, children }: { mark: string; title: string; body: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
+    <div className="flex min-h-screen items-center justify-center bg-paper px-4 py-12">
+      <div className="w-full max-w-md text-center">
+        <div
+          aria-hidden="true"
+          className="mx-auto flex h-24 w-24 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-4xl font-bold text-primary opacity-90"
+        >
+          {mark}
         </div>
+        <h1 className="mt-7 font-serif text-3xl font-bold">{title}</h1>
+        <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">{body}</p>
+        <div className="mt-8 flex flex-col gap-2.5">{children}</div>
       </div>
     </div>
+  );
+}
+
+const fallbackPrimary = "inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover";
+const fallbackQuiet = "inline-flex min-h-12 items-center justify-center rounded-xl px-5 py-3 font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground";
+
+function NotFoundComponent() {
+  return (
+    <Fallback
+      mark="迷"
+      title="This road does not exist"
+      body="The page you were looking for has moved or was never here. Your progress is untouched — pick the road back up from home."
+    >
+      <Link to="/" className={fallbackPrimary}>Back to home</Link>
+      <Link to="/map" className={fallbackQuiet}>Open the world map</Link>
+    </Fallback>
   );
 }
 
@@ -43,33 +57,22 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Try again
-          </button>
-          <a
-            href={import.meta.env.BASE_URL}
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
-        </div>
-      </div>
-    </div>
+    <Fallback
+      mark="止"
+      title="This page didn't load"
+      body="Something went wrong on our end. Your saved progress is safe on this device — try loading the page again."
+    >
+      <button
+        onClick={() => {
+          router.invalidate();
+          reset();
+        }}
+        className={fallbackPrimary}
+      >
+        Try again
+      </button>
+      <a href={import.meta.env.BASE_URL} className={fallbackQuiet}>Back to home</a>
+    </Fallback>
   );
 }
 

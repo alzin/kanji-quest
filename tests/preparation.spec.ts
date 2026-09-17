@@ -32,7 +32,7 @@ test("requires every word and both recall checks without grading preparation", a
   const answers = await studyWords(page);
   const recall = page.getByRole("region", { name: "Recall check" });
   await expect(recall.locator("ruby")).toHaveCount(0);
-  const choices = recall.getByRole("button");
+  const choices = recall.getByRole("group", { name: "Answer choices" }).getByRole("button");
   for (let i = 0; i < 3; i++) {
     if ((await choices.nth(i).textContent()) !== answers[0]!.reading) { await choices.nth(i).click(); break; }
   }

@@ -61,38 +61,44 @@ function MapPage() {
     <div className="app-shell bg-paper">
       <Nav />
       <main className="mx-auto max-w-2xl px-4 pb-8">
-        <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your journey</p>
+        <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your journey</p>
         <h1 className="mt-2 font-serif text-3xl font-bold">The {level} Road</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
           Small wins, 4–6 kanji at a time. Clear a checkpoint or reach 55% mastery progress to open the next region.
         </p>
         <LevelSelector level={level} preview />
 
-        <section className="mt-5 rounded-2xl border border-border bg-card p-4" aria-label="Checkpoint progress">
+        <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-e1" aria-label="Checkpoint progress">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-bold">One road. {chapters.length} seals.</span>
-            <span className="text-xs font-bold text-primary">{seals} / {chapters.length} earned</span>
+            <span className="text-xs font-bold text-primary tabular-nums">{seals} / {chapters.length} earned</span>
           </div>
-          <div className="mt-3 grid grid-cols-10 gap-1.5" aria-hidden="true">
+          {/* One column per region, however many there are: 19 seals used to wrap into a
+              row of ten and an orphan. */}
+          <div className="mt-3 grid gap-1.5" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${chapters.length}, minmax(0, 1fr))` }}>
             {chapters.map((ch) => <span key={ch} className={`h-1.5 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
           </div>
-          {!levelUnlocked && <button type="button" onClick={() => selectLevel("N5")} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">Continue the N5 road</button>}
+          {!levelUnlocked && <button type="button" onClick={() => selectLevel("N5")} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Continue the N5 road</button>}
         </section>
 
         {allCleared && (
-          <div className="mt-6 flex items-center gap-4 rounded-xl border-2 border-gold bg-card p-5 shadow-sm">
+          <div className="mt-6 flex items-center gap-4 rounded-2xl border-2 border-gold bg-card p-5 shadow-e2">
             <div className="flex h-16 w-16 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-2xl font-bold text-primary">
               {level}
             </div>
             <div>
               <div className="font-serif text-lg font-bold">JLPT {level} kanji seal earned!</div>
               <p className="text-sm text-muted-foreground">{level === "N5" ? "Every checkpoint cleared. Your N4 road is now open." : "Both roads explored. Keep revisiting your words to build lasting mastery."}</p>
-              {level === "N5" && <button type="button" onClick={() => selectLevel("N4")} className="mt-2 min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Start the N4 road →</button>}
+              {level === "N5" && <button type="button" onClick={() => selectLevel("N4")} className="mt-2 min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Start the N4 road →</button>}
             </div>
           </div>
         )}
 
-        <ol className="mt-6 space-y-0">
+        {/* The road itself: one continuous line behind every marker. Open regions get a
+            full card; the locked run ahead collapses to one row each, and the reason they
+            are locked is stated once at the head of that run rather than on all 18. */}
+        <ol className="relative mt-6">
+          <div aria-hidden="true" className="absolute bottom-8 left-[35px] top-8 w-0.5 rounded-full bg-[repeating-linear-gradient(to_bottom,var(--border)_0_10px,transparent_10px_18px)] sm:left-[43px]" />
           {chapters.map((ch, i) => {
             const unlocked = isChapterUnlocked(save, ch);
             const pct = chapterMasteryPct(save, ch);
@@ -101,49 +107,83 @@ function MapPage() {
             const count = kanji.length;
             const mastered = kanji.filter((entry) => getCard(save, entry.c).mastery === 3).length;
             const sealIndex = cleared ? newSeals.indexOf(ch) : -1;
+            const kanjiLabel = `Kanji in this region: ${kanji.map((k) => k.c).join("、")}`;
+            const setRef = (el: HTMLLIElement | null) => { if (el) cardRefs.current.set(ch, el); else cardRefs.current.delete(ch); };
+
+            if (!unlocked) {
+              const firstLocked = i > 0 && isChapterUnlocked(save, chapters[i - 1]!);
+              return (
+                <li key={ch} ref={setRef} className="relative">
+                  {firstLocked && (
+                    <p className="mb-3 ml-[52px] text-xs leading-relaxed text-muted-foreground sm:ml-[68px]">
+                      {levelUnlocked
+                        ? "The road ahead opens one region at a time — clear a checkpoint, or reach 55% mastery progress."
+                        : `The road ahead opens once you earn all ${LEVEL_CHAPTERS.N5.length} N5 checkpoint seals.`}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3 py-1.5 sm:gap-4">
+                    <span aria-hidden="true" className="z-10 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-dashed border-border bg-paper text-muted-foreground sm:h-[42px] sm:w-[42px]">
+                      <AppIcon name="lock" className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1 border-b border-border/60 pb-2">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h2 className="truncate font-serif text-base font-bold text-muted-foreground">
+                          <span className="tabular-nums">{i + 1}.</span> {CHAPTER_NAMES[ch]!.name}
+                        </h2>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{count} kanji</span>
+                      </div>
+                      <p className="mt-0.5 truncate font-serif text-sm tracking-[0.18em] text-muted-foreground/60" aria-label={kanjiLabel}>
+                        {kanji.map((k) => k.c).join(" ")}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              );
+            }
+
             return (
-              <li key={ch} className="relative" ref={(el) => { if (el) cardRefs.current.set(ch, el); else cardRefs.current.delete(ch); }}>
-                {i < chapters.length - 1 && (
-                  <div className="absolute left-[36px] top-16 h-[calc(100%-3rem)] w-0.5 bg-border sm:left-[44px]" />
-                )}
-                <div className={`relative flex gap-3 rounded-2xl border p-4 sm:gap-4 ${ch === nextCheckpoint ? "glow-next border-primary/50 bg-card shadow-sm" : unlocked ? "border-border bg-card shadow-sm" : "border-dashed border-border bg-secondary/40"}`}>
+              <li key={ch} ref={setRef} className="relative pb-4">
+                <div className={`relative flex gap-3 rounded-2xl border bg-card p-4 sm:gap-4 ${ch === nextCheckpoint ? "glow-next border-primary/50 shadow-e2" : "border-border shadow-e1"}`}>
                   <div aria-hidden="true" className={`z-10 flex h-10 w-10 shrink-0 rotate-[-6deg] items-center justify-center rounded-full border-2 font-serif text-lg font-bold sm:h-14 sm:w-14 sm:border-4 sm:text-xl ${
-                    cleared ? "border-primary bg-primary/10 text-primary" : unlocked ? "border-accent bg-card text-accent" : "border-border bg-card text-muted-foreground"
+                    cleared ? "border-primary bg-primary/10 text-primary" : "border-accent bg-card text-accent"
                   }${sealIndex >= 0 ? " relative seal-in" : ""}`} style={sealIndex >= 0 ? { animationDelay: `${200 + sealIndex * 80}ms` } : undefined}>
-                    {cleared ? "印" : unlocked ? i + 1 : <AppIcon name="lock" className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    {cleared ? "印" : i + 1}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`mb-1 text-[10px] font-bold uppercase tracking-widest ${ch === nextCheckpoint ? "text-primary" : "text-muted-foreground"}`}>
-                      Region {i + 1}{ch === nextCheckpoint ? " · Next checkpoint" : ""}
+                    <p className={`mb-1 text-[11px] font-bold uppercase tracking-widest ${ch === nextCheckpoint ? "text-primary" : "text-muted-foreground"}`}>
+                      Region {i + 1}{ch === nextCheckpoint ? " · Next checkpoint" : cleared ? " · Cleared" : ""}
                     </p>
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h2 className="font-serif text-lg font-bold">
-                        {CHAPTER_NAMES[ch]!.name} <span className="mt-0.5 block text-sm text-muted-foreground">{CHAPTER_NAMES[ch]!.jp}</span>
+                        {CHAPTER_NAMES[ch]!.name} <span className="mt-0.5 block text-sm font-normal text-muted-foreground">{CHAPTER_NAMES[ch]!.jp}</span>
                       </h2>
                       <span className="text-xs font-bold text-muted-foreground">{count} kanji · {count}-word checkpoint</span>
                     </div>
-                    <p className="mt-2 font-serif text-lg tracking-[0.2em]" aria-label={`Kanji in this region: ${kanji.map((k) => k.c).join("、")}`}>{kanji.map((k) => k.c).join(" ")}</p>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${CHAPTER_NAMES[ch]!.name} mastery`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                    <p className="mt-2 font-serif text-lg tracking-[0.2em]" aria-label={kanjiLabel}>{kanji.map((k) => k.c).join(" ")}</p>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${CHAPTER_NAMES[ch]!.name} mastery`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                      <div className="ring-fill h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="mt-3 flex flex-col items-stretch gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-muted-foreground">{unlocked ? `${pct}% progress · ${mastered}/${count} mastered` : !levelUnlocked ? `Locked — earn all ${LEVEL_CHAPTERS.N5.length} N5 checkpoint seals` : "Locked — clear the previous checkpoint or reach 55% progress"}</span>
-                      {unlocked && !cleared && (
+                      <span className="text-muted-foreground tabular-nums">{pct}% progress · {mastered}/{count} mastered</span>
+                      {!cleared && (
                         <Link
                           to="/run"
                           search={{ gate: ch }}
                           data-sfx="tap"
-                          className="pressable inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-xs font-bold text-accent-foreground shadow-sm transition-transform"
+                          className="pressable inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground shadow-e1 transition-transform"
                         >
                           Prepare checkpoint
                           <AppIcon name="arrow" className="h-4 w-4" />
                         </Link>
                       )}
-                      {cleared && <span className="text-xs font-bold text-primary">Seal stamped ✓</span>}
+                      {cleared && (
+                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-primary">
+                          <AppIcon name="check" className="h-4 w-4" /> Seal stamped
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="h-4" />
               </li>
             );
           })}

@@ -6,13 +6,15 @@ export function LevelSelector({ level, preview = false, onChange }: { level: JLP
   const n4Unlocked = isLevelUnlocked(save, "N4");
   return (
     <div className="mt-4">
-      <div role="group" aria-label="JLPT level" className="flex gap-2">
+      {/* Two options, so a segmented control rather than two cards: a sunken track with
+          the selected segment raised out of it (light from the sky). */}
+      <div role="group" aria-label="JLPT level" className="flex gap-1 rounded-xl border border-border bg-surface-sunken p-1">
         {LEVELS.map((option) => {
           const locked = !isLevelUnlocked(save, option);
           return (
             <button key={option} type="button" aria-pressed={option === level} disabled={locked && !preview}
               onClick={() => { selectLevel(option); onChange?.(); }}
-              className={`min-h-12 flex-1 rounded-xl border px-3 py-2 text-sm font-bold transition-colors disabled:opacity-50 ${option === level ? "border-primary bg-primary/10 text-primary" : "border-border bg-card hover:bg-secondary"}`}>
+              className={`min-h-11 flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${option === level ? "bg-card text-primary shadow-e1" : "text-muted-foreground hover:text-foreground"}`}>
               {option} <span className="ml-1 text-xs font-normal">{kanjiOfLevel(option).length} kanji{locked ? preview ? " · Preview" : " · Locked" : ""}</span>
             </button>
           );

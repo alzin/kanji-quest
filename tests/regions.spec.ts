@@ -42,14 +42,14 @@ test("both road maps and their region filters fit a narrow phone", async ({ page
   for (const [level, count] of [["N5", 19], ["N4", 36]] as const) {
     await page.getByRole("button", { name: new RegExp(`^${level} `) }).click();
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(count);
-    await expect(page.getByText(`Region ${count}`, { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2 }).last()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath(`${level.toLowerCase()}-regions.png`) });
     await page.getByRole("heading", { level: 2 }).first().scrollIntoViewIfNeeded();
     await page.screenshot({ path: info.outputPath(`${level.toLowerCase()}-first-region.png`) });
   }
   await page.getByRole("link", { name: "Kanji", exact: true }).click();
-  await page.getByRole("button", { name: "Region 36", exact: true }).click();
+  await page.getByRole("button", { name: /^36 / }).click();
   await expect(page.getByRole("status")).toHaveText("5 kanji · Describing Spaces");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

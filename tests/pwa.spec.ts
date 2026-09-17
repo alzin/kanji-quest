@@ -115,7 +115,7 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
     await page.clock.resume();
     await page.goto(`${origin}/`, { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("4 runs", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("stat-runs")).toHaveText("4");
     expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!))).toEqual(savedProgress);
     // N4 assets must also be available when the only online visit was N5 home.
     await page.evaluate((save) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({

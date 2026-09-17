@@ -30,16 +30,16 @@ test("keeps due reviews, partial mastery, and exact checkpoint seals consistent 
   await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "N5 mastery progress 5%", exact: true })).toBeVisible();
   await expect(page.getByText(`1/${allKanji.length}`, { exact: true })).toBeVisible();
-  await expect(page.getByText("4 runs", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("stat-runs")).toHaveText("4");
 
   await page.getByRole("link", { name: "Map", exact: true }).click();
   await expect(page.getByText("1 / 19 earned", { exact: true })).toBeVisible();
   const regions = page.getByRole("main").locator("ol > li");
   await expect(regions.nth(0).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
   await expect(regions.nth(0).getByText("67% progress · 0/5 mastered", { exact: true })).toBeVisible();
-  await expect(regions.nth(0).getByText("Seal stamped ✓", { exact: true })).toHaveCount(0);
+  await expect(regions.nth(0).getByText("Seal stamped", { exact: true })).toHaveCount(0);
   await expect(regions.nth(1).getByRole("link", { name: "Prepare checkpoint" })).toBeVisible();
-  await expect(regions.nth(LEVEL_CHAPTERS.N5.indexOf(3)).getByText("Seal stamped ✓", { exact: true })).toBeVisible();
+  await expect(regions.nth(LEVEL_CHAPTERS.N5.indexOf(3)).getByText("Seal stamped", { exact: true })).toBeVisible();
   await expect(page.getByText("JLPT N5 kanji seal earned!", { exact: true })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Kanji", exact: true }).click();
@@ -88,14 +88,14 @@ test("refreshes due reviews over time while guest progress stays isolated to its
   await page.clock.install({ time: start });
   await seedSave(page, { "一": progress(1, start.getTime() + 60_000) });
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByText("37 mon", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("stat-mon")).toHaveText("37");
   await expect(page.getByText("1 to review", { exact: true })).toHaveCount(0);
   await page.clock.runFor(61_000);
   await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
 
   const other = await context.newPage();
   await other.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(other.getByText("0 runs", { exact: true })).toBeVisible();
+  await expect(other.getByTestId("stat-runs")).toHaveText("0");
   await expect(other.getByRole("img", { name: "N5 mastery progress 0%", exact: true })).toBeVisible();
   await other.evaluate(() => {
     sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({
@@ -105,11 +105,11 @@ test("refreshes due reviews over time while guest progress stays isolated to its
     }));
   });
   await other.reload({ waitUntil: "domcontentloaded" });
-  await expect(other.getByText("123 mon", { exact: false })).toBeVisible();
-  await expect(other.getByText("9 runs", { exact: true })).toBeVisible();
+  await expect(other.getByTestId("stat-mon")).toHaveText("123");
+  await expect(other.getByTestId("stat-runs")).toHaveText("9");
   await expect(other.getByRole("img", { name: "N5 mastery progress 1%", exact: true })).toBeVisible();
-  await expect(page.getByText("37 mon", { exact: false })).toBeVisible();
-  await expect(page.getByText("4 runs", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("stat-mon")).toHaveText("37");
+  await expect(page.getByTestId("stat-runs")).toHaveText("4");
   await expect(page.getByRole("img", { name: "N5 mastery progress 0%", exact: true })).toBeVisible();
   await expect(page.getByText(`0/${allKanji.length}`, { exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBeNull();
