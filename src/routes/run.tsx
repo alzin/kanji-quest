@@ -36,7 +36,12 @@ function RunPage() {
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   // The saved review queue is only available in this browser, after hydration.
-  if (!ready) return <div className="game-viewport flex items-center justify-center bg-paper" role="status">Preparing your run…</div>;
+  if (!ready) return (
+    <div className="game-viewport flex flex-col items-center justify-center gap-4 bg-paper" role="status">
+      <span aria-hidden="true" className="font-serif text-5xl font-bold text-primary/30">走</span>
+      <span className="text-sm font-bold text-muted-foreground">Preparing your run…</span>
+    </div>
+  );
   return <RunSession key={gate ?? "daily"} gate={gate} />;
 }
 
@@ -83,26 +88,32 @@ function RunSession({ gate }: { gate: number | undefined }) {
   if (blockedGate && !results) {
     const gateLevel = levelOfChapter(gate!)!;
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 text-center">
-        <h1 className="font-serif text-2xl font-bold">This {gateLevel} checkpoint is locked</h1>
-        <p className="mt-3 max-w-sm text-muted-foreground">{gateLevel === "N4" ? `Earn all ${LEVEL_CHAPTERS.N5.length} N5 seals first. ` : ""}Clear the previous checkpoint or reach 55% mastery progress in that region to continue.</p>
-        <Link to="/map" onClick={() => selectLevel(gateLevel)} className="mt-6 min-h-11 rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">View the {gateLevel} road</Link>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 py-12 text-center">
+        <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-border text-muted-foreground">
+          <AppIcon name="lock" className="h-8 w-8" />
+        </div>
+        <h1 className="mt-6 font-serif text-3xl font-bold">This {gateLevel} checkpoint is locked</h1>
+        <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">{gateLevel === "N4" ? `Earn all ${LEVEL_CHAPTERS.N5.length} N5 seals first. ` : ""}Clear the previous checkpoint or reach 55% mastery progress in that region to continue.</p>
+        <Link to="/map" onClick={() => selectLevel(gateLevel)} className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">View the {gateLevel} road</Link>
       </div>
     );
   }
 
   if (questions.length === 0 && !results) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 text-center">
-        <div className="font-serif text-6xl font-bold text-primary">完</div>
-        <h1 className="mt-4 font-serif text-2xl font-bold">{pendingCheckpoint !== undefined ? "Ready for your checkpoint" : "Nothing to run right now"}</h1>
-        <p className="mt-2 max-w-sm text-muted-foreground">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 py-12 text-center">
+        <div aria-hidden="true" className="flex h-20 w-20 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-3xl font-bold text-primary opacity-90">完</div>
+        <h1 className="mt-6 font-serif text-3xl font-bold">{pendingCheckpoint !== undefined ? "Ready for your checkpoint" : "Nothing to run right now"}</h1>
+        <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">
           {pendingCheckpoint !== undefined ? `You’ve met this region’s words. Prepare its ${kanjiOfChapter(pendingCheckpoint).length}-word checkpoint to earn a seal and open the next region.` : "There are no new kanji or reviews due in your unlocked regions. Come back later, or visit the dojo to practice strokes."}
         </p>
-        {pendingCheckpoint !== undefined && <Link to="/run" search={{ gate: pendingCheckpoint }} className="mt-5 rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground">Prepare checkpoint</Link>}
-        <div className="mt-6 flex gap-3">
-          <Link to="/" className="rounded-lg bg-primary px-5 py-2.5 font-bold text-primary-foreground">Home</Link>
-          <Link to="/practice" className="rounded-lg border border-border px-5 py-2.5 font-bold">Stroke dojo</Link>
+        {/* One filled button — the single best next step — then quiet alternatives. */}
+        <div className="mt-8 flex w-full max-w-xs flex-col gap-2.5">
+          {pendingCheckpoint !== undefined
+            ? <Link to="/run" search={{ gate: pendingCheckpoint }} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Prepare checkpoint</Link>
+            : <Link to="/practice" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Practice in the dojo</Link>}
+          {pendingCheckpoint !== undefined && <Link to="/practice" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border px-5 py-3 font-bold transition-colors hover:bg-secondary">Stroke dojo</Link>}
+          <Link to="/" className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 py-3 font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">Back home</Link>
         </div>
       </div>
     );
@@ -210,45 +221,69 @@ function RunSession({ gate }: { gate: number | undefined }) {
             )}
             {gate && <p className="mt-1 text-xs text-muted-foreground">Pass: at least {Math.ceil(questions.length * 0.7)} correct out of {questions.length}.</p>}
             {next !== undefined && <p className="mt-2 text-sm font-bold text-primary">Next region open: {CHAPTER_NAMES[next]!.name} · {kanjiOfChapter(next).length} kanji</p>}
-            <div className="mt-5 grid grid-cols-3 gap-1.5 text-center sm:mt-6 sm:gap-3">
-              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(0)}>
-                <div className="stamp-pop font-serif text-xl font-bold text-[#2e5238] sm:text-2xl" style={tileDelay(0)}>{results.correct}</div>
-                <div className="text-xs font-bold text-muted-foreground">Correct</div>
+            {/* What was learned, at full size; the game statistics sit under it, smaller.
+                Every colour is paired with a word, so none of it is read from hue alone. */}
+            <div className="tile-in mt-6 rounded-xl border border-border bg-surface-sunken p-4 text-left" style={tileDelay(0)}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">This run</span>
+                <span className="text-xs font-bold text-muted-foreground"><span data-testid="result-accuracy" className="tabular-nums">{accuracy}%</span> accuracy</span>
               </div>
               <div
-                className={`tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3${results.wrong > 0 ? " pulse-primary" : ""}`}
-                style={results.wrong > 0 ? tileWith(1, "pulse-primary 600ms ease-in-out 1100ms") : tileDelay(1)}
+                className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-border"
+                role="progressbar" aria-label="Answers correct" aria-valuenow={accuracy} aria-valuemin={0} aria-valuemax={100}
               >
-                <div className="stamp-pop font-serif text-xl font-bold text-primary sm:text-2xl" style={tileDelay(1)}>{results.wrong}</div>
-                <div className="text-xs font-bold text-muted-foreground">Missed</div>
+                <span className="ring-fill block h-full bg-success" style={{ width: `${(results.correct / questions.length) * 100}%` }} />
+                <span className="ring-fill block h-full bg-primary" style={{ width: `${(results.wrong / questions.length) * 100}%` }} />
               </div>
-              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(2)}>
-                <div className="stamp-pop font-serif text-xl font-bold text-accent sm:text-2xl" style={tileDelay(2)}>×{results.bestCombo}</div>
-                <div className="text-xs font-bold text-muted-foreground">Best combo</div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+                <span className="inline-flex items-center gap-1.5 font-bold">
+                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
+                  <b data-testid="result-correct" className="stamp-pop font-serif text-lg text-success" style={tileDelay(1)}>{results.correct}</b> correct
+                </span>
+                <span className={`inline-flex items-center gap-1.5 font-bold${results.wrong > 0 ? " pulse-primary" : ""}`}>
+                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-primary" />
+                  <b data-testid="result-missed" className="stamp-pop font-serif text-lg text-primary" style={tileDelay(2)}>{results.wrong}</b> missed
+                </span>
+                {unattempted > 0 && <span className="text-muted-foreground">{unattempted} not reached</span>}
               </div>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-1.5 text-center sm:gap-3">
-              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(3)}>
-                <div className="stamp-pop font-serif text-xl font-bold sm:text-2xl" style={tileDelay(3)}>{results.score.toLocaleString()}</div>
+            <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
+              <div className="tile-in rounded-lg bg-secondary px-2 py-2.5" style={tileDelay(3)}>
+                <div className="stamp-pop font-serif text-lg font-bold" style={tileDelay(3)}>{results.score.toLocaleString()}</div>
                 <div className="text-xs font-bold text-muted-foreground">Score</div>
               </div>
-              <div className="tile-in rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileDelay(4)}>
-                <div className="stamp-pop font-serif text-xl font-bold sm:text-2xl" style={tileDelay(4)}>{accuracy}%</div>
-                <div className="text-xs font-bold text-muted-foreground">Answer accuracy</div>
+              <div className="tile-in rounded-lg bg-secondary px-2 py-2.5" style={tileDelay(4)}>
+                <div className="stamp-pop font-serif text-lg font-bold text-accent" style={tileDelay(4)}>×{results.bestCombo}</div>
+                <div className="text-xs font-bold text-muted-foreground">Best combo</div>
               </div>
-              <div className="tile-in shimmer-gold rounded-lg border border-transparent bg-secondary p-2 sm:p-3" style={tileWith(5, "shimmer-gold 700ms ease-in-out 900ms both")}>
-                <div className="stamp-pop font-serif text-xl font-bold text-accent sm:text-2xl" style={tileDelay(5)}>+{results.earned}</div>
+              <div className="tile-in shimmer-gold rounded-lg bg-secondary px-2 py-2.5" style={tileWith(5, "shimmer-gold 700ms ease-in-out 900ms both")}>
+                <div className="stamp-pop font-serif text-lg font-bold text-accent" style={tileDelay(5)}>+{results.earned}</div>
                 <div className="text-xs font-bold text-muted-foreground">Mon earned</div>
               </div>
             </div>
+            {/* One filled button only: the single best next step. Everything else is an
+                outline, so the eye is never asked to choose between two blocks of colour. */}
             <div className="results-actions mt-6 flex flex-col gap-2">
-              {next !== undefined && <Link to="/run" search={{ gate: next }} data-sfx="tap" className="breathe-ring rounded-lg bg-primary py-3 text-center font-serif font-bold text-primary-foreground">Prepare next region</Link>}
-              {pendingCheckpoint !== undefined && <Link to="/run" search={{ gate: pendingCheckpoint }} data-sfx="tap" className="rounded-lg bg-accent py-3 text-center font-serif font-bold text-accent-foreground">Earn a seal · Prepare checkpoint</Link>}
+              {next !== undefined && <Link to="/run" search={{ gate: next }} data-sfx="tap" className="breathe-ring min-h-12 rounded-xl bg-primary py-3 text-center font-serif font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Prepare next region</Link>}
+              {pendingCheckpoint !== undefined && (
+                <Link
+                  to="/run"
+                  search={{ gate: pendingCheckpoint }}
+                  data-sfx="tap"
+                  className={next === undefined
+                    ? "breathe-ring min-h-12 rounded-xl bg-accent py-3 text-center font-serif font-bold text-accent-foreground shadow-e1"
+                    : "min-h-12 rounded-xl border border-accent/40 py-3 text-center font-serif font-bold text-accent transition-colors hover:bg-accent/8"}
+                >
+                  Earn a seal · Prepare checkpoint
+                </Link>
+              )}
               {!gate && (
                 <button
                   onClick={restart}
                   data-sfx="tap"
-                  className="breathe-ring rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
+                  className={pendingCheckpoint === undefined
+                    ? "breathe-ring min-h-12 rounded-xl bg-primary py-3 font-serif font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover"
+                    : "min-h-12 rounded-xl border border-border py-3 font-serif font-bold transition-colors hover:bg-secondary"}
                 >
                   Run again
                 </button>
@@ -257,7 +292,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
                 <button
                   onClick={restart}
                   data-sfx="tap"
-                  className="breathe-ring rounded-lg bg-primary py-3 font-serif font-bold text-primary-foreground"
+                  className="breathe-ring min-h-12 rounded-xl bg-primary py-3 font-serif font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover"
                 >
                   Retry checkpoint
                 </button>
@@ -268,7 +303,7 @@ function RunSession({ gate }: { gate: number | undefined }) {
                   void navigate({ to: gate ? "/map" : "/" });
                 }}
                 data-sfx="tap"
-                className="rounded-lg border border-border py-3 font-bold"
+                className="min-h-12 rounded-xl py-3 font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 {gate ? "Back to map" : "Back home"}
               </button>

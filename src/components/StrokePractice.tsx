@@ -165,7 +165,7 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
         <p
           id={instructionsId}
           role={result ? "status" : undefined}
-          className={`mt-1 flex min-h-10 items-center text-xs leading-5 ${result ? `font-bold ${result.pass ? "text-[#2e5238]" : "text-primary"}` : "text-muted-foreground"}`}
+          className={`mt-1 flex min-h-10 items-center text-xs leading-5 ${result ? `font-bold ${result.pass ? "text-success" : "text-primary"}` : "text-muted-foreground"}`}
         >
           {result
             ? result.pass
@@ -174,10 +174,10 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
             : "Swipe outside the square to scroll."}
         </p>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-3">
-          <button type="button" onClick={reset} className="min-h-11 rounded-lg border border-border px-4 py-2.5 font-bold transition-colors hover:bg-secondary active:bg-secondary">
+          <button type="button" onClick={reset} className="min-h-11 rounded-lg border border-border bg-surface px-4 py-2.5 font-bold shadow-e1 transition-colors hover:bg-secondary active:bg-secondary">
             Clear
           </button>
-          <button type="button" onClick={check} disabled={strokes === 0} className="min-h-11 rounded-lg bg-primary px-4 py-2.5 font-bold text-primary-foreground transition-colors hover:bg-primary/90 active:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40">
+          <button type="button" onClick={check} disabled={strokes === 0} className="min-h-11 rounded-lg bg-primary px-4 py-2.5 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover active:bg-primary-hover disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none">
             Check
           </button>
         </div>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { Nav } from "@/components/Nav";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { LevelSelector } from "@/components/LevelSelector";
@@ -129,9 +129,73 @@ function CollectionPage() {
   const [isHydrated, setIsHydrated] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  // A pointer cannot swipe, and the rail hides its scrollbar, so it needs arrows.
+  const [rail, setRail] = useState({ start: false, end: false });
   const dismissDetail = useCallback(() => setSelected(null), []);
 
   useEffect(() => { setIsHydrated(true); }, []);
+
+  const syncRail = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const remaining = el.scrollWidth - el.clientWidth - el.scrollLeft;
+    setRail({ start: el.scrollLeft > 4, end: remaining > 4 });
+  }, []);
+
+  // Re-measure when the rail resizes and when the level swaps its chips out.
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    syncRail();
+    const observer = new ResizeObserver(syncRail);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [syncRail, level]);
+
+  const nudgeRail = (direction: -1 | 1) => {
+    const el = railRef.current;
+    if (!el) return;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    el.scrollBy({ left: direction * Math.max(180, el.clientWidth * 0.8), behavior: reduced ? "auto" : "smooth" });
+  };
+
+  // Drag to scroll, so a mouse can slide the rail the way a finger does. Touch already
+  // scrolls natively, and a drag that actually moved must not land as a chip click.
+  const drag = useRef<{ id: number; startX: number; startScroll: number; moved: boolean } | null>(null);
+  const railDragProps = {
+    onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === "touch" || event.button !== 0) return;
+      const el = railRef.current;
+      if (!el || el.scrollWidth <= el.clientWidth) return;
+      drag.current = { id: event.pointerId, startX: event.clientX, startScroll: el.scrollLeft, moved: false };
+    },
+    onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
+      const current = drag.current;
+      const el = railRef.current;
+      if (!current || !el || event.pointerId !== current.id) return;
+      const deltaX = event.clientX - current.startX;
+      if (!current.moved) {
+        if (Math.abs(deltaX) < 4) return;
+        current.moved = true;
+        el.setPointerCapture(current.id);
+      }
+      el.scrollLeft = current.startScroll - deltaX;
+    },
+    onPointerUp: (event: PointerEvent<HTMLDivElement>) => {
+      const current = drag.current;
+      if (!current || event.pointerId !== current.id) return;
+      if (current.moved) railRef.current?.releasePointerCapture(current.id);
+      // Cleared on the click that follows, which is where a dragged chip is suppressed.
+      window.setTimeout(() => { drag.current = null; }, 0);
+    },
+    onPointerCancel: () => { drag.current = null; },
+    onClickCapture: (event: MouseEvent<HTMLDivElement>) => {
+      if (!drag.current?.moved) return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+  };
 
   const searchTerms = normalizeSearch(query.trim()).split(/\s+/).filter(Boolean);
   // A level change in another tab must not leave an incompatible region filter.
@@ -146,8 +210,9 @@ function CollectionPage() {
     <div className="app-shell min-h-screen bg-paper">
       <Nav />
       <main className="mx-auto max-w-4xl px-4 pb-16">
-        <h1 className="mt-6 font-serif text-3xl font-bold sm:mt-8">Kanji Collection</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your growing library. Tap a kanji to explore it.</p>
+        <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your library</p>
+        <h1 className="mt-1.5 font-serif text-3xl font-bold sm:text-4xl">Kanji Collection</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Every kanji on your road. Tap one to see its readings, mnemonic and words.</p>
         <LevelSelector level={level} preview onChange={() => { setFilter(null); setQuery(""); setSelected(null); }} />
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold">
           <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded-sm border border-border bg-card" /> Unseen</span>
@@ -172,7 +237,7 @@ function CollectionPage() {
             spellCheck={false}
             enterKeyHint="search"
             onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) event.currentTarget.blur(); }}
-            className="min-h-12 w-full rounded-2xl border border-border bg-card py-3 pl-12 pr-12 text-base shadow-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15 [&::-webkit-search-cancel-button]:appearance-none"
+            className="min-h-12 w-full rounded-2xl border border-border bg-surface-sunken py-3 pl-12 pr-12 text-base outline-none placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/15 [&::-webkit-search-cancel-button]:appearance-none"
           />
           {query && (
             <button type="button" onClick={() => { setQuery(""); searchRef.current?.focus(); }} aria-label="Clear search" className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
@@ -181,14 +246,38 @@ function CollectionPage() {
           )}
         </div>
 
-        <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto overscroll-x-contain px-4 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filter by region">
+        {/* The rail scrolls; a finger can swipe it but a mouse cannot, so pointer devices
+            get arrows. They are redundant for the keyboard — tabbing a chip scrolls it into
+            view — so they stay out of the tab order. */}
+        <div className="relative mt-3">
+          <div aria-hidden="true" className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-paper to-transparent transition-opacity sm:-left-1 ${rail.start ? "opacity-100" : "opacity-0"}`} />
+          <div aria-hidden="true" className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-paper to-transparent transition-opacity sm:-right-1 ${rail.end ? "opacity-100" : "opacity-0"}`} />
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden="true"
+            onClick={() => nudgeRail(-1)}
+            className={`rail-arrow absolute left-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-lg font-bold shadow-e2 transition-opacity hover:bg-secondary sm:-left-4 ${rail.start ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden="true"
+            onClick={() => nudgeRail(1)}
+            className={`rail-arrow absolute right-0 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-lg font-bold shadow-e2 transition-opacity hover:bg-secondary sm:-right-4 ${rail.end ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          >
+            ›
+          </button>
+        <div ref={railRef} onScroll={syncRail} {...railDragProps} className="chip-rail -mx-4 flex gap-2 overflow-x-auto overscroll-x-contain px-4 py-1 sm:mx-0 sm:px-0" role="group" aria-label="Filter by region">
           <button
             type="button"
             onClick={() => setFilter(null)}
             aria-pressed={activeFilter === null}
-            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${activeFilter === null ? "border-ink bg-ink text-paper" : "border-border bg-card hover:bg-secondary"}`}
+            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${activeFilter === null ? "border-ink bg-ink text-paper shadow-e1" : "border-border bg-card hover:bg-secondary"}`}
           >
-            All
+            All regions
           </button>
           {LEVEL_CHAPTERS[level].map((ch, index) => (
             <button
@@ -197,11 +286,12 @@ function CollectionPage() {
               onClick={() => setFilter(ch)}
               aria-pressed={activeFilter === ch}
               title={CHAPTER_NAMES[ch]?.name}
-              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${activeFilter === ch ? "border-ink bg-ink text-paper" : "border-border bg-card hover:bg-secondary"}`}
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition-colors ${activeFilter === ch ? "border-ink bg-ink text-paper shadow-e1" : "border-border bg-card hover:bg-secondary"}`}
             >
-              Region {index + 1}
+              <span className="tabular-nums opacity-60">{index + 1}</span> {CHAPTER_NAMES[ch]?.name ?? `Region ${index + 1}`}
             </button>
           ))}
+        </div>
         </div>
 
         <p className="mt-5 text-xs font-bold text-muted-foreground" role="status" aria-live="polite" aria-atomic="true">
@@ -221,7 +311,7 @@ function CollectionPage() {
                   setSelected(k);
                 }}
                 data-sfx="sheet"
-                className={`flex aspect-square min-h-11 items-center justify-center rounded-xl border-2 font-serif text-2xl font-bold transition-transform hover:-translate-y-0.5 hover:shadow active:scale-95 ${TILE_CLASS[p.mastery]}${p.mastery === 3 ? " relative tile-mastered" : ""}`}
+                className={`flex aspect-square min-h-11 items-center justify-center rounded-xl border-2 font-serif text-2xl font-bold shadow-e1 transition-transform hover:-translate-y-0.5 hover:shadow-e2 active:scale-95 ${TILE_CLASS[p.mastery]}${p.mastery === 3 ? " relative tile-mastered" : ""}`}
                 aria-label={`${k.c} — ${k.m} · ${MASTERY_LABEL[p.mastery]}`}
                 aria-haspopup="dialog"
               >

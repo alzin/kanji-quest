@@ -86,8 +86,10 @@ export function getGameLayout(width: number, height: number): GameLayout {
       laneTop,
       laneBottom,
       laneSpan: laneBottom - laneTop,
-      questionTop: height * 0.03,
-      questionHeight: height * 0.16,
+      // Below the HUD band: a gate that slides in on the right used to pass under the
+      // combo and score chips, which made both unreadable for a second.
+      questionTop: height * 0.1,
+      questionHeight: height * 0.13,
       signWidth: 190,
       signHeight: 52,
       playerX: width * 0.22,
