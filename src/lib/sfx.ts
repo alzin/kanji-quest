@@ -540,6 +540,11 @@ export function isAudioRunning(): boolean {
   }
 }
 
+/** Shared output for the soundtrack. Reading this never creates or resumes audio. */
+export function getGameAudio(): { context: AudioContext; output: AudioNode } | null {
+  return ctx && master && ctx.state === "running" ? { context: ctx, output: master } : null;
+}
+
 // One sound may wait for a pending resume(): AudioContext.state only flips to "running"
 // asynchronously, so the sound of the very gesture that resumes it would otherwise be lost.
 let pendingAfterResume: { id: SoundId; opts?: SoundOpts } | null = null;

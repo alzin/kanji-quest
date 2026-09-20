@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { SoundToggle } from "../SoundToggle";
+import { MusicToggle } from "../MusicToggle";
+import { useGameMusic } from "@/lib/music";
 import { WordAudio } from "../WordAudio";
 import { play, unlock } from "@/lib/sfx";
 import { vocabKana } from "@/lib/words";
@@ -24,6 +26,7 @@ export function StackGame({ words, title, seed, tempo = 0, forceFast = false, ma
   const callbacks = useRef({ onPlacement, onFinish }); callbacks.current = { onPlacement, onFinish };
   const [view, setView] = useState<Snapshot>(BLANK);
   const [paused, setPaused] = useState(false);
+  useGameMusic("puzzle", paused);
   const pausedRef = useRef(false);
   const gesture = useRef<{ x: number; y: number } | null>(null);
 
@@ -130,9 +133,6 @@ export function StackGame({ words, title, seed, tempo = 0, forceFast = false, ma
         cache.set(key, glyph);
       }
       ctx.drawImage(glyph, x, y, w, h);
-      const p = s.current;
-      const highlighted = (p?.target === tile.id && ((words[p.word]!.fresh && p.age < 1.5) || (p.hinted && p.age < Math.max(0.3, 1.5 / p.attempt)))) || (s.phase === "ink" && words[tile.word] === s.last?.word && tile.kind !== "G" && tile.kind !== "D");
-      if (highlighted) { ctx.strokeStyle = "#c7962b"; ctx.lineWidth = 3; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); }
       if (s.clearIds.includes(tile.id)) { ctx.fillStyle = "rgba(216,178,74,0.28)"; ctx.fillRect(x, y, w, h); }
     };
     const render = () => {
@@ -188,7 +188,7 @@ export function StackGame({ words, title, seed, tempo = 0, forceFast = false, ma
   return <section className="stack-game" aria-label="Tsumiji stack game" data-testid="stack-game">
     <header className="stack-header">
       <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold tracking-widest text-primary">積み字 · TSUMIJI</span><span className="truncate text-xs text-muted-foreground">{title}</span></div>
-      <div className="mt-2 flex items-baseline justify-between gap-2 text-sm"><span data-testid="stack-remaining">{view.remaining} left</span><b data-testid="stack-combo" className="font-serif text-xl text-accent">×{view.combo}</b><b data-testid="stack-score" className="tabular-nums">{view.score.toLocaleString()}</b></div>
+      <div className="mt-2 flex items-center justify-between gap-2 text-sm"><span data-testid="stack-remaining">{view.remaining} left</span><b key={`combo-${view.combo}`} data-testid="stack-combo" className={`font-serif text-xl text-accent ${view.combo > 0 ? "hud-pop" : ""}`}>×{view.combo}</b><b key={`score-${view.score}`} data-testid="stack-score" className={`tabular-nums ${view.score > 0 ? "score-tick" : ""}`}>{view.score.toLocaleString()}</b><MusicToggle compact /></div>
     </header>
     <button type="button" className="stack-prompt" data-testid="stack-word" aria-label="Hold current word" disabled={paused || !q} onClick={() => dispatch.current({ type: "hold" })}>
       <span className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{view.targetKind === "M" ? "Find its meaning" : view.current?.kind === "K" ? "Find its reading" : view.current?.kind === "R" ? "Find the written word" : "Find the word for this meaning"}</span>

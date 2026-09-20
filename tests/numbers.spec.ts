@@ -27,9 +27,9 @@ test("keeps due reviews, partial mastery, and exact checkpoint seals consistent 
   cards["六"] = progress(3, Date.now() - 1_000);
   await seedSave(page, cards, [3]);
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
-  await expect(page.getByRole("img", { name: "N5 mastery progress 5%", exact: true })).toBeVisible();
-  await expect(page.getByText(`1/${allKanji.length}`, { exact: true })).toBeVisible();
+  await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("mastery-summary")).toHaveText("1/96 mastered · 5% mastery progress");
+  await expect(page.getByTestId("mastery-summary")).toBeVisible();
   await expect(page.getByTestId("stat-runs")).toHaveText("4");
 
   await page.getByRole("link", { name: "Map", exact: true }).click();
@@ -53,9 +53,9 @@ test("does not display 100% before every kanji is mastered", async ({ page }) =>
   cards[allKanji[0]!.c] = progress(2);
   await seedSave(page, cards);
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("img", { name: "N5 mastery progress 99%", exact: true })).toBeVisible();
-  await expect(page.getByText(`${allKanji.length - 1}/${allKanji.length}`, { exact: true })).toBeVisible();
-  await expect(page.getByText("Caught up", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("mastery-summary")).toHaveText("95/96 mastered · 99% mastery progress");
+  await expect(page.getByTestId("mastery-summary")).toBeVisible();
+  await expect(page.getByText("A small adventure is enough for today.", { exact: true })).toBeVisible();
 });
 
 test("offers a short checkpoint when all eligible kanji are waiting for their review date", async ({ page }) => {
@@ -64,7 +64,7 @@ test("offers a short checkpoint when all eligible kanji are waiting for their re
   page.on("pageerror", (error) => errors.push(error.message));
   await seedSave(page, cards);
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByText("Caught up", { exact: true })).toBeVisible();
+  await expect(page.getByText("A small adventure is enough for today.", { exact: true })).toBeVisible();
   await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Ready for your checkpoint", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Prepare checkpoint", exact: true })).toHaveAttribute("href", /gate=1/);
@@ -89,14 +89,14 @@ test("refreshes due reviews over time while guest progress stays isolated to its
   await seedSave(page, { "一": progress(1, start.getTime() + 60_000) });
   await page.goto("./", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("stat-mon")).toHaveText("37");
-  await expect(page.getByText("1 to review", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toHaveCount(0);
   await page.clock.runFor(61_000);
-  await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toBeVisible();
 
   const other = await context.newPage();
   await other.goto("./", { waitUntil: "domcontentloaded" });
   await expect(other.getByTestId("stat-runs")).toHaveText("0");
-  await expect(other.getByRole("img", { name: "N5 mastery progress 0%", exact: true })).toBeVisible();
+  await expect(other.getByTestId("mastery-summary")).toHaveText("0/96 mastered · 0% mastery progress");
   await other.evaluate(() => {
     sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({
       coins: 123,
@@ -107,11 +107,11 @@ test("refreshes due reviews over time while guest progress stays isolated to its
   await other.reload({ waitUntil: "domcontentloaded" });
   await expect(other.getByTestId("stat-mon")).toHaveText("123");
   await expect(other.getByTestId("stat-runs")).toHaveText("9");
-  await expect(other.getByRole("img", { name: "N5 mastery progress 1%", exact: true })).toBeVisible();
+  await expect(other.getByTestId("mastery-summary")).toHaveText("1/96 mastered · 1% mastery progress");
   await expect(page.getByTestId("stat-mon")).toHaveText("37");
   await expect(page.getByTestId("stat-runs")).toHaveText("4");
-  await expect(page.getByRole("img", { name: "N5 mastery progress 0%", exact: true })).toBeVisible();
-  await expect(page.getByText(`0/${allKanji.length}`, { exact: true })).toBeVisible();
+  await expect(page.getByTestId("mastery-summary")).toHaveText("0/96 mastered · 0% mastery progress");
+  await expect(page.getByTestId("mastery-summary")).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("kanji-dash-v1"))).toBeNull();
   await other.close();
 });

@@ -17,7 +17,7 @@ test("keeps thumb navigation available and every screen clear at 320px", async (
   await expect(navigation.getByRole("link")).toHaveCount(4);
 
   for (const [name, heading] of [
-    ["Home", "Learn. Recall. Stack."],
+    ["Home", "A little adventure. A little wiser."],
     ["Map", "The N5 Road"],
     ["Dojo", "Stroke Dojo"],
     ["Kanji", "Kanji Collection"],

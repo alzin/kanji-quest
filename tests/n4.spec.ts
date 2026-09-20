@@ -38,8 +38,8 @@ test("the selected road persists across home, searchable collection, dojo, and d
   await page.setViewportSize({ width: 320, height: 568 });
   await unlockN4(page, true);
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("img", { name: "N4 mastery progress 0%", exact: true })).toBeVisible();
-  await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("mastery-summary")).toHaveText(`0/${kanjiOfLevel("N4").length} mastered · 0% mastery progress`);
+  await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Kanji", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText(`${kanjiOfLevel("N4").length} kanji · All regions`);
   await page.getByRole("button", { name: /^1 / }).click();

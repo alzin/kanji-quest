@@ -9,7 +9,7 @@ async function listAssets(directory: string, prefix = ""): Promise<string[]> {
     if (entry.name.startsWith(".")) return [];
     const path = `${prefix}${entry.name}`;
     if (entry.isDirectory()) return listAssets(resolve(directory, entry.name), `${path}/`);
-    if (path === "sw.js" || !/\.(?:html|js|css|png|svg|ico|webmanifest|woff2?)$/.test(path)) return [];
+    if (path === "sw.js" || !/\.(?:html|js|css|png|webp|svg|ico|webmanifest|woff2?)$/.test(path)) return [];
     return [path];
   }));
   return assets.flat().sort();

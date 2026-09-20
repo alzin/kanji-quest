@@ -1,4 +1,5 @@
 import { RunResults } from "@/components/RunResults";
+import { Expedition } from "@/components/Expedition";
 import { LessonFlash } from "@/components/LessonFlash";
 import { StackSession, type StackMode } from "@/components/StackSession";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
@@ -15,19 +16,19 @@ import {
 import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter, levelOfChapter } from "@/data";
 
 export const Route = createFileRoute("/run")({
-  validateSearch: (s: Record<string, unknown>): { gate?: number | undefined; mode?: "runner" | "stack"; practice?: StackMode } => {
+  validateSearch: (s: Record<string, unknown>): { gate?: number | undefined; mode?: "runner" | "stack" | "expedition"; practice?: StackMode } => {
     const g = s["gate"];
     const n = typeof g === "number" ? g : typeof g === "string" && /^\d+$/.test(g) ? parseInt(g) : NaN;
-    const mode = s["mode"] === "runner" ? "runner" as const : s["mode"] === "stack" ? "stack" as const : undefined;
+    const mode = s["mode"] === "runner" ? "runner" as const : s["mode"] === "stack" ? "stack" as const : s["mode"] === "expedition" ? "expedition" as const : undefined;
     const practice: StackMode | undefined = s["practice"] === "fluency" || s["practice"] === "marathon" ? s["practice"] : undefined;
     return { gate: levelOfChapter(n) ? n : undefined, ...(mode ? { mode } : {}), ...(practice ? { practice } : {}) };
   },
   head: () => ({
     meta: [
-      { title: "Tsumiji — Kanji Dash" },
-      { name: "description", content: "A kanji run session: read the word at each gate and clear today's review queue." },
-      { property: "og:title", content: "Run — Kanji Dash" },
-      { property: "og:description", content: "Steer through kanji gates in today's run." },
+      { title: "Play — Kanji Dash" },
+      { name: "description", content: "Explore the Spirit Trail, weave words in Tsumiji, or read your way through Torii Run. A little kanji adventure every day." },
+      { property: "og:title", content: "Play — Kanji Dash" },
+      { property: "og:description", content: "Learn kanji through forest expeditions, word puzzles, and running adventures." },
     ],
   }),
   component: RunPage,
@@ -44,6 +45,7 @@ function RunPage() {
       <span className="text-sm font-bold text-muted-foreground">Preparing your run…</span>
     </div>
   );
+  if (mode === "expedition" && gate === undefined) return <Expedition />;
   return mode !== "runner" ? <StackSession key={`${gate ?? "daily"}-${practice}`} gate={gate} kind={practice ?? "daily"} /> : <RunSession key={gate ?? "daily"} gate={gate} />;
 }
 

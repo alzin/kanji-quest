@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useSave, streakCount } from "@/lib/srs";
 import { AppIcon } from "@/components/AppIcon";
 import { AccountStatus } from "@/components/AccountStatus";
+import { TrailEmblem } from "@/components/TrailEmblem";
 
 const links = [
   { to: "/", label: "Home", icon: "home" },
@@ -15,10 +16,10 @@ export function Nav() {
   const streak = streakCount(save);
   return (
     <header className="app-header">
-      <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-3 px-4">
+      <div className="trail-nav-inner mx-auto flex h-16 items-center justify-between gap-3 px-4">
         <Link to="/" className="flex min-h-11 shrink-0 items-center gap-2.5" aria-label="Kanji Dash home">
-          <span className="flex h-9 w-9 -rotate-6 items-center justify-center rounded-xl bg-primary font-serif text-xl font-bold text-primary-foreground shadow-sm" aria-hidden="true">
-            走
+          <span className="trail-brand-mark" aria-hidden="true">
+            <TrailEmblem />
           </span>
           <span className="font-serif text-lg font-bold tracking-tight">Kanji Dash</span>
         </Link>

@@ -1,198 +1,87 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { InstallApp } from "@/components/InstallApp";
 import { SoundToggle } from "@/components/SoundToggle";
-import { LevelSelector } from "@/components/LevelSelector";
-import { useSave, dueCount, getSnapshot, learningLevel, levelMasteryPct, newKanji, selectLevel, streakCount, MAX_REVIEWS, isChapterUnlocked, isGateCleared } from "@/lib/srs";
-import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
-import { isAudioRunning, play } from "@/lib/sfx";
-import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfLevel, kanjiOfChapter } from "@/data";
 import { AppIcon } from "@/components/AppIcon";
-import { dailyQuests, stackOf } from "@/lib/stack-progress";
+import { TrailEmblem } from "@/components/TrailEmblem";
+import { TrailCompanion } from "@/components/TrailCompanion";
+import { useSave, dueCount, learningLevel, levelMasteryPct, streakCount, isChapterUnlocked, isGateCleared, isLevelUnlocked, selectLevel } from "@/lib/srs";
+import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfLevel } from "@/data";
+import { explorerRank } from "@/lib/expedition";
+import { localDay, stackOf } from "@/lib/stack-progress";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Kanji Dash — Learn JLPT N5 & N4 with Tsumiji" },
-      {
-        name: "description",
-        content:
-          "Learn JLPT N5 and N4 kanji with daily missions, spaced repetition, vocabulary, and writing practice.",
-      },
-      { property: "og:title", content: "Kanji Dash — Learn JLPT N5 & N4 with Tsumiji" },
-      {
-        property: "og:description",
-        content: "Daily kanji stacking sheets. Match words, remember readings, and follow the Japanese study roads.",
-      },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "Kanji Dash — A little adventure. A little wiser." },
+    { name: "description", content: "Follow the Spirit Trail. Discover kanji, restore forest lanterns, and build lasting recall through short daily adventures." },
+    { property: "og:title", content: "Kanji Dash — Your daily kanji adventure" },
+    { property: "og:description", content: "A quiet forest. A curious mind. Learn Japanese through recall, rhythm, and discovery." },
+  ] }),
   component: Home,
 });
 
-// YYYY-MM-DD from local date parts: the same day convention srs.ts keeps streak.last in.
-function localDay(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function Home() {
   const save = useSave();
-  const level = learningLevel(save);
-  const allKanji = kanjiOfLevel(level);
-  const due = dueCount(save);
-  const pct = levelMasteryPct(save, level);
-  const streak = streakCount(save);
-  const fresh = Math.min(4, newKanji(save).length);
-  const checkpoint = LEVEL_CHAPTERS[level].find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
-  const mastered = allKanji.filter((k) => save.progress[k.c]?.mastery === 3).length;
-
-  const R = 42;
-  const circ = 2 * Math.PI * R;
-
-  // Coins and the streak pop only when they changed since the last visit (kanji-dash-fx-v1 record).
-  const [pops, setPops] = useState({ coins: false, streak: false });
-
-  // Post-hydration only. getSnapshot() is the loaded save: during hydration useSave() still
-  // holds the server snapshot and the store's own re-render lands after this effect.
-  useEffect(() => {
-    const snapshot = getSnapshot();
-    const today = localDay(new Date());
-    const changed = diffFx(readFx(), snapshot, today);
-    if (changed.coinsChanged || changed.streakDayChanged) setPops({ coins: changed.coinsChanged, streak: changed.streakDayChanged });
-    if (changed.streakDayChanged && isAudioRunning()) play("streakBell"); // never creates a context on load
-    rememberFx(snapshot, today);
-  }, []);
-
-  return (
-    <div className="app-shell bg-paper">
-      <Nav />
-      <main className="mx-auto max-w-4xl px-4 pb-8">
-        {/* Hero */}
-        <section className="relative mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-e2 sm:mt-8">
-          <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/10" />
-          <div aria-hidden="true" className="absolute -right-6 top-4 select-none font-serif text-[120px] font-bold leading-none text-primary/6 sm:text-[170px]">
-            漢字
+  const level = learningLevel(save), rank = explorerRank(save), due = dueCount(save);
+  const road = LEVEL_CHAPTERS[level];
+  const checkpoint = road.find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
+  const chapter = checkpoint ?? road[road.length - 1]!;
+  const region = CHAPTER_NAMES[chapter]!;
+  const all = kanjiOfLevel(level), mastered = all.filter((k) => save.progress[k.c]?.mastery === 3).length;
+  const encountered = all.filter((k) => (save.progress[k.c]?.mastery ?? 0) > 0).length;
+  const stack = stackOf(save), today = localDay();
+  const quests = [
+    { title: "Follow your curiosity", detail: "Complete a practice session", done: save.streak.last === today, to: "/run", mode: "expedition" },
+    { title: "Trust your memory", detail: "Complete a typed recall challenge", done: stack.quests.day === today && stack.quests.typed > 0, to: "/run", mode: "expedition" },
+    { title: "Make your mark", detail: "Trace a kanji in the dojo", done: stack.strokeDay === today, to: "/practice", mode: undefined },
+  ] as const;
+  const completed = quests.filter((q) => q.done).length;
+  return <div className="app-shell spirit-home">
+    <Nav />
+    <main className="trail-home-main">
+      <div className="trail-greeting"><span><span className="trail-dot" /> YOUR DAILY DOSE OF DISCOVERY</span><span>一日一歩 <span className="greeting-translation">· One day, one step.</span></span></div>
+      <section className="trail-hero" aria-labelledby="adventure-title">
+        <img className="trail-hero-art" src={`${import.meta.env.BASE_URL}art/spirit-forest.webp`} alt="A small fox on a winding forest path toward a lantern-lit shrine" fetchPriority="high" width="1536" height="1024" />
+        <div className="trail-hero-wash" />
+        <TrailCompanion className="home-companion" message="I’m Aki. Let’s find a little magic." />
+        <div className="trail-hero-copy">
+          <span className="trail-eyebrow"><TrailEmblem kind="leaf" /> THE SPIRIT TRAIL</span>
+          <h1 id="adventure-title">A little adventure.<br />A little <em>wiser.</em></h1>
+          <p>The forest has forgotten its words.<br />Help bring them back, one kanji at a time.</p>
+          <Link to="/run" search={{ mode: "expedition" }} className="trail-button trail-button-primary" data-sfx="tap">{save.runsCompleted ? "Continue your adventure" : "Begin your adventure"}<AppIcon name="arrow" /></Link>
+          <span className="trail-session-note"><span className="trail-dot" /> 4 words · about 5 minutes · your pace</span>
+        </div>
+        <div className="trail-location"><TrailEmblem kind="gate" /><div><span>YOUR NEXT DESTINATION</span><strong>{region.name}</strong><small>{region.jp} · {level}</small></div><span className="location-number">{String(road.indexOf(chapter) + 1).padStart(2, "0")}</span></div>
+        <div className="forest-mote mote-one" /><div className="forest-mote mote-two" /><div className="forest-mote mote-three" />
+      </section>
+      <section className="trail-player-strip" aria-label="Your journey so far">
+        <div className="trail-rank"><span className="trail-rank-icon"><TrailEmblem kind="leaf" /></span><div><small>LEVEL {rank.level} EXPLORER</small><strong>{rank.title}</strong></div></div>
+        <div className="trail-xp"><div><span>Every recall is a step forward</span><b>{rank.progress} / 200 XP</b></div><div className="trail-meter"><span style={{ width: `${rank.progress / 2}%` }} /></div></div>
+        <div className="trail-strip-stat"><AppIcon name="flame" /><strong data-testid="stat-streak">{streakCount(save)}</strong><span>day streak</span></div>
+        <div className="trail-strip-stat"><AppIcon name="coin" /><strong data-testid="stat-mon">{save.coins}</strong><span>mon collected</span></div>
+      </section>
+      <div className="trail-home-grid">
+        <div>
+          <div className="trail-section-heading"><div><span className="trail-eyebrow">FIND YOUR FLOW</span><h2>How will you wander today?</h2></div><SoundToggle variant="inline" /></div>
+          <div className="trail-modes">
+            <Link to="/run" search={{ mode: "stack" }} className="trail-mode mode-stack"><span className="mode-tag">RECALL + RHYTHM</span><div className="mode-art stack-art" aria-hidden="true"><span>木</span><span>山</span><span>川</span><span>火</span></div><h3>Word Weaver</h3><p>Find the match.<br /> Let the words fall into place.</p><span className="mode-bottom">Play Tsumiji <AppIcon name="arrow" /></span></Link>
+            <Link to="/run" search={{ mode: "runner" }} className="trail-mode mode-runner"><span className="mode-tag">QUICK THINKING</span><div className="mode-art runner-art" aria-hidden="true"><TrailEmblem kind="gate" /><span>走</span><i /></div><h3>Torii Run</h3><p>Read the gates.<br /> Find your way through.</p><span className="mode-bottom">Take a run <AppIcon name="arrow" /></span></Link>
+            <Link to="/practice" className="trail-mode mode-dojo"><span className="mode-tag">SLOW + MINDFUL</span><div className="mode-art dojo-art" aria-hidden="true"><span>永</span><i /></div><h3>The Ink Dojo</h3><p>Follow each stroke.<br /> Make a lasting impression.</p><span className="mode-bottom">Pick up the brush <AppIcon name="arrow" /></span></Link>
           </div>
-          <div className="relative p-5 sm:p-10">
-            <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-              Your daily kanji adventure
-            </p>
-            <h1 className="mt-3 max-w-lg font-serif text-[2.125rem] font-bold leading-tight sm:text-5xl">
-              Learn. Recall. <span className="text-primary">Stack.</span>
-            </h1>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Stack words, match their readings, and build lasting recall of {allKanji.length} {level} kanji, a little every day.
-            </p>
-            <LevelSelector level={level} />
-            <div className="mt-5 flex flex-col gap-2 sm:mt-6 sm:flex-row sm:items-center sm:gap-3">
-              <Link
-                to="/run"
-                search={{ gate: undefined }}
-                data-sfx="tap"
-                className="pressable flex min-h-14 items-center justify-between gap-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e2 transition-colors hover:bg-primary-hover sm:justify-center sm:px-6 sm:text-lg"
-              >
-                Today’s sheets
-                <AppIcon name="arrow" className="h-5 w-5" />
-              </Link>
-              <Link
-                to="/map"
-                className="flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-muted-foreground transition-colors hover:bg-secondary sm:border sm:border-border sm:bg-card sm:py-3"
-              >
-                <AppIcon name="map" className="h-4 w-4" /> World map
-              </Link>
-              <SoundToggle variant="inline" />
-            </div>
-          </div>
-        </section>
-
-        {/* Daily mission + stats */}
-        <section className="mt-4 grid gap-3 sm:mt-6 sm:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] sm:gap-4" aria-label="Daily progress">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-e1 sm:p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif text-lg font-bold">Today's mission</h2>
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">{due > 0 ? `${due} to review` : fresh > 0 ? "Fresh start" : "Caught up"}</span>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {due > 0
-                ? fresh > 0
-                  ? `A short set: ${Math.min(due, MAX_REVIEWS)} due reviews and ${fresh} new kanji from one region.`
-                  : `Review up to ${Math.min(due, 12)} words across today's sheets. Any remaining reviews can wait.`
-                : fresh > 0
-                  ? `You're up to date on reviews. Meet ${fresh} fresh kanji before your first sheet.`
-                  : "No new kanji or reviews are ready right now. Visit the dojo for extra practice."}
-            </p>
-            {checkpoint !== undefined && <Link to="/run" search={{ gate: checkpoint }} className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-primary">Earn your next seal: {CHAPTER_NAMES[checkpoint]!.name} · {kanjiOfChapter(checkpoint).length} words →</Link>}
-            <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Streak</dt>
-                <dd data-testid="stat-streak" className="mt-0.5 flex items-center justify-center gap-1.5 font-serif text-lg font-bold">
-                  <AppIcon name="flame" className={`h-4 w-4 text-primary${streak >= 1 ? " flicker" : ""}${pops.streak ? " ignite" : ""}`} />
-                  <span className={`tabular-nums${pops.streak ? " hud-pop-left" : ""}`}>{streak}</span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mon</dt>
-                <dd data-testid="stat-mon" className={`mt-0.5 font-serif text-lg font-bold tabular-nums${pops.coins ? " hud-pop-left" : ""}`}>{save.coins}</dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Runs</dt>
-                <dd data-testid="stat-runs" className="mt-0.5 font-serif text-lg font-bold tabular-nums">{save.runsCompleted}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="flex items-center justify-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:p-5">
-            <svg className="h-20 w-20 shrink-0 lg:h-[104px] lg:w-[104px]" width="104" height="104" viewBox="0 0 104 104" role="img" aria-label={`${level} mastery progress ${pct}%`}>
-              <circle cx="52" cy="52" r={R} fill="none" stroke="var(--color-border)" strokeWidth="9" />
-              <circle
-                className="ring-fill"
-                cx="52" cy="52" r={R} fill="none" stroke="var(--color-primary)" strokeWidth="9"
-                strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)}
-                transform="rotate(-90 52 52)"
-              />
-              <text x="52" y="49" textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--color-foreground)" fontFamily="serif">{pct}%</text>
-              <text x="52" y="66" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--color-muted-foreground)">{level}</text>
-            </svg>
-            <div className="text-sm">
-              <div className="text-xs font-bold text-muted-foreground">{level} mastery progress</div>
-              <div className="font-serif text-2xl font-bold">{mastered}<span className="text-muted-foreground">/{allKanji.length}</span></div>
-              <div className="text-muted-foreground">kanji mastered</div>
-              <Link to="/collection" onClick={() => selectLevel(level)} className="-ml-1 mt-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs font-bold text-primary">View collection <AppIcon name="arrow" className="h-3.5 w-3.5" /></Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-border bg-card p-4" aria-label="Today's learning quests">
-          <h2 className="font-serif text-lg font-bold">A little variety</h2>
-          <ul className="mt-3 space-y-2 text-sm">{dailyQuests(save).map((q) => <li key={q.key} className="flex justify-between gap-3"><span>{q.value === q.target ? "✓" : "○"} {q.label}</span><span className="tabular-nums text-muted-foreground">{q.value}/{q.target}</span></li>)}</ul>
-          <p className="mt-3 text-xs text-muted-foreground">{stackOf(save).freezes.count} streak freezes · earned freely at day 3, 7 and 30</p>
-        </section>
-        {/* How it works */}
-        <section className="mt-6" aria-labelledby="how-it-works">
-          <h2 id="how-it-works" className="mb-3 font-serif text-lg font-bold">Small steps. Lasting progress.</h2>
-          <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-            {[
-              { jp: "学", t: "1. Meet new words", d: "Connect each new word to its reading and meaning. Trace the kanji if writing helps you remember." },
-              { jp: "積", t: "2. Stack & recall", d: "Drop each word beside its matching tile. Wash away inked mistakes with a correct placement later." },
-              { jp: "印", t: "3. Seal & revisit", d: "Short daily sheets schedule your next reviews. Type readings at checkpoints to turn recognition into recall." },
-            ].map((f) => (
-              <div key={f.t} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:block sm:p-5">
-                <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 font-serif text-xl font-bold text-accent">
-                  {f.jp}
-                </div>
-                <div>
-                  <h3 className="font-serif font-bold sm:mt-3">{f.t}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{f.d}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-        <InstallApp />
-      </main>
-      <SiteFooter />
-    </div>
-  );
+          <section className="trail-road" aria-label="Your next checkpoint"><div className="trail-road-top"><div><span className="trail-eyebrow">THE ROAD AHEAD</span><h2>A world, one word at a time.</h2></div><Link to="/map">Explore the map <AppIcon name="arrow" /></Link></div><div className="trail-road-stops">{road.slice(Math.max(0, road.indexOf(chapter) - 1), Math.max(0, road.indexOf(chapter) - 1) + 4).map((ch) => {
+            const unlocked = isChapterUnlocked(save, ch), cleared = isGateCleared(save, ch);
+            return <Link key={ch} to={unlocked ? "/run" : "/map"} search={unlocked ? { gate: ch } : {}} className={`trail-stop ${ch === chapter ? "current" : ""} ${cleared ? "cleared" : ""}`}><span className="trail-stop-mark">{cleared ? <AppIcon name="check" /> : unlocked ? <TrailEmblem kind="gate" /> : <AppIcon name="lock" />}</span><strong>{CHAPTER_NAMES[ch]!.name}</strong><small>{cleared ? "Seal earned" : ch === chapter ? "Your next seal" : unlocked ? "Open to explore" : "Still to discover"}</small></Link>;
+          })}</div></section>
+        </div>
+        <aside className="trail-sidebar">
+          <section className="trail-daily"><div className="trail-daily-title"><TrailEmblem /><span>TODAY’S LITTLE QUESTS</span><b>{completed}/3</b></div><p>Good things grow with a little care.</p><div className="trail-quest-list">{quests.map((q) => <Link key={q.title} to={q.to} search={q.mode ? { mode: q.mode } : {}} className={`trail-quest ${q.done ? "done" : ""}`}><span className="quest-check">{q.done ? "✓" : ""}</span><span><strong>{q.title}</strong><small>{q.detail}</small></span><span aria-hidden="true">›</span></Link>)}</div><div className="trail-daily-foot"><TrailEmblem kind="spark" /><span>{completed === 3 ? "A lovely day’s work. See you on the trail." : due ? `${due} ${due === 1 ? "word is" : "words are"} ready to meet you again.` : "A small adventure is enough for today."}</span></div></section>
+          <section className="trail-collection"><div className="trail-collection-title"><h2>Your field notes</h2><div role="group" aria-label="JLPT level">{(["N5", "N4"] as const).map((l) => <button key={l} aria-label={`${l} ${kanjiOfLevel(l).length} kanji${!isLevelUnlocked(save, l) ? " · Locked" : ""}`} aria-pressed={l === level} disabled={!isLevelUnlocked(save, l)} title={!isLevelUnlocked(save, l) ? "Earn the N5 seals to unlock N4" : `Study ${l}`} onClick={() => selectLevel(l)}>{l}{!isLevelUnlocked(save, l) && " · 🔒"}</button>)}</div></div><p><strong>{encountered}</strong> / {all.length} kanji discovered</p><div className="trail-meter"><span style={{ width: `${encountered / all.length * 100}%` }} /></div><div className="trail-field-characters" aria-hidden="true">{all.slice(0, 6).map((k) => <span key={k.c} className={(save.progress[k.c]?.mastery ?? 0) > 0 ? "seen" : ""}>{k.c}</span>)}</div><Link to="/collection">Open your collection <AppIcon name="arrow" /></Link><small data-testid="mastery-summary">{mastered}/{all.length} mastered · {levelMasteryPct(save, level)}% mastery progress</small></section>
+        </aside>
+      </div>
+      <div className="trail-bottom-note"><TrailEmblem kind="leaf" /><p>No rush. Small steps. A little more Japanese than yesterday.</p><span><span data-testid="stat-runs">{save.runsCompleted}</span> sessions explored</span></div>
+      <InstallApp />
+    </main>
+    <SiteFooter />
+  </div>;
 }

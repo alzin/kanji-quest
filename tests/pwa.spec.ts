@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 
 async function prepareOfflineCopy(page: Page, origin = "./") {
   await page.goto(origin, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Learn. Recall. Stack." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "A little adventure. A little wiser." })).toBeVisible();
   // Wait for activation to claim this page before a reload can interrupt setup.
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   // Exercise a document served by the installed worker as well as the first SSR load.
@@ -141,6 +141,17 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await expect(page.getByTestId("stack-game")).toBeVisible();
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
     await expect(page.getByRole("heading", { name: "A quiet pause" })).toBeVisible();
+    // The Spirit Trail and its painted environment are available without a prior visit.
+    const trailResponse = await page.goto(`${origin}/run?mode=expedition`, { waitUntil: "domcontentloaded" });
+    expect(trailResponse?.fromServiceWorker()).toBe(true);
+    await expect(page.getByRole("heading", { name: "Choose your way into the woods." })).toBeVisible();
+    await expect.poll(() => page.locator(".expedition-world > img").evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await expect.poll(() => page.locator(".aki-sprite").evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(384);
+    for (const pose of ["success", "encourage", "celebrate"]) {
+      expect(await page.evaluate(async (src) => (await fetch(src)).ok, `${origin}/art/aki/${pose}.webp`)).toBe(true);
+    }
+    await page.getByRole("button", { name: /Follow the river/ }).click();
+    await expect(page.getByRole("region", { name: "Meet your trail words" })).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await stopServer();
@@ -225,6 +236,6 @@ test("hides installation help when launched as an installed app", async ({ page 
     Object.defineProperty(navigator, "standalone", { get: () => true });
   });
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Learn. Recall. Stack." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "A little adventure. A little wiser." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Keep Kanji Dash one tap away" })).toHaveCount(0);
 });
