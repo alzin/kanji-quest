@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Kanji Dash",
   "short_name": "Kanji Dash",
-  "description": "Learn Japanese kanji through runner challenges, handwriting practice, and daily review.",
+  "description": "Learn Japanese kanji through forest expeditions, word puzzles, handwriting, and daily review.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
@@ -23,7 +23,7 @@
       "sizes": "780x1688",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Master kanji across six regions and clear checkpoint challenges."
+      "label": "Explore the N5 and N4 roads and earn regional checkpoint seals."
     }
   ],
   "icons": [

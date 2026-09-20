@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("preparation speaks exact kana, replays, and respects saved mute", async ({ page }) => {
-  await page.goto("run");
+  await page.goto("run?mode=runner");
   const reading = await page.getByTestId("study-reading").textContent();
   await expect.poll(() => page.evaluate(() => (window as any).__speechLog.at(-1))).toEqual({ text: reading, lang: "ja-JP", voice: "Japanese" });
   const count = await page.evaluate(() => (window as any).__speechLog.length);
@@ -54,7 +54,7 @@ test("preparation speaks exact kana, replays, and respects saved mute", async ({
 
 test("run speaks active gates and cancels speech on pause", async ({ page }) => {
   await page.clock.install();
-  await page.goto("run");
+  await page.goto("run?mode=runner");
   await completePreparation(page, { advanceClock: true });
   // Keep real test/CPU time from advancing a gate while speech is inspected.
   await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 100)));

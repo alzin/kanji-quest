@@ -5,6 +5,7 @@ import {
   type PromptSegment, type WordCard,
 } from "./words";
 import { useSyncExternalStore } from "react";
+import { COSMETICS, copyStack, dayGap, emptyStack, ensureStackDay, normalizeStack, stackOf, type StackProgress } from "./stack-progress";
 
 // ---------- Types ----------
 
@@ -17,6 +18,9 @@ export type CardProgress = {
   due: number; // epoch ms
   correct: number;
   wrong: number;
+  rt?: number; // response-time EMA in milliseconds; zero means unmeasured
+  prod?: number;
+  fl?: number;
 };
 
 export type SaveData = {
@@ -29,6 +33,7 @@ export type SaveData = {
   gatesCleared: number; // chapter boss gates cleared
   clearedChapters: number[]; // exact seals earned (not the highest chapter)
   selectedLevel: JLPTLevel;
+  stack?: StackProgress;
 };
 
 const LEGACY_KEY = "kanji-dash-v1";
@@ -44,6 +49,7 @@ const emptySave = (): SaveData => ({
   gatesCleared: 0,
   clearedChapters: [],
   selectedLevel: "N5",
+  stack: emptyStack(),
 });
 
 const DAY_MS = 86_400_000;
@@ -87,6 +93,9 @@ export function normalizeSave(value: unknown): SaveData {
       due: Math.min(MAX_TIMESTAMP, Math.round(nonnegative(p["due"]))),
       correct: count(p["correct"]),
       wrong: count(p["wrong"]),
+      rt: Math.min(600_000, nonnegative(p["rt"])),
+      prod: count(p["prod"]),
+      fl: count(p["fl"]),
     };
   }
   const currentCurriculum = raw["curriculumVersion"] === CURRICULUM_VERSION;
@@ -124,6 +133,7 @@ export function normalizeSave(value: unknown): SaveData {
     gatesCleared: clearedChapters.length,
     clearedChapters,
     selectedLevel: raw["selectedLevel"] === "N4" ? "N4" : "N5",
+    stack: normalizeStack(raw["stack"], REGIONS.map((r) => r.id)),
   };
   retainChapterAccess(normalized);
   return normalized;
@@ -252,7 +262,7 @@ export function useSave(): SaveData {
 function mutate(fn: (s: SaveData) => void) {
   load();
   // useSyncExternalStore requires a new snapshot identity for every change.
-  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, clearedChapters: [...state.clearedChapters], unlockedChapters: [...state.unlockedChapters] };
+  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, stack: copyStack(state), clearedChapters: [...state.clearedChapters], unlockedChapters: [...state.unlockedChapters] };
   retainChapterAccess(next);
   fn(next);
   retainChapterAccess(next);
@@ -264,7 +274,7 @@ function mutate(fn: (s: SaveData) => void) {
 
 export function getCard(s: SaveData, c: string): CardProgress {
   return (
-    s.progress[c] ?? { mastery: 0, ivl: 0, ease: 2.5, due: 0, correct: 0, wrong: 0 }
+    s.progress[c] ?? { mastery: 0, ivl: 0, ease: 2.5, due: 0, correct: 0, wrong: 0, rt: 0, prod: 0, fl: 0 }
   );
 }
 
@@ -362,6 +372,8 @@ export function streakCount(s: SaveData, now = Date.now()): number {
   const { today, yesterday } = calendarDays(now);
   if (s.streak.last === today) return s.streak.count;
   if (s.streak.last === yesterday) return s.streak.count;
+  const missed = dayGap(today, s.streak.last) - 1;
+  if (missed > 0 && missed <= stackOf(s).freezes.count) return s.streak.count;
   return 0;
 }
 
@@ -444,12 +456,107 @@ export function buildGateQuiz(ch: number): Question[] {
   return shuffle(kanjiOfChapter(ch)).map((k) => buildQuestion(k));
 }
 
+const CONFUSABLES = ["末未", "持待", "土士", "日目", "人入", "右石", "牛午", "千干"];
+
+/** Across unlocked regions: twelve reviews, four new cards, then reading partners. */
+export function buildStackQueue(s: SaveData, now = Date.now()): Question[] {
+  const available = allKanji.filter((k) => isChapterUnlocked(s, k.ch));
+  const due = available.filter((k) => getCard(s, k.c).mastery > 0 && getCard(s, k.c).due <= now)
+    .sort((a, b) => getCard(s, a.c).due - getCard(s, b.c).due);
+  const reviews = due.slice(0, 12);
+  for (const group of CONFUSABLES) {
+    if (!reviews.some((k) => group.includes(k.c))) continue;
+    for (const k of available) {
+      const p = getCard(s, k.c);
+      if (reviews.length < 12 && group.includes(k.c) && !reviews.includes(k) && p.mastery > 0 && p.due <= now + 2 * DAY_MS) reviews.push(k);
+    }
+  }
+  // Put new words first in preparation, but select them late in the sheet composer.
+  return [...reviews, ...newKanji(s).slice(0, 4)].map((k) => {
+    const p = getCard(s, k.c);
+    return buildQuestion(k, "reading", k.vocab[(p.correct + p.wrong) % k.vocab.length]!);
+  });
+}
+
+export function recordProduction(c: string, stroke = false, now = Date.now()) {
+  if (!kanjiByChar.has(c)) return;
+  mutate((s) => {
+    const stack = s.stack!;
+    ensureStackDay(stack, now);
+    if (stroke && stack.strokeDay === localDay(new Date(now))) return;
+    if (stroke) stack.strokeDay = localDay(new Date(now));
+    const p = { ...getCard(s, c) };
+    p.prod = Math.min(Number.MAX_SAFE_INTEGER, (p.prod ?? 0) + 1);
+    if (p.mastery === 2 && p.ivl >= 21 && p.prod >= 2) p.mastery = 3;
+    s.progress[c] = p;
+  });
+}
+
+export function recordTypedSeal(now = Date.now()) {
+  mutate((s) => { ensureStackDay(s.stack!, now); s.stack!.quests.typed++; });
+}
+
+export function recordStackSheet(result: { score: number; elapsed: number; cleared: boolean; redeemed: number; kind: "daily" | "fluency" | "marathon" | "checkpoint" }, now = Date.now()) {
+  mutate((s) => {
+    const stack = s.stack!;
+    ensureStackDay(stack, now);
+    const score = count(result.score), ms = count(result.elapsed * 1000);
+    stack.playMs = Math.min(Number.MAX_SAFE_INTEGER, stack.playMs + ms);
+    stack.quests.redeems = Math.min(Number.MAX_SAFE_INTEGER, stack.quests.redeems + count(result.redeemed));
+    if (result.kind === "marathon") stack.bestMarathon = Math.max(stack.bestMarathon, score);
+    else stack.bestSheet = Math.max(stack.bestSheet, score);
+    if (result.cleared) {
+      stack.sheetsCleared = Math.min(Number.MAX_SAFE_INTEGER, stack.sheetsCleared + 1);
+      stack.quests.sheets = Math.min(Number.MAX_SAFE_INTEGER, stack.quests.sheets + 1);
+      if (result.kind === "fluency" && ms > 0) stack.bestSprintMs = stack.bestSprintMs ? Math.min(stack.bestSprintMs, ms) : ms;
+    }
+  });
+}
+
+export function awardDailySeal(now = Date.now()) {
+  mutate((s) => { s.stack!.lastSealDay = localDay(new Date(now)); });
+}
+
+export function perfectGate(ch: number): number {
+  if (!isGateCleared(getSnapshot(), ch)) return 0;
+  mutate((s) => {
+    if (!s.stack!.perfectGates.includes(ch)) s.stack!.perfectGates.push(ch);
+    s.coins = Math.min(Number.MAX_SAFE_INTEGER, s.coins + 10);
+  });
+  return 10;
+}
+
+export function buyCosmetic(id: string): boolean {
+  const item = COSMETICS.find((x) => x.id === id);
+  if (!item) return false;
+  const s = getSnapshot(), owned = stackOf(s).cosmetics.owned.includes(id);
+  if (!owned && s.coins < item.cost) return false;
+  mutate((next) => {
+    const cosmetics = next.stack!.cosmetics;
+    if (!cosmetics.owned.includes(id)) { next.coins -= item.cost; cosmetics.owned.push(id); }
+    cosmetics[item.kind] = id;
+  });
+  return true;
+}
+
 // ---------- Grading ----------
 
-export function grade(c: string, correct: boolean, now = Date.now()) {
+export function grade(c: string, correct: boolean, now = Date.now(), placement?: { rt: number; fallTime: number; hinted: boolean }) {
   if (!kanjiByChar.has(c)) return;
   mutate((s) => {
     const p = { ...getCard(s, c) };
+    if (placement) {
+      const rt = Math.min(600_000, Math.max(0, placement.rt));
+      p.rt = Math.round(p.rt ? p.rt * 0.75 + rt * 0.25 : rt);
+      p.fl = correct && !placement.hinted && rt < placement.fallTime * 400 ? Math.min(Number.MAX_SAFE_INTEGER, (p.fl ?? 0) + 1) : 0;
+      // Extra play records retrievals, never moves a review that is not due.
+      if (p.mastery > 0 && p.due > now) {
+        if (correct) p.correct = Math.min(Number.MAX_SAFE_INTEGER, p.correct + 1);
+        else p.wrong = Math.min(Number.MAX_SAFE_INTEGER, p.wrong + 1);
+        s.progress[c] = p;
+        return;
+      }
+    }
     if (correct) {
       p.correct = Math.min(Number.MAX_SAFE_INTEGER, p.correct + 1);
       // Checkpoint rehearsal records the answer, but cannot fast-forward SRS.
@@ -460,14 +567,15 @@ export function grade(c: string, correct: boolean, now = Date.now()) {
       if (p.mastery === 0) {
         p.mastery = 1;
         p.ivl = 0.02; // ~30 min
-      } else if (p.mastery === 1) {
+      } else if (p.mastery === 1 && !placement?.hinted) {
         p.mastery = 2;
         p.ivl = 1;
-      } else {
+      } else if (p.mastery >= 2) {
         p.ivl = Math.max(0.1, Math.round(p.ivl * p.ease * 10) / 10);
-        if (p.ivl >= 21) p.mastery = 3;
+        if (p.ivl >= 21 && (p.prod ?? 0) >= 2) p.mastery = 3;
       }
-      p.ease = Math.min(3, Math.round((p.ease + 0.08) * 100) / 100);
+      const gain = placement ? (placement.rt < placement.fallTime * 400 ? 0.12 : placement.rt > placement.fallTime * 800 ? 0.04 : 0.08) : 0.08;
+      p.ease = Math.min(3, Math.round((p.ease + gain) * 100) / 100);
     } else {
       p.wrong = Math.min(Number.MAX_SAFE_INTEGER, p.wrong + 1);
       p.mastery = p.mastery === 0 ? 1 : p.mastery;
@@ -484,8 +592,18 @@ export function grade(c: string, correct: boolean, now = Date.now()) {
 function updateStreak(s: SaveData, now: number) {
   const { today, yesterday } = calendarDays(now);
   if (s.streak.last === today) return;
-  s.streak.count = s.streak.last === yesterday ? Math.min(Number.MAX_SAFE_INTEGER, s.streak.count + 1) : 1;
+  const stack = s.stack ??= emptyStack();
+  const missed = dayGap(today, s.streak.last) - 1;
+  const freeze = missed > 0 && missed <= stack.freezes.count;
+  if (freeze) { stack.freezes.count -= missed; stack.freezes.lastUsedDay = today; }
+  s.streak.count = s.streak.last === yesterday || freeze ? Math.min(Number.MAX_SAFE_INTEGER, s.streak.count + 1) : 1;
   s.streak.last = today;
+  [3, 7, 30].forEach((milestone, i) => {
+    if (s.streak.count >= milestone && !(stack.freezes.granted & (1 << i))) {
+      stack.freezes.count = Math.min(3, stack.freezes.count + 1);
+      stack.freezes.granted |= 1 << i;
+    }
+  });
 }
 
 export function touchStreak(now = Date.now()) {

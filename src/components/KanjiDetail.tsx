@@ -27,6 +27,7 @@ export function KanjiDetail({ kanji, progress }: { kanji: Kanji; progress?: Card
               </span>
             )}
           </div>
+          {progress?.mastery === 2 && (progress.prod ?? 0) < 2 && <p className="mt-2 text-xs text-accent">◇筆 · {2 - (progress.prod ?? 0)} more typed readings or daily writing checks to confirm production.</p>}
           <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div><dt className="inline font-bold text-muted-foreground">On'yomi: </dt><dd className="inline font-serif">{kanji.on}</dd></div>
             <div><dt className="inline font-bold text-muted-foreground">Kun'yomi: </dt><dd className="inline font-serif">{kanji.kun}</dd></div>

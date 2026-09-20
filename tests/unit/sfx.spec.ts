@@ -124,8 +124,8 @@ test.describe("planSound", () => {
         }
       }
     }
-    expect(SOUND_IDS).toHaveLength(24);
-    expect(new Set(SOUND_IDS).size).toBe(24);
+    expect(SOUND_IDS).toHaveLength(29);
+    expect(new Set(SOUND_IDS).size).toBe(29);
   });
 
   test("rate limits and ceremony flags follow the catalogue", () => {

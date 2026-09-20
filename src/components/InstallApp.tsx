@@ -121,7 +121,7 @@ export function InstallApp() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="install-app-title" className="font-serif font-bold">Keep Kanji Dash one tap away</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Add the game to your home screen for your next daily run.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Keep a little daily adventure close at hand.</p>
         </div>
         <button
           type="button"

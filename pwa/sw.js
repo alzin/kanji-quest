@@ -7,7 +7,7 @@ const BASE_PATH = new URL(self.registration.scope).pathname;
 const CACHE_PREFIX = `kanji-dash-precache-${encodeURIComponent(BASE_PATH)}-`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const PRECACHE_PATHS = new Set(PRECACHE_URLS);
-const APP_PATHS = new Set(["", "collection", "map", "practice", "run"]);
+const APP_PATHS = new Set(["", "camp", "collection", "map", "practice", "run"]);
 
 self.addEventListener("install", (event) => {
   // Installation succeeds only when the entire game, including lazy route chunks,

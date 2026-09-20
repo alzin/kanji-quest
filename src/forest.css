@@ -1,0 +1,1204 @@
+.forest-game,
+.forest-title {
+  --f-cream: #f4e8cc;
+  --f-muted: #bdc7ad;
+  --f-gold: #e9c580;
+  --f-dark: #182f2a;
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 420px;
+  overflow: hidden;
+  background: #27483d;
+  color: var(--f-cream);
+  font-family: "Zen Kaku Gothic New", sans-serif;
+  isolation: isolate;
+}
+.forest-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  touch-action: none;
+}
+.forest-canvas canvas {
+  display: block;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+.forest-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      #0c272aa6,
+      transparent 30%,
+      transparent 70%,
+      #0b222c99
+    ),
+    radial-gradient(ellipse at center, transparent 35%, #132c3455 100%);
+}
+.forest-hud,
+.forest-title-header {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  top: max(26px, env(safe-area-inset-top));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.forest-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--f-cream);
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  font-weight: 800;
+}
+.forest-wordmark small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  font-weight: 500;
+  color: #c4cdb9;
+  margin-top: 4px;
+}
+.forest-seal {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 46px;
+  color: #edd5a7;
+  border: 1px solid #d9be8166;
+  font-family: serif;
+  font-size: 25px;
+  border-radius: 3px 3px 15px 3px;
+  background: #1c383033;
+}
+.forest-hud-right {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.forest-icon-button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  height: 44px;
+  border: 1px solid #e6d49c33;
+  background: #183b32b8;
+  color: var(--f-cream);
+  border-radius: 8px;
+  font-size: 22px;
+  cursor: pointer;
+}
+.forest-icon-button:hover {
+  background: #385444;
+}
+.forest-motes {
+  margin-right: 12px;
+  color: var(--f-gold);
+  font-size: 21px;
+}
+.forest-motes b {
+  color: var(--f-cream);
+  margin-left: 5px;
+}
+.forest-motes small {
+  color: var(--f-muted);
+  font-size: 12px;
+  margin-left: 4px;
+}
+.forest-objective {
+  position: absolute;
+  top: 120px;
+  left: 42px;
+  text-shadow: 0 2px 8px #122d29;
+}
+.forest-eyebrow {
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  color: var(--f-gold);
+  text-transform: uppercase;
+  display: block;
+}
+.forest-eyebrow > span {
+  padding: 0 8px;
+  opacity: 0.6;
+}
+.forest-objective h1 {
+  font-family: "Shippori Mincho B1", serif;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  margin: 8px 0 15px;
+}
+.forest-seals {
+  display: flex;
+  gap: 18px;
+  font-size: 11px;
+  color: #b1c0aa;
+}
+.forest-seals span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.forest-seals i {
+  font-style: normal;
+  font-size: 17px;
+  line-height: 20px;
+}
+.forest-seals .active {
+  color: #f5dcaa;
+}
+.forest-seals .done {
+  color: #b9dcaf;
+}
+.forest-track {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  margin-top: 14px;
+  color: #e5d4a7;
+  border-bottom: 1px solid #c8ba893f;
+  padding: 5px 0;
+  cursor: pointer;
+}
+.forest-track span {
+  margin-left: 12px;
+}
+.forest-track:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.forest-location {
+  position: absolute;
+  right: 42px;
+  top: 135px;
+  text-align: center;
+  color: #e4dabda8;
+  pointer-events: none;
+}
+.forest-location > span {
+  display: block;
+  writing-mode: vertical-rl;
+  margin: auto;
+  font:
+    24px "Shippori Mincho B1",
+    serif;
+  letter-spacing: 0.3em;
+}
+.forest-location small {
+  display: block;
+  font-size: 7px;
+  letter-spacing: 0.2em;
+  margin-top: 15px;
+}
+.forest-location i {
+  display: block;
+  width: 1px;
+  height: 36px;
+  margin: 16px auto;
+  background: linear-gradient(#d5c08799, transparent);
+}
+.forest-bottom {
+  position: absolute;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  left: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  pointer-events: none;
+}
+.forest-bottom button {
+  pointer-events: auto;
+}
+.forest-guide {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #15352ee8;
+  border: 1px solid #d5c19140;
+  border-radius: 14px;
+  padding: 10px 36px 12px 0;
+  box-shadow: 0 10px 50px #07251d44;
+  max-width: 460px;
+  backdrop-filter: blur(10px);
+}
+.forest-guide img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  margin-top: -20px;
+}
+.forest-guide span {
+  font-size: 10px;
+  color: var(--f-gold);
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+.forest-guide small {
+  font-size: 7px;
+  color: #a9b9a5;
+  margin-left: 9px;
+}
+.forest-guide p {
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 6px 0 0;
+  color: #e1e5ce;
+}
+.forest-guide button {
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  font-size: 22px;
+  color: #d5d1b5;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+}
+.forest-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #e2e5cebf;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.forest-controls i {
+  height: 12px;
+  width: 1px;
+  background: #e2e5ce55;
+}
+.forest-controls kbd {
+  background: #152e29a8;
+  border: 1px solid #d2d8b545;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-family: inherit;
+  font-size: 9px;
+}
+.forest-primary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  background: #eccb8a;
+  color: #243e32;
+  border: 1px solid #fae1aa;
+  border-radius: 7px;
+  padding: 15px 22px;
+  min-height: 52px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow:
+    0 3px 0 #a1814c,
+    0 8px 25px #102c2340;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background 0.16s,
+    transform 0.16s;
+}
+.forest-primary:hover {
+  background: #f6dca5;
+  transform: translateY(-1px);
+}
+.forest-primary:active {
+  transform: translateY(1px);
+}
+.forest-primary:disabled {
+  opacity: 0.45;
+  transform: none;
+  cursor: default;
+}
+.forest-primary > span {
+  font-size: 21px;
+  font-weight: 400;
+}
+.forest-interact {
+  min-width: 260px;
+  justify-content: center;
+}
+.forest-interact kbd {
+  font-family: inherit;
+  display: grid;
+  place-items: center;
+  border: 1px solid #28422d55;
+  border-radius: 3px;
+  font-size: 10px;
+  width: 23px;
+  height: 24px;
+}
+.forest-toast {
+  padding: 12px 22px;
+  border: 1px solid #ccb98766;
+  background: #183d34ed;
+  color: #f2dca8;
+  font-size: 13px;
+  text-align: center;
+  border-radius: 8px;
+  max-width: 480px;
+  box-shadow: 0 8px 30px #102c2366;
+}
+.forest-loading {
+  position: absolute;
+  inset: 0;
+  background: #213f35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 10;
+}
+.forest-loading p {
+  font-size: 13px;
+  color: #c6ceaf;
+}
+.forest-load-error {
+  position: fixed;
+  inset: 0;
+  background: #213f35;
+  color: #f4e8cc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  z-index: 100;
+  text-align: center;
+  padding: 30px;
+}
+.forest-load-error button,
+.forest-load-error a {
+  text-decoration: underline;
+  cursor: pointer;
+}
+.forest-dialog {
+  --f-cream: #f4e8cc;
+  --f-muted: #bdc7ad;
+  --f-gold: #e9c580;
+  color: var(--f-cream);
+  background: linear-gradient(150deg, #29483d, #1a342c);
+  border: 1px solid #d7c59460;
+  border-radius: 14px;
+  box-shadow:
+    0 30px 120px #071c19aa,
+    inset 0 0 0 5px #e9ce9710;
+  width: min(490px, calc(100vw - 32px));
+  max-height: calc(100svh - 40px);
+  padding: 30px;
+  margin: auto;
+  overflow: auto;
+  font-family: "Zen Kaku Gothic New", sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: #7c8962 transparent;
+}
+.forest-dialog::backdrop {
+  background: #0b242c80;
+  backdrop-filter: blur(3px);
+}
+.forest-dialog-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.forest-close {
+  font-size: 23px;
+  height: 38px;
+  min-width: 38px;
+  cursor: pointer;
+  color: #c7cbb0;
+  border-radius: 5px;
+  background: #f2dfb209;
+}
+.forest-dialog h2 {
+  font:
+    600 28px/1.35 "Shippori Mincho B1",
+    serif;
+  letter-spacing: -0.045em;
+  margin: 10px 0 12px;
+}
+.forest-dialog p {
+  color: #c3cdb7;
+  font-size: 13px;
+  line-height: 1.75;
+  margin: 10px 0 16px;
+}
+.forest-dialog .forest-primary {
+  width: 100%;
+}
+.forest-word-list {
+  margin: 22px 0;
+  border-top: 1px solid #d8cfab26;
+}
+.forest-word-list > div {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 13px 0;
+  border-bottom: 1px solid #d8cfab26;
+}
+.forest-word-list strong {
+  font:
+    600 26px "Shippori Mincho B1",
+    serif;
+  min-width: 70px;
+}
+.forest-word-list > div > div {
+  flex: 1;
+}
+.forest-word-list span {
+  font-size: 15px;
+  color: #e7d8b1;
+}
+.forest-word-list small {
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
+  color: #b2c2ab;
+}
+.forest-word-list button {
+  color: #e0c994 !important;
+  background: #e0c99412 !important;
+  border-color: #e0c99433 !important;
+}
+.forest-fine {
+  font-size: 11px !important;
+}
+.forest-encounter h2 {
+  font-size: 24px;
+  margin-bottom: 7px;
+}
+.forest-encounter > p {
+  font-size: 12px;
+  margin-top: 0;
+}
+.forest-encounter-progress {
+  display: flex;
+  gap: 4px;
+  margin: 14px 0 20px;
+}
+.forest-encounter-progress i {
+  height: 3px;
+  flex: 1;
+  background: #68806b66;
+  border-radius: 2px;
+}
+.forest-encounter-progress .complete {
+  background: #dcc084;
+}
+.forest-question {
+  text-align: center;
+  font:
+    500 62px/1.45 "Shippori Mincho B1",
+    serif;
+  letter-spacing: 0.06em;
+  color: #f1e4c2;
+  padding: 5px 0 22px;
+  text-shadow: 0 4px 20px #0c281f66;
+}
+.forest-question.correct {
+  color: #e7d498;
+}
+.forest-question.learning {
+  color: #d4c6a4;
+}
+.forest-answers {
+  display: grid;
+  gap: 9px;
+}
+.forest-answers button {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #9cac8266;
+  background: #45604a44;
+  border-radius: 7px;
+  padding: 12px 14px;
+  min-height: 49px;
+  color: #eee5ca;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.forest-answers button:not(:disabled):hover {
+  border-color: #e2c68c;
+  background: #a4b47426;
+}
+.forest-answers kbd {
+  color: #b4bd9a;
+  border: 1px solid #b9c5a033;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  font: 11px sans-serif;
+  flex-shrink: 0;
+}
+.forest-answers button > span {
+  flex: 1;
+}
+.forest-answers .correct {
+  border-color: #a0bb77;
+  background: #7a9c4333;
+}
+.forest-answers .wrong {
+  border-color: #c79272;
+  background: #b56e4220;
+}
+.forest-answers button:disabled {
+  cursor: default;
+}
+.forest-hint {
+  text-align: center;
+  min-height: 46px;
+  margin-top: 10px;
+}
+.forest-hint button {
+  font-size: 12px;
+  color: #c7c3a2;
+  padding: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.forest-hint p {
+  font-size: 13px;
+  color: #ecdaad;
+}
+.forest-hint small {
+  display: block;
+  font-size: 11px;
+  color: #b8c4a9;
+  margin-top: 6px;
+}
+.forest-feedback {
+  margin-top: 18px;
+}
+.forest-feedback > strong {
+  font-size: 14px;
+  color: #efd497;
+}
+.forest-feedback p {
+  font-size: 12px;
+  margin: 6px 0 10px;
+}
+.forest-feedback > small {
+  display: block;
+  color: #bfccaf;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+.forest-feedback .forest-primary {
+  margin-top: 14px;
+}
+.forest-encounter-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid #bac69d26;
+  color: #c6caa7;
+  font-size: 10px;
+}
+.forest-recall {
+  display: grid;
+  gap: 10px;
+}
+.forest-recall input {
+  background: #162e29;
+  color: #f7e6c2;
+  border: 1px solid #bcc99a66;
+  border-radius: 7px;
+  padding: 13px 16px;
+  min-width: 0;
+  font-size: 18px;
+  outline-offset: 3px;
+  width: 100%;
+}
+.forest-recall input::placeholder {
+  color: #a6b89c;
+  font-size: 14px;
+}
+.forest-text-button {
+  display: block;
+  margin: 20px auto 0;
+  text-align: center;
+  font-size: 12px;
+  color: #cbd0b6;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.forest-pause {
+  text-align: center;
+  max-width: 410px;
+}
+.forest-pause h2 {
+  margin: 20px 0;
+}
+.forest-audio {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+.forest-audio button {
+  color: #d9d8b8 !important;
+  background: #344f3f !important;
+}
+.forest-results {
+  text-align: center;
+}
+.forest-result-seal {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 22px;
+  width: 70px;
+  height: 76px;
+  border: 2px solid #d7bc7c;
+  border-radius: 6px 6px 24px 6px;
+  color: #ead19b;
+  font: 40px serif;
+  transform: rotate(-6deg);
+}
+.forest-result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 20px 0;
+  margin: 22px 0;
+  border-block: 1px solid #c9c7a233;
+}
+.forest-result-stats b {
+  display: block;
+  font:
+    34px "Shippori Mincho B1",
+    serif;
+  color: #ecd09b;
+}
+.forest-result-stats b small {
+  font-size: 16px;
+  color: #a9bc9f;
+}
+.forest-result-stats span {
+  display: block;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #b9c7aa;
+}
+.forest-discoveries {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 20px 0 28px;
+}
+.forest-discoveries > span {
+  font: 23px serif;
+}
+.forest-discoveries small {
+  display: block;
+  font: 10px sans-serif;
+  color: #bcc7ac;
+  margin-top: 6px;
+  max-width: 85px;
+}
+.forest-title-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, #142f2eee 0%, #183a30cc 28%, #17382b22 68%),
+    linear-gradient(
+      180deg,
+      #102d2c88,
+      transparent 30%,
+      transparent 75%,
+      #0b272dcc
+    );
+}
+.forest-title-header {
+  top: 32px;
+  left: 5%;
+  right: 5%;
+}
+.forest-camp-link {
+  font-size: 12px;
+  color: #ebe1bf;
+  text-decoration: none;
+  border: 1px solid #d6c38b66;
+  padding: 11px 17px;
+  border-radius: 5px;
+  background: #1f40306b;
+}
+.forest-camp-link span {
+  margin-left: 20px;
+}
+.forest-title-copy {
+  position: absolute;
+  left: 8.5%;
+  top: 50%;
+  transform: translateY(-47%);
+  max-width: 630px;
+}
+.forest-title-copy > .forest-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.27em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.forest-title-copy > .forest-eyebrow i {
+  width: 17px;
+  height: 1px;
+  background: #dfc28a;
+}
+.forest-title-copy h1 {
+  font:
+    500 clamp(38px, 4.4vw, 68px) / 1.2 "Shippori Mincho B1",
+    serif;
+  letter-spacing: -0.065em;
+  margin: 24px 0;
+}
+.forest-title-copy h1 em {
+  font-style: normal;
+  color: #e6c891;
+}
+.forest-title-copy > p {
+  font-size: 15px;
+  line-height: 1.95;
+  letter-spacing: 0.01em;
+  color: #c9d0b7;
+  margin: 0 0 30px;
+}
+.forest-begin {
+  max-width: 280px;
+  padding: 16px 23px;
+  font-size: 15px;
+}
+.forest-title-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: #a9ba9f;
+  margin-top: 20px;
+}
+.forest-title-note i {
+  height: 2px;
+  width: 2px;
+  background: #c7bd8c;
+  border-radius: 50%;
+}
+.forest-title-modes {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 36px;
+  font-size: 11px;
+  color: #c6cbaa;
+}
+.forest-title-modes a {
+  border-bottom: 1px solid #bbc49e44;
+  padding-bottom: 3px;
+}
+.forest-title-modes a:hover {
+  color: #f2d9a4;
+}
+.forest-title-modes > span {
+  color: #7f987f;
+}
+.forest-title-caption {
+  position: absolute;
+  right: 8%;
+  bottom: 19%;
+  text-shadow: 0 2px 14px #15352a;
+  text-align: center;
+  pointer-events: none;
+}
+.forest-title-caption > span {
+  display: block;
+  font:
+    26px "Shippori Mincho B1",
+    serif;
+  letter-spacing: 0.3em;
+  color: #e8d7ac;
+}
+.forest-title-caption small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #c0cdac;
+  margin-top: 12px;
+}
+.forest-title-footer {
+  position: absolute;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  left: 5%;
+  right: 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  color: #b2c0a3;
+  font-size: 8px;
+  letter-spacing: 0.17em;
+}
+.forest-title-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+.forest-title-footer a {
+  letter-spacing: 0.03em;
+  font-size: 10px;
+}
+.forest-title-footer button {
+  border-color: #d1c39544;
+  background: #18362d99;
+  color: #d9ca9f;
+}
+.forest-game button:focus-visible,
+.forest-game a:focus-visible,
+.forest-title a:focus-visible,
+.forest-title button:focus-visible,
+.forest-dialog button:focus-visible,
+.forest-dialog a:focus-visible {
+  outline: 2px solid #ffe1a1;
+  outline-offset: 4px;
+}
+@media (min-width: 1500px) {
+  .forest-title-copy {
+    left: 12%;
+  }
+  .forest-title-caption {
+    right: 13%;
+  }
+}
+@media (max-width: 700px) {
+  .forest-hud,
+  .forest-title-header {
+    left: 18px;
+    right: 18px;
+    top: max(18px, env(safe-area-inset-top));
+  }
+  .forest-wordmark {
+    font-size: 11px;
+    gap: 9px;
+  }
+  .forest-wordmark small {
+    font-size: 6px;
+    letter-spacing: 0.16em;
+  }
+  .forest-seal {
+    width: 34px;
+    height: 38px;
+    font-size: 21px;
+  }
+  .forest-hud-right {
+    gap: 6px;
+  }
+  .forest-motes {
+    font-size: 17px;
+    margin-right: 4px;
+  }
+  .forest-icon-button {
+    width: 42px;
+    min-width: 42px;
+    height: 44px;
+  }
+  .forest-objective {
+    left: 20px;
+    top: 95px;
+  }
+  .forest-objective h1 {
+    font-size: 21px;
+    margin-bottom: 10px;
+  }
+  .forest-objective .forest-eyebrow {
+    font-size: 8px;
+  }
+  .forest-seals {
+    gap: 14px;
+    font-size: 10px;
+  }
+  .forest-track {
+    font-size: 10px;
+    margin-top: 9px;
+  }
+  .forest-location {
+    display: none;
+  }
+  .forest-bottom {
+    left: 15px;
+    right: 15px;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    gap: 12px;
+  }
+  .forest-guide {
+    width: 100%;
+    max-width: 400px;
+    padding-right: 25px;
+  }
+  .forest-guide img {
+    width: 72px;
+    height: 72px;
+  }
+  .forest-guide small {
+    font-size: 6px;
+    margin-left: 6px;
+  }
+  .forest-guide p {
+    font-size: 11px;
+  }
+  .forest-controls {
+    font-size: 9px;
+    gap: 8px;
+  }
+  .forest-controls > span:first-child {
+    display: none;
+  }
+  .forest-controls i {
+    display: none;
+  }
+  .forest-controls > span:last-child {
+    font-size: 11px;
+  }
+  .forest-dialog {
+    padding: 22px;
+    max-height: calc(100svh - 28px);
+  }
+  .forest-dialog h2 {
+    font-size: 25px;
+  }
+  .forest-dialog .forest-eyebrow {
+    font-size: 9px;
+  }
+  .forest-question {
+    font-size: 48px;
+    padding-bottom: 17px;
+  }
+  .forest-encounter h2 {
+    font-size: 22px;
+  }
+  .forest-title-copy {
+    left: 8%;
+    right: 6%;
+    top: 48%;
+    transform: translateY(-42%);
+  }
+  .forest-title-copy h1 {
+    font-size: clamp(34px, 7vw, 49px);
+    margin: 20px 0;
+  }
+  .forest-title-copy > p {
+    font-size: 13px;
+    margin-bottom: 25px;
+    line-height: 1.85;
+  }
+  .forest-title-copy > .forest-eyebrow {
+    font-size: 9px;
+  }
+  .forest-title-caption {
+    display: none;
+  }
+  .forest-title-shade {
+    background:
+      linear-gradient(90deg, #153630ee, #15363099 70%, #15363077),
+      linear-gradient(0deg, #132f2bcc, transparent 60%);
+  }
+  .forest-title-modes {
+    margin-top: 26px;
+    font-size: 10px;
+    gap: 12px;
+  }
+  .forest-title-note {
+    font-size: 6px;
+    gap: 6px;
+  }
+  .forest-camp-link {
+    font-size: 10px;
+    padding: 9px 12px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .forest-camp-link span {
+    margin-left: 10px;
+  }
+  .forest-title-footer {
+    left: 20px;
+    right: 20px;
+    font-size: 6px;
+  }
+  .forest-title-footer > div {
+    gap: 16px;
+  }
+  .forest-title-footer a {
+    font-size: 9px;
+  }
+  .forest-title-header .forest-wordmark small {
+    max-width: 140px;
+    line-height: 1.8;
+  }
+  .forest-begin {
+    max-width: 270px;
+  }
+  .forest-title-footer > span {
+    max-width: 120px;
+    line-height: 1.8;
+  }
+}
+@media (max-height: 650px) {
+  .forest-title-copy {
+    top: 49%;
+  }
+  .forest-title-copy h1 {
+    font-size: 36px;
+    margin: 15px 0;
+  }
+  .forest-title-copy > p {
+    font-size: 12px;
+    line-height: 1.65;
+    margin-bottom: 20px;
+  }
+  .forest-title-modes {
+    margin-top: 18px;
+  }
+  .forest-title-note {
+    margin-top: 14px;
+  }
+  .forest-title-copy > .forest-eyebrow {
+    font-size: 8px;
+  }
+  .forest-encounter-progress {
+    margin: 10px 0;
+  }
+  .forest-question {
+    font-size: 40px;
+    padding: 0 0 12px;
+  }
+  .forest-encounter h2 {
+    font-size: 20px;
+  }
+  .forest-feedback {
+    margin-top: 12px;
+  }
+  .forest-encounter-foot {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+  .forest-guide {
+    display: none;
+  }
+}
+.forest-guide .forest-guide-portrait {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  margin: 0 13px;
+  font: 32px serif;
+  color: #e3bf80;
+  background: #304d3b;
+  border: 1px solid #afba7838;
+  border-radius: 8px 8px 20px 8px;
+}
+.forest-word-list > button {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 8px;
+  border-bottom: 1px solid #d8cfab26;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  min-height: 64px;
+}
+.forest-word-list > button > span:first-of-type {
+  flex: 1;
+}
+.forest-word-list > button[aria-pressed="true"] {
+  background: #d9c79512;
+}
+.forest-journal-audio {
+  margin: -8px 0 18px;
+}
+.forest-journal-audio button {
+  background: #314e3e;
+  color: #e2d4a9;
+  border-color: #a3b18444;
+}
+.forest-title-account {
+  letter-spacing: normal;
+}
+.forest-title-account > span:not(.sr-only),
+.forest-title-account > button {
+  color: #c6cfb6;
+  min-height: 44px;
+}
+.forest-title-account > button {
+  padding-inline: 14px;
+}
+.forest-word-list strong {
+  max-width: 42%;
+  overflow-wrap: anywhere;
+}
+.forest-dialog::backdrop {
+  backdrop-filter: none;
+}
+@media (max-height: 500px) {
+  .forest-game,
+  .forest-title {
+    min-height: 320px;
+  }
+  .forest-objective {
+    top: 86px;
+  }
+  .forest-objective h1 {
+    font-size: 19px;
+  }
+  .forest-location,
+  .forest-title-copy > p,
+  .forest-title-modes {
+    display: none;
+  }
+  .forest-title-copy {
+    top: 50%;
+    transform: translateY(-45%);
+  }
+  .forest-title-copy h1 {
+    font-size: 32px;
+    margin: 15px 0;
+  }
+  .forest-title-header {
+    top: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .forest-primary {
+    transition: none;
+  }
+}

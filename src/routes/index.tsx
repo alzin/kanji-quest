@@ -1,192 +1,120 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Nav } from "@/components/Nav";
-import { SiteFooter } from "@/components/SiteFooter";
-import { InstallApp } from "@/components/InstallApp";
+import { ForestCanvas } from "@/components/game/forest/ForestCanvas";
+import type { ForestBridge } from "@/components/game/forest/ForestScene";
+import { useSave } from "@/lib/srs";
 import { SoundToggle } from "@/components/SoundToggle";
-import { LevelSelector } from "@/components/LevelSelector";
-import { useSave, dueCount, getSnapshot, learningLevel, levelMasteryPct, newKanji, selectLevel, streakCount, MAX_REVIEWS, isChapterUnlocked, isGateCleared } from "@/lib/srs";
-import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
-import { isAudioRunning, play } from "@/lib/sfx";
-import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfLevel, kanjiOfChapter } from "@/data";
-import { AppIcon } from "@/components/AppIcon";
+import { AccountStatus } from "@/components/AccountStatus";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Kanji Dash — Learn JLPT N5 & N4 Kanji by Running" },
+      { title: "Kanji Dash — The Spirit Trail" },
       {
         name: "description",
         content:
-          "Learn JLPT N5 and N4 kanji with daily missions, spaced repetition, vocabulary, and writing practice.",
+          "A little Japanese. A whole new world. Explore Kodama Woods with Aki, restore forgotten places, and learn kanji through a playable forest adventure.",
       },
-      { property: "og:title", content: "Kanji Dash — Learn JLPT N5 & N4 Kanji by Running" },
+      { property: "og:title", content: "Kanji Dash — The Spirit Trail" },
       {
         property: "og:description",
-        content: "Daily runs through the Japanese countryside. Every gate is a real word — read it to keep running.",
+        content:
+          "Walk the woods. Find their words. A playable Japanese learning adventure.",
       },
     ],
   }),
   component: Home,
 });
 
-// YYYY-MM-DD from local date parts: the same day convention srs.ts keeps streak.last in.
-function localDay(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function Home() {
   const save = useSave();
-  const level = learningLevel(save);
-  const allKanji = kanjiOfLevel(level);
-  const due = dueCount(save);
-  const pct = levelMasteryPct(save, level);
-  const streak = streakCount(save);
-  const fresh = newKanji(save).length;
-  const checkpoint = LEVEL_CHAPTERS[level].find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
-  const mastered = allKanji.filter((k) => save.progress[k.c]?.mastery === 3).length;
-
-  const R = 42;
-  const circ = 2 * Math.PI * R;
-
-  // Coins and the streak pop only when they changed since the last visit (kanji-dash-fx-v1 record).
-  const [pops, setPops] = useState({ coins: false, streak: false });
-
-  // Post-hydration only. getSnapshot() is the loaded save: during hydration useSave() still
-  // holds the server snapshot and the store's own re-render lands after this effect.
+  const [bridge] = useState<ForestBridge>(() => ({
+    blocked: false,
+    restored: 0,
+    preview: true,
+    reducedMotion: false,
+    onReady: () => {},
+    onNear: () => {},
+    onInteract: () => {},
+    onMote: () => {},
+  }));
   useEffect(() => {
-    const snapshot = getSnapshot();
-    const today = localDay(new Date());
-    const changed = diffFx(readFx(), snapshot, today);
-    if (changed.coinsChanged || changed.streakDayChanged) setPops({ coins: changed.coinsChanged, streak: changed.streakDayChanged });
-    if (changed.streakDayChanged && isAudioRunning()) play("streakBell"); // never creates a context on load
-    rememberFx(snapshot, today);
-  }, []);
-
+    const media = matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => {
+      bridge.reducedMotion = media.matches;
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [bridge]);
   return (
-    <div className="app-shell bg-paper">
-      <Nav />
-      <main className="mx-auto max-w-4xl px-4 pb-8">
-        {/* Hero */}
-        <section className="relative mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-e2 sm:mt-8">
-          <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/10" />
-          <div aria-hidden="true" className="absolute -right-6 top-4 select-none font-serif text-[120px] font-bold leading-none text-primary/6 sm:text-[170px]">
-            漢字
-          </div>
-          <div className="relative p-5 sm:p-10">
-            <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-              Your daily kanji adventure
-            </p>
-            <h1 className="mt-3 max-w-lg font-serif text-[2.125rem] font-bold leading-tight sm:text-5xl">
-              Learn. Recall. <span className="text-primary">Run.</span>
-            </h1>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Meet the words, practice their kanji, then run through Japan. Build lasting recall of {allKanji.length} {level} kanji, a little every day.
-            </p>
-            <LevelSelector level={level} />
-            <div className="mt-5 flex flex-col gap-2 sm:mt-6 sm:flex-row sm:items-center sm:gap-3">
-              <Link
-                to="/run"
-                search={{ gate: undefined }}
-                data-sfx="tap"
-                className="pressable flex min-h-14 items-center justify-between gap-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e2 transition-colors hover:bg-primary-hover sm:justify-center sm:px-6 sm:text-lg"
-              >
-                Learn today’s words
-                <AppIcon name="arrow" className="h-5 w-5" />
-              </Link>
-              <Link
-                to="/map"
-                className="flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-muted-foreground transition-colors hover:bg-secondary sm:border sm:border-border sm:bg-card sm:py-3"
-              >
-                <AppIcon name="map" className="h-4 w-4" /> World map
-              </Link>
-              <SoundToggle variant="inline" />
-            </div>
-          </div>
-        </section>
-
-        {/* Daily mission + stats */}
-        <section className="mt-4 grid gap-3 sm:mt-6 sm:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] sm:gap-4" aria-label="Daily progress">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-e1 sm:p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif text-lg font-bold">Today's mission</h2>
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">{due > 0 ? `${due} to review` : fresh > 0 ? "Fresh start" : "Caught up"}</span>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {due > 0
-                ? fresh > 0
-                  ? `A short set: ${Math.min(due, MAX_REVIEWS)} due reviews and ${fresh} new kanji from one region.`
-                  : `Review ${Math.min(due, MAX_REVIEWS)} words in this short run. Any remaining reviews will wait for your next run.`
-                : fresh > 0
-                  ? `You're up to date on reviews. Learn words using ${fresh} fresh kanji before your next run.`
-                  : "No new kanji or reviews are ready right now. Visit the dojo for extra practice."}
-            </p>
-            {checkpoint !== undefined && <Link to="/run" search={{ gate: checkpoint }} className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-primary">Earn your next seal: {CHAPTER_NAMES[checkpoint]!.name} · {kanjiOfChapter(checkpoint).length} words →</Link>}
-            <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Streak</dt>
-                <dd data-testid="stat-streak" className="mt-0.5 flex items-center justify-center gap-1.5 font-serif text-lg font-bold">
-                  <AppIcon name="flame" className={`h-4 w-4 text-primary${streak >= 1 ? " flicker" : ""}${pops.streak ? " ignite" : ""}`} />
-                  <span className={`tabular-nums${pops.streak ? " hud-pop-left" : ""}`}>{streak}</span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mon</dt>
-                <dd data-testid="stat-mon" className={`mt-0.5 font-serif text-lg font-bold tabular-nums${pops.coins ? " hud-pop-left" : ""}`}>{save.coins}</dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Runs</dt>
-                <dd data-testid="stat-runs" className="mt-0.5 font-serif text-lg font-bold tabular-nums">{save.runsCompleted}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="flex items-center justify-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:p-5">
-            <svg className="h-20 w-20 shrink-0 lg:h-[104px] lg:w-[104px]" width="104" height="104" viewBox="0 0 104 104" role="img" aria-label={`${level} mastery progress ${pct}%`}>
-              <circle cx="52" cy="52" r={R} fill="none" stroke="var(--color-border)" strokeWidth="9" />
-              <circle
-                className="ring-fill"
-                cx="52" cy="52" r={R} fill="none" stroke="var(--color-primary)" strokeWidth="9"
-                strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)}
-                transform="rotate(-90 52 52)"
-              />
-              <text x="52" y="49" textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--color-foreground)" fontFamily="serif">{pct}%</text>
-              <text x="52" y="66" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--color-muted-foreground)">{level}</text>
-            </svg>
-            <div className="text-sm">
-              <div className="text-xs font-bold text-muted-foreground">{level} mastery progress</div>
-              <div className="font-serif text-2xl font-bold">{mastered}<span className="text-muted-foreground">/{allKanji.length}</span></div>
-              <div className="text-muted-foreground">kanji mastered</div>
-              <Link to="/collection" onClick={() => selectLevel(level)} className="-ml-1 mt-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs font-bold text-primary">View collection <AppIcon name="arrow" className="h-3.5 w-3.5" /></Link>
-            </div>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="mt-6" aria-labelledby="how-it-works">
-          <h2 id="how-it-works" className="mb-3 font-serif text-lg font-bold">Small steps. Lasting progress.</h2>
-          <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-            {[
-              { jp: "学", t: "1. Learn & write", d: "Study every word in your upcoming run with its reading and meaning. Trace its kanji in the dojo to practice the shape." },
-              { jp: "記", t: "2. Recall calmly", d: "Hide the readings and check what you remember. Practice both reading and meaning, with no timer or lost hearts." },
-              { jp: "走", t: "3. Run & revisit", d: "Play with the words you just studied. Run answers schedule spaced reviews, so missed kanji return sooner." },
-            ].map((f) => (
-              <div key={f.t} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:block sm:p-5">
-                <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 font-serif text-xl font-bold text-accent">
-                  {f.jp}
-                </div>
-                <div>
-                  <h3 className="font-serif font-bold sm:mt-3">{f.t}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{f.d}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-        <InstallApp />
-      </main>
-      <SiteFooter />
-    </div>
+    <main className="forest-title">
+      <ForestCanvas bridge={bridge} />
+      <div className="forest-title-shade" />
+      <header className="forest-title-header">
+        <Link to="/" className="forest-wordmark">
+          <span className="forest-seal">森</span>
+          <span>
+            KANJI DASH<small>A JAPANESE LEARNING ADVENTURE</small>
+          </span>
+        </Link>
+        <Link to="/camp" className="forest-camp-link">
+          Your camp <span>↗</span>
+        </Link>
+      </header>
+      <section className="forest-title-copy">
+        <span className="forest-eyebrow">
+          <i /> THE SPIRIT TRAIL
+        </span>
+        <h1>
+          A little Japanese.
+          <br />
+          <em>A whole new world.</em>
+        </h1>
+        <p>
+          The forest has forgotten its words.
+          <br />
+          Walk its paths. Wake its lanterns.
+          <br />
+          Bring a little wonder back.
+        </p>
+        <Link
+          to="/run"
+          search={{ mode: "expedition" }}
+          className="forest-primary forest-begin"
+        >
+          {save.runsCompleted ? "Return to the forest" : "Enter the forest"}
+          <span aria-hidden="true">→</span>
+        </Link>
+        <span className="forest-title-note">
+          CHAPTER 01 <i /> KODAMA WOODS <i /> ABOUT 5 MINUTES
+        </span>
+        <div className="forest-title-modes">
+          <Link to="/run" search={{ mode: "stack" }}>
+            Word Weaver
+          </Link>
+          <span>·</span>
+          <Link to="/run" search={{ mode: "runner" }}>
+            Lantern Dash
+          </Link>
+          <span>·</span>
+          <Link to="/practice">Ink Dojo</Link>
+        </div>
+      </section>
+      <div className="forest-title-caption">
+        <span>木霊の森</span>
+        <small>There’s a story in every word.</small>
+      </div>
+      <footer className="forest-title-footer">
+        <div className="forest-title-account">
+          <AccountStatus />
+        </div>
+        <div>
+          <Link to="/collection">Collection</Link>
+          <Link to="/privacy">Privacy</Link>
+          <SoundToggle variant="hud" />
+        </div>
+      </footer>
+    </main>
   );
 }

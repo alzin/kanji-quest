@@ -23,7 +23,9 @@ import {
   vocabKana,
   type CardProgress,
   type SaveData,
+  recordProduction,
 } from "../../src/lib/srs";
+import { emptyStack } from "../../src/lib/stack-progress";
 
 // These tests exercise the store in one process; none require a browser or server.
 test.describe.configure({ mode: "serial" });
@@ -42,6 +44,7 @@ function emptySave(): SaveData {
     gatesCleared: 0,
     clearedChapters: [],
     selectedLevel: "N5",
+    stack: emptyStack(),
   };
 }
 
@@ -337,6 +340,9 @@ test("guest grading, rewards, session persistence, and streak updates preserve e
     expect(beforeEarly.progress["一"]!.correct).toBe(1);
     expect(current.progress["一"]).not.toBe(beforeEarly.progress["一"]);
 
+    recordProduction("一", false, now);
+    recordProduction("一", false, now);
+    current = getSnapshot();
     const expectedIntervals = [1, 2.7, 7.4, 20.9, 60.6];
     for (let i = 0; i < expectedIntervals.length; i += 1) {
       const previous = current;

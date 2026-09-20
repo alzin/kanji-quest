@@ -1,6 +1,11 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./spirit.css";
+@import "./atmosphere.css";
+@import "./forest.css";
+@import "./river.css";
+@import "./dash.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -91,11 +96,11 @@
   --card-foreground: oklch(0.245 0.02 70);
   --popover: oklch(0.978 0.012 95);
   --popover-foreground: oklch(0.245 0.02 70);
-  --primary: oklch(0.532 0.184 33);
+  --primary: oklch(0.40 0.065 160);
   --primary-foreground: oklch(0.97 0.01 90);
   /* Pressed/hover vermillion: less light AND more chroma, hue pulled toward 0deg.
      Fading the button with opacity instead is what makes a hover look washed out. */
-  --primary-hover: oklch(0.478 0.196 29);
+  --primary-hover: oklch(0.33 0.065 160);
   --secondary: oklch(0.921 0.02 90);
   --secondary-foreground: oklch(0.3 0.025 70);
   --muted: oklch(0.921 0.02 90);
@@ -106,7 +111,7 @@
   --destructive-foreground: oklch(0.97 0.01 90);
   --border: oklch(0.87 0.02 85);
   --input: oklch(0.87 0.02 85);
-  --ring: oklch(0.532 0.184 33);
+  --ring: oklch(0.40 0.065 160);
   --chart-1: oklch(0.532 0.184 33);
   --chart-2: oklch(0.43 0.07 250);
   --chart-3: oklch(0.72 0.12 85);
@@ -705,3 +710,18 @@ dialog.sheet-up::backdrop { animation: fade-only 200ms ease-out; }
   }
   dialog[open].save-dialog { animation: save-dialog-in 200ms cubic-bezier(.2,.9,.3,1); }
 }
+
+/* Tsumiji keeps a 44px control row even on a 320px phone. */
+.stack-game { width: min(100%, 520px); height: 100dvh; min-height: 560px; margin: 0 auto; padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 6px; overflow: hidden; background: var(--paper); }
+.stack-header { flex: 0 0 auto; padding: 0 4px; }
+.stack-prompt { flex: 0 0 auto; min-height: 88px; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); text-align: center; }
+.stack-next { display: flex; align-items: center; gap: 5px; min-height: 28px; }
+.stack-board { position: relative; flex: 1 1 auto; min-height: 232px; max-height: 520px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; touch-action: none; }
+.stack-columns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.stack-columns button { min-height: 44px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--muted-foreground); background: var(--card); }
+.stack-columns button:active { background: var(--secondary); }
+.stack-feedback { display: flex; align-items: center; justify-content: center; min-height: 32px; max-height: 48px; overflow: hidden; text-align: center; font-size: 11px; line-height: 1.35; }
+.stack-controls { display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-shrink: 0; }
+.stack-page { display: flex; flex-direction: column; gap: 18px; width: min(100%, 460px); min-height: 100dvh; margin: 0 auto; padding: max(32px, env(safe-area-inset-top)) 24px max(32px, env(safe-area-inset-bottom)); justify-content: center; text-align: center; }
+@media (min-width: 640px) { .stack-game { max-width: 620px; } }
+@media (prefers-reduced-motion: reduce) { .stack-game *, .stack-page * { animation: none !important; transition: none !important; } }

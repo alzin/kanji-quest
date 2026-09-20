@@ -31,6 +31,9 @@ export async function recallWords(page: Page, answers: { reading: string; meanin
     }
   }
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
+  if (advanceClock) {
+    await expect.poll(async () => { await page.clock.runFor(50); return await page.locator(".dash-canvas canvas[data-ready]").count(); }).toBe(1);
+  } else await expect(page.locator(".dash-canvas canvas[data-ready]")).toBeVisible();
 }
 
 export async function completePreparation(page: Page, options: { advanceClock?: boolean; pauseClock?: boolean } = {}) {

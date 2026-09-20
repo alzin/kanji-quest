@@ -83,7 +83,7 @@ export type Timer = { t: number };
 export type EffectsState = {
   reducedMotion: boolean; clock: number; rng: number;
   particles: Float32Array; particleCount: number;
-  stamps: { gate: RunnerGate | null; t: number }[];
+  stamps: { gate: object | null; t: number }[];
   wrongMarks: { gate: RunnerGate | null; chosenLane: number }[];
   echo: EchoState | null;
   laneFlash: { lane: number; t: number } | null;
@@ -479,7 +479,7 @@ function isAnythingAlive(fx: EffectsState, paused: boolean): boolean {
 // ---------------------------------------------------------------------------
 // Spawns
 
-export function spawnCorrect(fx: EffectsState, a: { x: number; y: number; gate: RunnerGate; combo: number }): void {
+export function spawnCorrect(fx: EffectsState, a: { x: number; y: number; gate: object; combo: number }): void {
   // Stamp slot: a free one, else the oldest.
   let slot = fx.stamps[0];
   for (const s of fx.stamps) {
@@ -689,7 +689,7 @@ export function getRunnerPose(fx: EffectsState, run: number, laneDelta: number):
 }
 
 /** Stamp over the correct sign of a gate answered correctly; null once the 0.7 s ceremony is over. */
-export function getStampFor(fx: EffectsState, gate: RunnerGate): { scale: number; alpha: number; signSquash: { sx: number; sy: number } } | null {
+export function getStampFor(fx: EffectsState, gate: object): { scale: number; alpha: number; signSquash: { sx: number; sy: number } } | null {
   for (const s of fx.stamps) {
     if (s.gate !== gate || ended(s.t, STAMP_SECONDS)) continue;
     const t = s.t;

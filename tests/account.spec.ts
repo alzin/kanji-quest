@@ -88,7 +88,7 @@ async function selectN4(page: Page) {
 test("guests can use the app, retain only tab progress, and never rewrite legacy saves", async ({ page, context }) => {
   const api = await mockApi(page);
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: legacyKey, value: save(777, 77) });
-  await page.goto("./");
+  await page.goto("camp");
   await expect(saveButton(page)).toBeEnabled();
   // Nothing is at stake yet, so nothing interrupts a new player.
   await expect(saveDialog(page)).toHaveCount(0);
@@ -102,7 +102,7 @@ test("guests can use the app, retain only tab progress, and never rewrite legacy
   expect(api.writes).toHaveLength(0);
   const other = await context.newPage();
   await mockApi(other);
-  await other.goto("./");
+  await other.goto("camp");
   expect(await other.evaluate((key) => sessionStorage.getItem(key), guestKey)).toBeNull();
   await expect(other.getByRole("button", { name: /^N5 / })).toHaveAttribute("aria-pressed", "true");
 });
@@ -110,7 +110,7 @@ test("guests can use the app, retain only tab progress, and never rewrite legacy
 test("Google sign-in transfers guest progress, saves with CSRF, and sign-out isolates accounts", async ({ page }) => {
   const api = await mockApi(page);
   await seedGuest(page, save(55, 3));
-  await page.goto("./");
+  await page.goto("camp");
   await expect(page.getByLabel("55 mon coins", { exact: true })).toBeVisible();
   // The header keeps one quiet way in; the offer itself follows a finished run.
   await saveButton(page).click();
@@ -126,6 +126,7 @@ test("Google sign-in transfers guest progress, saves with CSRF, and sign-out iso
   await expect(page.getByText("Signed in as Aki", { exact: true })).toBeVisible();
   await expect(page.getByText("aki@gmail.com")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Your camp" }).click();
   api.user = userB;
   api.cloud = { save: save(222, 8), version: 4 };
   await page.reload();
@@ -138,7 +139,7 @@ test("Google sign-in transfers guest progress, saves with CSRF, and sign-out iso
 test("existing cloud and guest progress require a choice, including after reloading", async ({ page }) => {
   const api = await mockApi(page, userA, { save: save(80, 8), version: 7 });
   await seedGuest(page, save(20, 2));
-  await page.goto("./");
+  await page.goto("camp");
   await expect(saveDialog(page).getByRole("heading", { name: "Two versions of your progress are available" })).toBeVisible();
   expect(api.writes).toHaveLength(0);
   await page.reload();
@@ -151,7 +152,7 @@ test("existing cloud and guest progress require a choice, including after reload
 
 test("a concurrent cloud save cannot be overwritten until the user chooses a version", async ({ page }) => {
   const api = await mockApi(page, userA, { save: save(30, 3), version: 7 });
-  await page.goto("./");
+  await page.goto("camp");
   await expect(status(page, "Progress saved to your account.")).toBeVisible();
   api.conflictNext = true;
   await selectN4(page);
@@ -166,7 +167,7 @@ test("a concurrent cloud save cannot be overwritten until the user chooses a ver
 
 test("offline edits retain their original version across reload and retry safely", async ({ page }) => {
   const api = await mockApi(page, userA, { save: save(40, 4), version: 4 });
-  await page.goto("./");
+  await page.goto("camp");
   await expect(status(page, "Progress saved to your account.")).toBeVisible();
   api.failWrites = true;
   await selectN4(page);
@@ -187,7 +188,7 @@ test("offline edits retain their original version across reload and retry safely
 test("legacy browser progress imports only by an explicit choice and remains recoverable", async ({ page }) => {
   const api = await mockApi(page, userA, { save: save(10, 1), version: 2 });
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: legacyKey, value: save(70, 7) });
-  await page.goto("./");
+  await page.goto("camp");
   await expect(page.getByLabel("10 mon coins", { exact: true })).toBeVisible();
   expect(api.writes).toHaveLength(0);
   await expect(saveDialog(page).getByRole("heading", { name: "Earlier progress found" })).toBeVisible();
@@ -200,7 +201,7 @@ test("legacy browser progress imports only by an explicit choice and remains rec
 
 test("session expiry retains the old account cache without handing it to another account", async ({ page }) => {
   const api = await mockApi(page, userA, { save: save(40, 4), version: 4 });
-  await page.goto("./");
+  await page.goto("camp");
   await expect(status(page, "Progress saved to your account.")).toBeVisible();
   api.expireNext = true;
   await selectN4(page);
@@ -220,7 +221,7 @@ test("session expiry retains the old account cache without handing it to another
 test("an unavailable backend keeps guest play available and offers an honest retry", async ({ page }) => {
   const api = await mockApi(page);
   api.unavailable = true;
-  await page.goto("./");
+  await page.goto("camp");
   await expect(status(page, "Cloud saves are unavailable. You can keep playing in this tab and retry.")).toBeVisible();
   await saveButton(page).click();
   await expect(saveDialog(page).getByRole("button", { name: "Retry cloud connection" })).toBeVisible();

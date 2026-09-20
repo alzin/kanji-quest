@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CampRouteImport } from './routes/camp'
 import { Route as CollectionRouteImport } from './routes/collection'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as PracticeRouteImport } from './routes/practice'
@@ -20,6 +21,11 @@ import { Route as TermsRouteImport } from './routes/terms'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampRoute = CampRouteImport.update({
+  id: '/camp',
+  path: '/camp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CollectionRoute = CollectionRouteImport.update({
@@ -55,6 +61,7 @@ const TermsRoute = TermsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/camp': typeof CampRoute
   '/collection': typeof CollectionRoute
   '/map': typeof MapRoute
   '/practice': typeof PracticeRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/camp': typeof CampRoute
   '/collection': typeof CollectionRoute
   '/map': typeof MapRoute
   '/practice': typeof PracticeRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/camp': typeof CampRoute
   '/collection': typeof CollectionRoute
   '/map': typeof MapRoute
   '/practice': typeof PracticeRoute
@@ -84,13 +93,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/collection' | '/map' | '/practice' | '/privacy' | '/run' | '/terms'
+    | '/'
+    | '/camp'
+    | '/collection'
+    | '/map'
+    | '/practice'
+    | '/privacy'
+    | '/run'
+    | '/terms'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/collection' | '/map' | '/practice' | '/privacy' | '/run' | '/terms'
+    | '/'
+    | '/camp'
+    | '/collection'
+    | '/map'
+    | '/practice'
+    | '/privacy'
+    | '/run'
+    | '/terms'
   id:
     | '__root__'
     | '/'
+    | '/camp'
     | '/collection'
     | '/map'
     | '/practice'
@@ -101,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CampRoute: typeof CampRoute
   CollectionRoute: typeof CollectionRoute
   MapRoute: typeof MapRoute
   PracticeRoute: typeof PracticeRoute
@@ -116,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/camp': {
+      id: '/camp'
+      path: '/camp'
+      fullPath: '/camp'
+      preLoaderRoute: typeof CampRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/collection': {
@@ -165,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CampRoute: CampRoute,
   CollectionRoute: CollectionRoute,
   MapRoute: MapRoute,
   PracticeRoute: PracticeRoute,

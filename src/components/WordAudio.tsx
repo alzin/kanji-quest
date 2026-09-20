@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setVoiceEnabled, useVoiceEnabled } from "@/lib/voice-preference";
+import { duckMusic, releaseMusicDuck } from "@/lib/music";
 
 /** Speak kana so words with multiple kanji readings use the lesson's exact reading.
  *  "inline" is the labelled pair used on the study pages; "hud" is the 44 px round pair
@@ -18,6 +19,7 @@ export function WordAudio({ reading, wordKey, paused = false, variant = "inline"
     if (!current.current) return;
     current.current.onend = null;
     current.current.onerror = null;
+    releaseMusicDuck(current.current);
     current.current = null;
     window.speechSynthesis?.cancel();
   }, []);
@@ -33,13 +35,17 @@ export function WordAudio({ reading, wordKey, paused = false, variant = "inline"
     speech.rate = 0.85;
     const voice = window.speechSynthesis.getVoices().find((v) => /^ja(?:[-_]|$)/i.test(v.lang));
     if (voice) speech.voice = voice;
+    const finished = () => { releaseMusicDuck(speech); if (current.current === speech) current.current = null; };
+    speech.onend = finished;
     speech.onerror = (event) => {
+      finished();
       if (event.error !== "interrupted" && event.error !== "canceled") setStatus("blocked");
     };
     current.current = speech;
+    duckMusic(speech);
     setStatus("ready");
     try { window.speechSynthesis.speak(speech); }
-    catch { setStatus("blocked"); }
+    catch { finished(); setStatus("blocked"); }
   }, [enabled, paused, reading, stop]);
 
   useEffect(() => {

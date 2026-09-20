@@ -19,7 +19,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test:pwa": "npm run build && playwright test",
-    "test:pages": "npm run build:pages && playwright test --config playwright.pages.config.ts"
+    "test:pages": "npm run build:pages && playwright test --config playwright.pages.config.ts",
+    "test:forest": "npm run build && playwright test --config playwright.forest.config.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
@@ -27,6 +28,7 @@
     "@tanstack/react-router": "1.170.18",
     "@tanstack/react-start": "1.168.32",
     "@tanstack/router-plugin": "1.168.23",
+    "phaser": "4.2.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.2.1",

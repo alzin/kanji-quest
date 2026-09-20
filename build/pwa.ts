@@ -9,7 +9,7 @@ async function listAssets(directory: string, prefix = ""): Promise<string[]> {
     if (entry.name.startsWith(".")) return [];
     const path = `${prefix}${entry.name}`;
     if (entry.isDirectory()) return listAssets(resolve(directory, entry.name), `${path}/`);
-    if (path === "sw.js" || !/\.(?:html|js|css|png|svg|ico|webmanifest|woff2?)$/.test(path)) return [];
+    if (path === "sw.js" || !/\.(?:html|js|css|png|webp|svg|ico|webmanifest|woff2?)$/.test(path)) return [];
     return [path];
   }));
   return assets.flat().sort();
@@ -37,7 +37,7 @@ export function offlinePwa({ staticExport = false }: { staticExport?: boolean } 
           // GitHub Pages only serves files. Reuse the route-independent shell for
           // initial visits and refreshes; the router retains the URL and query.
           const shell = await readFile(resolve(publicDirectory, "offline.html"));
-          const pages = ["index.html", "404.html", ...["map", "practice", "collection", "run"]
+          const pages = ["index.html", "404.html", ...["camp", "map", "practice", "collection", "run"]
             .map((route) => `${route}/index.html`)];
           await Promise.all(pages.map(async (page) => {
             const target = resolve(publicDirectory, page);

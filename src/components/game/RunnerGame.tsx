@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { vocabKana, type PromptSegment, type Question } from "@/lib/srs";
 import { play, playWhenReady, unlock } from "@/lib/sfx";
 import { SoundToggle } from "@/components/SoundToggle";
+import { MusicToggle } from "@/components/MusicToggle";
+import { useGameMusic } from "@/lib/music";
 import { WordAudio } from "@/components/WordAudio";
 import {
   advanceEffects, comboTier, createEffects, drawDamageVignette, drawEffectsBehindRunner, drawEffectsFront,
@@ -65,6 +67,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   const [hud, setHud] = useState({ hearts: RUNNER_HEARTS, combo: 0, score: 0, left: questions.length });
   const [announcement, setAnnouncement] = useState("");
   const [paused, setPaused] = useState(false);
+  useGameMusic("run", paused);
   const [spokenGate, setSpokenGate] = useState<Gate | null>(null);
   const pausedRef = useRef(false);
   const lessonPausedRef = useRef(false);
@@ -917,7 +920,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       </div>
       {/* One control row along the bottom: pause, the how-to-play hint, then the three
           sound controls. Nothing floats over the lanes any more. */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 p-2 sm:gap-3 sm:p-4">
+      <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-2 p-2 sm:gap-3 sm:p-4">
         <button
           type="button"
           onClick={togglePause}
@@ -927,9 +930,9 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         >
           {paused ? "▶" : "Ⅱ"}
         </button>
-        <div className="pointer-events-none min-w-0 flex-1 text-center">
+        <div className="runner-control-hint pointer-events-none min-w-0 flex-1 text-center">
           <span className="inline-block max-w-full truncate rounded-full bg-ink/70 px-3 py-1.5 text-[11px] font-bold text-paper backdrop-blur sm:px-4 sm:text-xs">
-            <span className="sm:hidden">Tap a lane to answer</span>
+            <span className="sm:hidden">Tap a lane</span>
             <span className="hidden sm:inline">↑ ↓ / W S to change lane · tap a lane on touch · Esc to pause</span>
           </span>
         </div>
@@ -941,6 +944,7 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           className="shrink-0"
         />
         <SoundToggle variant="hud" className="shrink-0" />
+        <MusicToggle compact />
       </div>
       {/* one live region for answers and milestones (updated once per answer) */}
       <div role="status" className="sr-only">{announcement}</div>

@@ -1,4 +1,5 @@
 import type { Kanji } from "./n5/types";
+import { keywordFor } from "./keywords";
 
 export type JLPTLevel = "N5" | "N4";
 export const LEVELS: readonly JLPTLevel[] = ["N5", "N4"];
@@ -120,7 +121,7 @@ export function arrangeRegions(cards: Kanji[], level: JLPTLevel): Kanji[] {
   const arranged = REGIONS.filter((r) => r.level === level).flatMap((r) => [...r.chars].map((c) => {
     const original = byChar.get(c);
     if (!original || original.ch !== r.legacyChapter) throw new Error(`Invalid region assignment: ${c}`);
-    return { ...original, ch: r.id };
+    return { ...original, keyword: keywordFor(original.c, original.m), ch: r.id };
   }));
   if (arranged.length !== cards.length || new Set(arranged.map((k) => k.c)).size !== cards.length) {
     throw new Error(`Incomplete ${level} region coverage`);
