@@ -8,12 +8,13 @@ test("short checkpoints open the next focused set immediately and survive reload
   await page.setViewportSize({ width: 320, height: 568 });
   await page.clock.install();
   await page.addInitScript(() => { Math.random = () => 0.999; });
-  await page.goto("run?gate=13", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=13", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "This N5 checkpoint is locked" })).toBeVisible();
   await page.goto("map", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 2 })).toHaveCount(19);
   await expect(page.getByText("0 / 19 earned", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Prepare checkpoint" }).first().click();
+  await expect(page.getByRole("link", { name: "Prepare checkpoint" }).first()).toHaveAttribute("href", /gate=1/);
+  await page.goto("run?mode=runner&gate=1", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("region", { name: "Words in this run" }).getByRole("button")).toHaveCount(5);
   await completePreparation(page, { advanceClock: true });
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");

@@ -7,6 +7,7 @@ import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter } from "@/data";
 import { useSave, chapterMasteryPct, getCard, getSnapshot, isChapterUnlocked, isGateCleared, isLevelUnlocked, selectLevel } from "@/lib/srs";
 import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
 import { isAudioRunning, play } from "@/lib/sfx";
+import { stackOf } from "@/lib/stack-progress";
 
 export const Route = createFileRoute("/map")({
   head: () => ({
@@ -63,10 +64,12 @@ function MapPage() {
       <main className="mx-auto max-w-2xl px-4 pb-8">
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your journey</p>
         <h1 className="mt-2 font-serif text-3xl font-bold">The {level} Road</h1>
+        <p className="mt-1 font-serif text-sm text-accent">{level === "N5" ? "東海道 · Tōkaidō" : "中山道 · Nakasendō"}</p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
           Small wins, 4–6 kanji at a time. Clear a checkpoint or reach 55% mastery progress to open the next region.
         </p>
         <LevelSelector level={level} preview />
+        <Link to="/run" search={{ mode: "runner" }} className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-muted-foreground">Classic run →</Link>
 
         <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-e1" aria-label="Checkpoint progress">
           <div className="flex items-center justify-between gap-2">
@@ -145,7 +148,7 @@ function MapPage() {
               <li key={ch} ref={setRef} className="relative pb-4">
                 <div className={`relative flex gap-3 rounded-2xl border bg-card p-4 sm:gap-4 ${ch === nextCheckpoint ? "glow-next border-primary/50 shadow-e2" : "border-border shadow-e1"}`}>
                   <div aria-hidden="true" className={`z-10 flex h-10 w-10 shrink-0 rotate-[-6deg] items-center justify-center rounded-full border-2 font-serif text-lg font-bold sm:h-14 sm:w-14 sm:border-4 sm:text-xl ${
-                    cleared ? "border-primary bg-primary/10 text-primary" : "border-accent bg-card text-accent"
+                    stackOf(save).perfectGates.includes(ch) ? "border-gold bg-gold/10 text-primary" : cleared ? "border-primary bg-primary/10 text-primary" : "border-accent bg-card text-accent"
                   }${sealIndex >= 0 ? " relative seal-in" : ""}`} style={sealIndex >= 0 ? { animationDelay: `${200 + sealIndex * 80}ms` } : undefined}>
                     {cleared ? "印" : i + 1}
                   </div>
@@ -157,7 +160,7 @@ function MapPage() {
                       <h2 className="font-serif text-lg font-bold">
                         {CHAPTER_NAMES[ch]!.name} <span className="mt-0.5 block text-sm font-normal text-muted-foreground">{CHAPTER_NAMES[ch]!.jp}</span>
                       </h2>
-                      <span className="text-xs font-bold text-muted-foreground">{count} kanji · {count}-word checkpoint</span>
+                      <span className="text-xs font-bold text-muted-foreground">{count} kanji · {kanji.reduce((n, k) => n + k.vocab.length, 0)}-word checkpoint</span>
                     </div>
                     <p className="mt-2 font-serif text-lg tracking-[0.2em]" aria-label={kanjiLabel}>{kanji.map((k) => k.c).join(" ")}</p>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${CHAPTER_NAMES[ch]!.name} mastery`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
@@ -177,9 +180,10 @@ function MapPage() {
                         </Link>
                       )}
                       {cleared && (
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-primary">
-                          <AppIcon name="check" className="h-4 w-4" /> Seal stamped
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-primary">
+                          <span className="inline-flex items-center gap-1.5"><AppIcon name="check" className="h-4 w-4" /> Seal stamped</span>
+                          <Link to="/run" search={{ gate: ch }} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3">Repeat checkpoint</Link>
+                        </div>
                       )}
                     </div>
                   </div>

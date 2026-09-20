@@ -16,6 +16,7 @@ dist-ssr
 .nitro
 playwright-report/
 test-results/
+unit-test-results/
 *.local
 .env
 .env.*

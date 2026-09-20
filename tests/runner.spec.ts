@@ -8,7 +8,7 @@ async function startDeterministicRun(page: Page, url = "run", pauseClock = false
   if (!offerToSave) await silenceSavePrompt(page);
   // Identity shuffles put each answer in the top lane for these integration tests.
   await page.addInitScript(() => { Math.random = () => 0.999; });
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.goto(`${url}${url.includes("?") ? "&" : "?"}mode=runner`, { waitUntil: "domcontentloaded" });
   await completePreparation(page, { advanceClock: true, pauseClock });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");

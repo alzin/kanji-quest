@@ -47,8 +47,8 @@ test("legacy saves preserve totals and can never grant N4 seals implicitly", () 
   expect(legacy.selectedLevel).toBe("N5");
   expect(legacy.coins).toBe(42);
   expect(legacy.runsCompleted).toBe(8);
-  expect(legacy.progress["一"]).toEqual(card(3));
-  expect(legacy.progress["私"]).toEqual(card(2));
+  expect(legacy.progress["一"]).toEqual({ ...card(3), rt: 0, prod: 0, fl: 0 });
+  expect(legacy.progress["私"]).toEqual({ ...card(2), rt: 0, prod: 0, fl: 0 });
   const current = normalizeSave({ ...legacy, selectedLevel: "N4", clearedChapters: [12, 7, 7, ...LEVEL_CHAPTERS.N5, 13] });
   expect(current.clearedChapters).toEqual([...new Set([7, 12, ...LEVEL_CHAPTERS.N5])].sort((a, b) => a - b));
   expect(current.gatesCleared).toBe(21);

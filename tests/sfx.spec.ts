@@ -79,7 +79,7 @@ async function prepare(page: Page) {
 }
 
 async function startRun(page: Page, url = "run", pauseClock = false) {
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.goto(`${url}${url.includes("?") ? "&" : "?"}mode=runner`, { waitUntil: "domcontentloaded" });
   await completePreparation(page, { advanceClock: pauseClock, pauseClock });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect.poll(() => page.evaluate(() => typeof (window as any).__kanjiDashPause)).toBe("function");

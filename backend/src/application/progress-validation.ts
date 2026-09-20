@@ -10,10 +10,10 @@ function invalid(field: string): never {
   throw new AppError("INVALID_PROGRESS", `Invalid progress field: ${field}.`, 400);
 }
 
-function object(value: unknown, fields: readonly string[], field: string): Record<string, unknown> {
+function object(value: unknown, fields: readonly string[], field: string, optional: readonly string[] = []): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) invalid(field);
   const result = value as Record<string, unknown>;
-  if (Object.keys(result).some((key) => !fields.includes(key)) || fields.some((key) => !Object.hasOwn(result, key))) invalid(field);
+  if (Object.keys(result).some((key) => !fields.includes(key) && !optional.includes(key)) || fields.some((key) => !Object.hasOwn(result, key))) invalid(field);
   return result;
 }
 
@@ -33,7 +33,7 @@ function chapterList(value: unknown, field: string): number[] {
 
 /** Reject malformed writes rather than silently dropping account progress. */
 export function parseSaveData(value: unknown): SaveData {
-  const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save");
+  const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack"]);
   if (raw.curriculumVersion !== CURRICULUM_VERSION) invalid("curriculumVersion");
   if (raw.selectedLevel !== "N5" && raw.selectedLevel !== "N4") invalid("selectedLevel");
   const unlockedChapters = chapterList(raw.unlockedChapters, "unlockedChapters");
@@ -55,7 +55,7 @@ export function parseSaveData(value: unknown): SaveData {
   const progress: Record<string, CardProgress> = {};
   for (const [character, value] of entries) {
     if (!kanji.has(character)) invalid("progress.character");
-    const card = object(value, ["mastery", "ivl", "ease", "due", "correct", "wrong"], `progress.${character}`);
+    const card = object(value, ["mastery", "ivl", "ease", "due", "correct", "wrong"], `progress.${character}`, ["rt", "prod", "fl"]);
     progress[character] = {
       mastery: bounded(card.mastery, "mastery", 0, 3, true) as CardProgress["mastery"],
       ivl: bounded(card.ivl, "ivl", 0, MAX_TIMESTAMP / 86_400_000),
@@ -63,6 +63,9 @@ export function parseSaveData(value: unknown): SaveData {
       due: bounded(card.due, "due", 0, MAX_TIMESTAMP, true),
       correct: count(card.correct, "correct"),
       wrong: count(card.wrong, "wrong"),
+      ...(card.rt !== undefined ? { rt: bounded(card.rt, "rt", 0, 600_000) } : {}),
+      ...(card.prod !== undefined ? { prod: count(card.prod, "prod") } : {}),
+      ...(card.fl !== undefined ? { fl: count(card.fl, "fl") } : {}),
     };
   }
   return {
@@ -75,5 +78,35 @@ export function parseSaveData(value: unknown): SaveData {
     gatesCleared: clearedChapters.length,
     clearedChapters,
     selectedLevel: raw.selectedLevel,
+    ...(raw.stack !== undefined ? { stack: parseStack(raw.stack) } : {}),
+  };
+}
+
+function day(value: unknown, field: string): string {
+  if (value === "") return "";
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) invalid(field);
+  const date = new Date(`${value}T12:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) invalid(field);
+  return value;
+}
+
+function parseStack(value: unknown): NonNullable<SaveData["stack"]> {
+  const s = object(value, ["bestSheet", "bestMarathon", "bestSprintMs", "sheetsCleared", "lastSealDay", "quests", "freezes", "cosmetics", "perfectGates", "playDay", "playMs", "strokeDay"], "stack");
+  const q = object(s.quests, ["day", "sheets", "redeems", "typed"], "quests");
+  const f = object(s.freezes, ["count", "granted", "lastUsedDay"], "freezes");
+  const c = object(s.cosmetics, ["owned", "stamp", "paper"], "cosmetics");
+  const stamps = ["hanko", "sakura", "wave"];
+  const papers = ["washi", "indigo", "moss"];
+  if (!Array.isArray(c.owned) || c.owned.length > 6 || new Set(c.owned).size !== c.owned.length || c.owned.some((id) => ![...stamps, ...papers].includes(id as string))) invalid("cosmetics.owned");
+  if (typeof c.stamp !== "string" || !stamps.includes(c.stamp) || !c.owned.includes(c.stamp)) invalid("cosmetics.stamp");
+  if (typeof c.paper !== "string" || !papers.includes(c.paper) || !c.owned.includes(c.paper)) invalid("cosmetics.paper");
+  return {
+    bestSheet: count(s.bestSheet, "bestSheet"), bestMarathon: count(s.bestMarathon, "bestMarathon"),
+    bestSprintMs: count(s.bestSprintMs, "bestSprintMs"), sheetsCleared: count(s.sheetsCleared, "sheetsCleared"),
+    lastSealDay: day(s.lastSealDay, "lastSealDay"),
+    quests: { day: day(q.day, "quests.day"), sheets: count(q.sheets, "quests.sheets"), redeems: count(q.redeems, "quests.redeems"), typed: count(q.typed, "quests.typed") },
+    freezes: { count: bounded(f.count, "freezes.count", 0, 3, true), granted: bounded(f.granted, "freezes.granted", 0, 7, true), lastUsedDay: day(f.lastUsedDay, "lastUsedDay") },
+    cosmetics: { owned: c.owned as string[], stamp: c.stamp, paper: c.paper }, perfectGates: chapterList(s.perfectGates, "perfectGates"),
+    playDay: day(s.playDay, "playDay"), playMs: count(s.playMs, "playMs"), strokeDay: day(s.strokeDay, "strokeDay"),
   };
 }

@@ -22,7 +22,8 @@ test("both roads cover the same curriculum in unique, complete sets of 4–6 kan
   }
   for (const original of [...chaptersA, ...chaptersB]) {
     const current = allKanji.find((k) => k.c === original.c)!;
-    expect({ ...current, ch: original.ch }).toEqual(original);
+    const { keyword: _keyword, ...preserved } = current;
+    expect({ ...preserved, ch: original.ch }).toEqual(original);
   }
 });
 

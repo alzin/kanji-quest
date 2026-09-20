@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent 
 import type { Kanji } from "@/data/n5/types";
 import { play } from "@/lib/sfx";
 import { evaluateTrace } from "@/lib/stroke-math";
+import { recordProduction } from "@/lib/srs";
 
 const SIZE = 320;
 
@@ -72,6 +73,7 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
     const drawnMask = new Uint8Array(SIZE * SIZE);
     for (let i = 0; i < drawnMask.length; i++) drawnMask[i] = (drawn[i * 4 + 3] ?? 0) > 60 ? 1 : 0;
     const verdict = evaluateTrace(target, drawnMask, SIZE, SIZE);
+    if (verdict.pass) recordProduction(kanji.c, true);
     setResult(verdict);
     setResultCount((n) => n + 1);
     // Inside the Check click (boot()'s gesture listener has already unlocked audio).

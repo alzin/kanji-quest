@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 
 async function prepareOfflineCopy(page: Page, origin = "./") {
   await page.goto(origin, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Learn. Recall. Run." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Learn. Recall. Stack." })).toBeVisible();
   // Wait for activation to claim this page before a reload can interrupt setup.
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   // Exercise a document served by the installed worker as well as the first SSR load.
@@ -99,17 +99,17 @@ test("opens every game screen offline after visiting only home", async ({ page, 
       await expect(page.getByRole("heading", { name: heading!, exact: true })).toBeVisible();
     }
 
-    await page.goto(`${origin}/run?gate=1`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${origin}/run?mode=runner&gate=1`, { waitUntil: "domcontentloaded" });
     await completePreparation(page, { advanceClock: true, pauseClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await expect(page.getByText("The First Five — Checkpoint", { exact: true })).toBeVisible();
-    await expect(page).toHaveURL(/\/run\/?\?gate=1$/);
+    await expect(page).toHaveURL(/\/run\/?\?mode=runner&gate=1$/);
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
     await expect(page.getByRole("button", { name: "Resume game", exact: true })).toHaveAttribute("aria-pressed", "true");
 
     // Let the next document hydrate; preparation pauses its clock again.
     await page.clock.resume();
-    await page.goto(`${origin}/run`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${origin}/run?mode=runner`, { waitUntil: "domcontentloaded" });
     await completePreparation(page, { advanceClock: true, pauseClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
@@ -126,10 +126,21 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await page.goto(`${origin}/collection`, { waitUntil: "domcontentloaded" });
     await page.getByRole("searchbox").fill("わたし");
     await expect(page.getByRole("button", { name: "私 — I; private · Unseen", exact: true })).toBeVisible();
-    await page.goto(`${origin}/run?gate=7`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${origin}/run?mode=runner&gate=7`, { waitUntil: "domcontentloaded" });
     await completePreparation(page, { advanceClock: true, pauseClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await expect(page.getByText("Me & My Neighborhood — Checkpoint", { exact: true })).toBeVisible();
+    // The new daily mode also boots entirely from the precached application.
+    await page.clock.resume();
+    await page.goto(`${origin}/run?mode=stack`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Meet your new words" })).toBeVisible();
+    const stackWords = page.getByRole("region", { name: "Words in this run" }).getByRole("button");
+    for (let i = 0; i < await stackWords.count(); i++) await stackWords.nth(i).click();
+    await page.getByRole("button", { name: "Start stacking" }).click();
+    await page.getByTestId("stack-start").click();
+    await expect(page.getByTestId("stack-game")).toBeVisible();
+    await page.getByRole("button", { name: "Pause game", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "A quiet pause" })).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await stopServer();
@@ -166,12 +177,12 @@ test("shows platform installation help and handles the Android prompt", async ({
 });
 
 test("opens a checkpoint directly before any service worker is installed", async ({ page }) => {
-  const response = await page.goto("run?gate=1", { waitUntil: "domcontentloaded" });
+  const response = await page.goto("run?mode=runner&gate=1", { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200);
   await completePreparation(page);
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await expect(page.getByText("The First Five — Checkpoint", { exact: true })).toBeVisible();
-  await expect(page).toHaveURL(/\/run\/?\?gate=1$/);
+  await expect(page).toHaveURL(/\/run\/?\?mode=runner&gate=1$/);
   await page.getByRole("button", { name: "Pause game", exact: true }).click();
 });
 
@@ -214,6 +225,6 @@ test("hides installation help when launched as an installed app", async ({ page 
     Object.defineProperty(navigator, "standalone", { get: () => true });
   });
   await page.goto("./", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Learn. Recall. Run." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Learn. Recall. Stack." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Keep Kanji Dash one tap away" })).toHaveCount(0);
 });

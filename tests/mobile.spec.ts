@@ -17,7 +17,7 @@ test("keeps thumb navigation available and every screen clear at 320px", async (
   await expect(navigation.getByRole("link")).toHaveCount(4);
 
   for (const [name, heading] of [
-    ["Home", "Learn. Recall. Run."],
+    ["Home", "Learn. Recall. Stack."],
     ["Map", "The N5 Road"],
     ["Dojo", "Stroke Dojo"],
     ["Kanji", "Kanji Collection"],
@@ -61,7 +61,7 @@ test("moves navigation to the top when the viewport becomes wide", async ({ page
 
 test("leaves the run canvas and pause control unobstructed on a small phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.goto("run?gate=1", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=1", { waitUntil: "domcontentloaded" });
   await completePreparation(page);
   const game = page.getByLabel("Kanji runner game");
   await expect(game).toBeVisible();
@@ -144,7 +144,7 @@ test("fits the tracing pad and its controls on a 320px phone", async ({ page }) 
 
 test("keeps the sound toggle inside the viewport and clear of the pause control", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.goto("run?gate=1", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=1", { waitUntil: "domcontentloaded" });
   await completePreparation(page);
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   const mute = await page.getByRole("button", { name: "Mute sounds", exact: true }).boundingBox();

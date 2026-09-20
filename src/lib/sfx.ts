@@ -27,7 +27,8 @@ export type SoundId =
   | "wrong" | "lastHeart" | "lessonOpen" | "keepRunning" | "pause" | "resume"
   | "runComplete" | "runEnded" | "checkpointPassed" | "checkpointFailed"
   | "stamp" | "coins" | "sealEarned" | "streakBell"
-  | "strokeEnd" | "dojoPass" | "dojoFail" | "unmute";
+  | "strokeEnd" | "dojoPass" | "dojoFail" | "unmute"
+  | "tileMove" | "hardDrop" | "chain" | "wash" | "topOut";
 
 export type SoundOpts = {
   combo?: number;      // correct, comboMilestone
@@ -66,6 +67,7 @@ export const SOUND_IDS: readonly SoundId[] = [
   "runComplete", "runEnded", "checkpointPassed", "checkpointFailed",
   "stamp", "coins", "sealEarned", "streakBell",
   "strokeEnd", "dojoPass", "dojoFail", "unmute",
+  "tileMove", "hardDrop", "chain", "wash", "topOut",
 ];
 
 // D yo-pentatonic ladder: D4 E4 G4 A4 B4 D5 E5 G5 A5 B5 D6. The top rung is held.
@@ -209,6 +211,16 @@ export function planSound(id: SoundId, opts: SoundOpts = {}): SoundPlan {
   let minIntervalMs = 40;
 
   switch (id) {
+    case "tileMove":
+      voices.push(...clapper(0, 0.06)); minIntervalMs = 50; break;
+    case "hardDrop":
+      voices.push(...fwip(0, 0.08), ...stamp(0.06, 0.5)); hapticPattern = 12; break;
+    case "chain":
+      voices.push(...arpeggio(0), ...bell(E6, 0.15, 0.10)); hapticPattern = [10, 30, 10]; break;
+    case "wash":
+      voices.push(...fwip(0, 0.08), ...bell(880, 0.1, 0.12, 600)); break;
+    case "topOut":
+      voices.push(...pluck(440, 0, 0.14, 400), ...pluck(D4, 0.22, 0.12, 450)); break;
     case "tap":
       voices.push(noise(0, { type: "bandpass", freq: 1400, q: 5 }, 0.12, 1, 34), sine(0, 700, 0.04, 1, 25));
       break;

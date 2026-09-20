@@ -14,10 +14,11 @@ const choice = "min-h-14 w-full rounded-xl border border-border bg-surface px-4 
 const STEPS = ["Learn & write", "Recall", "Run"] as const;
 
 /** Preparation and the runner share one frozen queue, including the exact vocabulary. */
-export function RunPreparation({ questions, title, onStart }: {
+export function RunPreparation({ questions, title, onStart, learnOnly = false }: {
   questions: Question[];
   title: string;
   onStart: () => void;
+  learnOnly?: boolean;
 }) {
   const [stage, setStage] = useState<"learn" | "recall">("learn");
   const [index, setIndex] = useState(0);
@@ -56,13 +57,13 @@ export function RunPreparation({ questions, title, onStart }: {
         <div className="mt-5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{title} · Dojo preparation</p>
           <h1 ref={heading} tabIndex={-1} className="mt-1.5 font-serif text-[1.875rem] font-bold leading-tight outline-none sm:text-4xl">
-            {stage === "learn" ? "Learn before you run" : "Recall without the rush"}
+            {stage === "learn" ? learnOnly ? "Meet your new words" : "Learn before you run" : "Recall without the rush"}
           </h1>
         </div>
 
         {/* Three segments rather than three boxes: the rail never wraps on a phone. */}
         <ol aria-label="Learning steps" className="mt-5 flex items-center gap-2">
-          {STEPS.map((label, i) => (
+          {(learnOnly ? ["Learn & write", "Stack & recall"] : STEPS).map((label, i) => (
             <li key={label} aria-current={i === step ? "step" : undefined} className="min-w-0 flex-1">
               <span aria-hidden="true" className={`block h-1.5 rounded-full ${i <= step ? "bg-primary" : "bg-border"}`} />
               <span className={`mt-1.5 block truncate text-[11px] font-bold uppercase tracking-wider ${i === step ? "text-primary" : "text-muted-foreground"}`}>
@@ -109,7 +110,7 @@ export function RunPreparation({ questions, title, onStart }: {
                 <WordAudio reading={vocabKana(word.vocab)} wordKey={`learn-${index}`} className="mt-4 justify-center" />
               </div>
               <div className="mt-6 rounded-xl bg-surface-sunken p-4 text-sm leading-relaxed">
-                <p><b className="font-serif text-xl text-primary">{word.kanji.c}</b> · {word.kanji.m}</p>
+                <p><b className="font-serif text-xl text-primary">{word.kanji.c}</b> · {learnOnly ? word.kanji.keyword ?? word.kanji.m : word.kanji.m}</p>
                 <p className="mt-2">{word.kanji.mn}</p>
               </div>
               <div className="mt-6">
@@ -119,8 +120,8 @@ export function RunPreparation({ questions, title, onStart }: {
             </section>
           </div>
           <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">{allSeen ? "Every word covered. Try recalling them with the readings hidden." : `Open ${questions.length - seen.size} more to unlock the recall check.`}</p>
-            <button type="button" className={`${primary} shrink-0`} disabled={!allSeen} onClick={() => { setRecallIndex(0); setFeedback(null); setStage("recall"); }}>Check my recall</button>
+            <p className="text-sm text-muted-foreground">{learnOnly ? allSeen ? "Your sheet is the recall practice. Each block has a word to remember." : `Open ${questions.length - seen.size} more new words.` : allSeen ? "Every word covered. Try recalling them with the readings hidden." : `Open ${questions.length - seen.size} more to unlock the recall check.`}</p>
+            <button type="button" className={`${primary} shrink-0`} disabled={!allSeen} onClick={() => { if (learnOnly) onStart(); else { setRecallIndex(0); setFeedback(null); setStage("recall"); } }}>{learnOnly ? "Start stacking" : "Check my recall"}</button>
           </div>
         </>}
 

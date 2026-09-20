@@ -25,7 +25,7 @@ test("N4 previews explain the unlock and direct checkpoint links cannot bypass i
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Continue the N5 road" })).toBeVisible();
-  await page.goto("run?gate=7", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=7", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "This N4 checkpoint is locked" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toHaveCount(0);
   const save = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
@@ -55,7 +55,7 @@ test("the selected road persists across home, searchable collection, dojo, and d
   await page.getByRole("link", { name: "Dojo", exact: true }).click();
   await expect(page.getByLabel("Trace 本", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.goto("run", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
   const words = page.getByRole("region", { name: "Words in this run" });
   await expect(words.getByRole("status")).toHaveText("1 / 6 words viewed");
   const before = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
@@ -66,7 +66,7 @@ test("the selected road persists across home, searchable collection, dojo, and d
 test("an N4 checkpoint prepares, grades, stamps its own seal and only rewards the first clearance", async ({ page }) => {
   await unlockN4(page);
   await page.clock.install();
-  await page.goto("run?gate=7", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=7", { waitUntil: "domcontentloaded" });
   for (let run = 0; run < 2; run++) {
     await completePreparation(page, { advanceClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
@@ -85,7 +85,7 @@ test("an N4 checkpoint prepares, grades, stamps its own seal and only rewards th
   await page.getByRole("button", { name: "Back to map", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
   await expect(page.getByText("1 / 36 earned", { exact: true })).toBeVisible();
-  await page.goto("run?gate=8", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=8", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "This N4 checkpoint is locked" })).toBeVisible();
 });
 

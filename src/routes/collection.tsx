@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { Nav } from "@/components/Nav";
+import { StampShop } from "@/components/StampShop";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { LevelSelector } from "@/components/LevelSelector";
 import { allKanji, kanjiOfLevel, CHAPTER_NAMES, LEVEL_CHAPTERS } from "@/data";
@@ -311,11 +312,12 @@ function CollectionPage() {
                   setSelected(k);
                 }}
                 data-sfx="sheet"
-                className={`flex aspect-square min-h-11 items-center justify-center rounded-xl border-2 font-serif text-2xl font-bold shadow-e1 transition-transform hover:-translate-y-0.5 hover:shadow-e2 active:scale-95 ${TILE_CLASS[p.mastery]}${p.mastery === 3 ? " relative tile-mastered" : ""}`}
+                className={`relative flex aspect-square min-h-11 items-center justify-center rounded-xl border-2 font-serif text-2xl font-bold shadow-e1 transition-transform hover:-translate-y-0.5 hover:shadow-e2 active:scale-95 ${TILE_CLASS[p.mastery]}${p.mastery === 3 ? " tile-mastered" : ""}`}
                 aria-label={`${k.c} — ${k.m} · ${MASTERY_LABEL[p.mastery]}`}
                 aria-haspopup="dialog"
               >
                 {k.c}
+                {p.mastery === 2 && (p.prod ?? 0) < 2 && <span aria-label="Production practice needed" className="absolute bottom-0.5 right-1 text-[9px] text-accent">◇筆</span>}
               </button>
             );
           })}
@@ -333,6 +335,7 @@ function CollectionPage() {
         {selected && (
           <KanjiDialog kanji={selected} progress={getCard(save, selected.c)} returnFocusTo={openerRef.current} onDismiss={dismissDetail} />
         )}
+        <StampShop />
       </main>
     </div>
   );

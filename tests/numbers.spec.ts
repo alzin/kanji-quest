@@ -65,7 +65,7 @@ test("offers a short checkpoint when all eligible kanji are waiting for their re
   await seedSave(page, cards);
   await page.goto("./", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Caught up", { exact: true })).toBeVisible();
-  await page.goto("run", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Ready for your checkpoint", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Prepare checkpoint", exact: true })).toHaveAttribute("href", /gate=1/);
   await expect(page.getByLabel("Kanji runner game")).toHaveCount(0);
@@ -76,7 +76,7 @@ test("ignores checkpoint numbers outside the integer chapter range", async ({ pa
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   for (const gate of ["1.5", "0", String(CHAPTER_COUNT + 1), "-1"]) {
-    await page.goto(`run?gate=${gate}`, { waitUntil: "domcontentloaded" });
+    await page.goto(`run?mode=runner&gate=${gate}`, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Learn before you run", exact: true })).toBeVisible();
     await expect(page.getByText("Daily run · Dojo preparation", { exact: true })).toBeVisible();
   }

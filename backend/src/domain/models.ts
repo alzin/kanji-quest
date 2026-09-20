@@ -10,6 +10,24 @@ export type CardProgress = {
   due: number;
   correct: number;
   wrong: number;
+  rt?: number;
+  prod?: number;
+  fl?: number;
+};
+
+export type StackProgress = {
+  bestSheet: number;
+  bestMarathon: number;
+  bestSprintMs: number;
+  sheetsCleared: number;
+  lastSealDay: string;
+  quests: { day: string; sheets: number; redeems: number; typed: number };
+  freezes: { count: number; granted: number; lastUsedDay: string };
+  cosmetics: { owned: string[]; stamp: string; paper: string };
+  perfectGates: number[];
+  playDay: string;
+  playMs: number;
+  strokeDay: string;
 };
 
 export type SaveData = {
@@ -22,6 +40,7 @@ export type SaveData = {
   gatesCleared: number;
   clearedChapters: number[];
   selectedLevel: "N5" | "N4";
+  stack?: StackProgress;
 };
 
 /** Version zero means that the account has never uploaded a save. */

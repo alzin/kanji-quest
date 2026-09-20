@@ -8,7 +8,7 @@ test("requires every word and both recall checks without grading preparation", a
   await page.setViewportSize({ width: 320, height: 568 });
   await page.clock.install();
   await page.addInitScript(() => { Math.random = () => 0.999; });
-  await page.goto("run", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toBeVisible();
   const before = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
   await expect(page.getByRole("button", { name: "Check my recall" })).toBeDisabled();
@@ -65,7 +65,7 @@ test("requires every word and both recall checks without grading preparation", a
 });
 
 test("reload and checkpoint links always enter preparation", async ({ page }) => {
-  await page.goto("run?gate=1", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=1", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toBeVisible();
   await page.getByRole("region", { name: "Words in this run" }).getByRole("button").last().click();
   await page.reload({ waitUntil: "domcontentloaded" });

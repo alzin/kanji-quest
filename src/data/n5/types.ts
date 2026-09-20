@@ -11,6 +11,7 @@ export type Vocab = {
 export type Kanji = {
   c: string; // the kanji character
   m: string; // english meaning(s)
+  keyword?: string; // one distinct keyword within this level
   on: string; // on'yomi (katakana)
   kun: string; // kun'yomi (hiragana)
   rad: string; // main radical

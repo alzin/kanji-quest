@@ -10,20 +10,21 @@ import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
 import { isAudioRunning, play } from "@/lib/sfx";
 import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfLevel, kanjiOfChapter } from "@/data";
 import { AppIcon } from "@/components/AppIcon";
+import { dailyQuests, stackOf } from "@/lib/stack-progress";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Kanji Dash — Learn JLPT N5 & N4 Kanji by Running" },
+      { title: "Kanji Dash — Learn JLPT N5 & N4 with Tsumiji" },
       {
         name: "description",
         content:
           "Learn JLPT N5 and N4 kanji with daily missions, spaced repetition, vocabulary, and writing practice.",
       },
-      { property: "og:title", content: "Kanji Dash — Learn JLPT N5 & N4 Kanji by Running" },
+      { property: "og:title", content: "Kanji Dash — Learn JLPT N5 & N4 with Tsumiji" },
       {
         property: "og:description",
-        content: "Daily runs through the Japanese countryside. Every gate is a real word — read it to keep running.",
+        content: "Daily kanji stacking sheets. Match words, remember readings, and follow the Japanese study roads.",
       },
     ],
   }),
@@ -42,7 +43,7 @@ function Home() {
   const due = dueCount(save);
   const pct = levelMasteryPct(save, level);
   const streak = streakCount(save);
-  const fresh = newKanji(save).length;
+  const fresh = Math.min(4, newKanji(save).length);
   const checkpoint = LEVEL_CHAPTERS[level].find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
   const mastered = allKanji.filter((k) => save.progress[k.c]?.mastery === 3).length;
 
@@ -79,10 +80,10 @@ function Home() {
               Your daily kanji adventure
             </p>
             <h1 className="mt-3 max-w-lg font-serif text-[2.125rem] font-bold leading-tight sm:text-5xl">
-              Learn. Recall. <span className="text-primary">Run.</span>
+              Learn. Recall. <span className="text-primary">Stack.</span>
             </h1>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Meet the words, practice their kanji, then run through Japan. Build lasting recall of {allKanji.length} {level} kanji, a little every day.
+              Stack words, match their readings, and build lasting recall of {allKanji.length} {level} kanji, a little every day.
             </p>
             <LevelSelector level={level} />
             <div className="mt-5 flex flex-col gap-2 sm:mt-6 sm:flex-row sm:items-center sm:gap-3">
@@ -92,7 +93,7 @@ function Home() {
                 data-sfx="tap"
                 className="pressable flex min-h-14 items-center justify-between gap-4 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e2 transition-colors hover:bg-primary-hover sm:justify-center sm:px-6 sm:text-lg"
               >
-                Learn today’s words
+                Today’s sheets
                 <AppIcon name="arrow" className="h-5 w-5" />
               </Link>
               <Link
@@ -117,9 +118,9 @@ function Home() {
               {due > 0
                 ? fresh > 0
                   ? `A short set: ${Math.min(due, MAX_REVIEWS)} due reviews and ${fresh} new kanji from one region.`
-                  : `Review ${Math.min(due, MAX_REVIEWS)} words in this short run. Any remaining reviews will wait for your next run.`
+                  : `Review up to ${Math.min(due, 12)} words across today's sheets. Any remaining reviews can wait.`
                 : fresh > 0
-                  ? `You're up to date on reviews. Learn words using ${fresh} fresh kanji before your next run.`
+                  ? `You're up to date on reviews. Meet ${fresh} fresh kanji before your first sheet.`
                   : "No new kanji or reviews are ready right now. Visit the dojo for extra practice."}
             </p>
             {checkpoint !== undefined && <Link to="/run" search={{ gate: checkpoint }} className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-primary">Earn your next seal: {CHAPTER_NAMES[checkpoint]!.name} · {kanjiOfChapter(checkpoint).length} words →</Link>}
@@ -163,14 +164,19 @@ function Home() {
           </div>
         </section>
 
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4" aria-label="Today's learning quests">
+          <h2 className="font-serif text-lg font-bold">A little variety</h2>
+          <ul className="mt-3 space-y-2 text-sm">{dailyQuests(save).map((q) => <li key={q.key} className="flex justify-between gap-3"><span>{q.value === q.target ? "✓" : "○"} {q.label}</span><span className="tabular-nums text-muted-foreground">{q.value}/{q.target}</span></li>)}</ul>
+          <p className="mt-3 text-xs text-muted-foreground">{stackOf(save).freezes.count} streak freezes · earned freely at day 3, 7 and 30</p>
+        </section>
         {/* How it works */}
         <section className="mt-6" aria-labelledby="how-it-works">
           <h2 id="how-it-works" className="mb-3 font-serif text-lg font-bold">Small steps. Lasting progress.</h2>
           <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
             {[
-              { jp: "学", t: "1. Learn & write", d: "Study every word in your upcoming run with its reading and meaning. Trace its kanji in the dojo to practice the shape." },
-              { jp: "記", t: "2. Recall calmly", d: "Hide the readings and check what you remember. Practice both reading and meaning, with no timer or lost hearts." },
-              { jp: "走", t: "3. Run & revisit", d: "Play with the words you just studied. Run answers schedule spaced reviews, so missed kanji return sooner." },
+              { jp: "学", t: "1. Meet new words", d: "Connect each new word to its reading and meaning. Trace the kanji if writing helps you remember." },
+              { jp: "積", t: "2. Stack & recall", d: "Drop each word beside its matching tile. Wash away inked mistakes with a correct placement later." },
+              { jp: "印", t: "3. Seal & revisit", d: "Short daily sheets schedule your next reviews. Type readings at checkpoints to turn recognition into recall." },
             ].map((f) => (
               <div key={f.t} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:block sm:p-5">
                 <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 font-serif text-xl font-bold text-accent">
