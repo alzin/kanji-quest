@@ -96,10 +96,10 @@ export function getGameLayout(width: number, height: number): GameLayout {
     };
   }
 
-  const questionTop = landscape ? 68 : height < 650 ? 76 : 90;
-  const questionHeight = landscape ? 50 : 72;
+  const questionTop = landscape ? 58 : height < 650 ? 76 : 90;
+  const questionHeight = landscape ? 60 : 72;
   const laneTop = questionTop + questionHeight + (landscape ? 8 : 14);
-  const laneBottom = Math.max(laneTop + 108, height - (landscape ? 38 : 62));
+  const laneBottom = Math.max(laneTop + 108, height - (landscape ? 54 : 62));
   const laneSpan = laneBottom - laneTop;
   const signWidth = Math.min(132, Math.max(116, width * 0.34), width - 24);
   const signHeight = Math.min(48, Math.max(36, laneSpan / RUNNER_LANES - 10));
@@ -187,6 +187,13 @@ export function getRunnerStats(s: RunnerState): RunnerStats {
 
 export function getRunnerRemaining(s: RunnerState, total: number): number {
   return Math.max(0, total - s.correct - s.wrong);
+}
+
+/** Rotation changes the drawing, never the time left to choose a path. */
+export function resizeRunner(s: RunnerState, beforeWidth: number, beforeHeight: number, width: number, height: number) {
+  const before = getGameLayout(beforeWidth, beforeHeight), after = getGameLayout(width, height);
+  const scale = getGateSpeed(width, after) / getGateSpeed(beforeWidth, before);
+  for (const gate of s.gates) gate.x = getDecisionX(after) + (gate.x - getDecisionX(before)) * scale;
 }
 
 /** Finished gates fade out on phones; desktop keeps them until they leave the screen. */

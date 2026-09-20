@@ -11,13 +11,13 @@ async function expectNoHorizontalOverflow(page: Page) {
 
 test("keeps thumb navigation available and every screen clear at 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("camp", { waitUntil: "domcontentloaded" });
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await expect(navigation).toBeVisible();
   await expect(navigation.getByRole("link")).toHaveCount(4);
 
   for (const [name, heading] of [
-    ["Home", "A little adventure. A little wiser."],
+    ["Camp", "A little adventure. A little wiser."],
     ["Map", "The N5 Road"],
     ["Dojo", "Stroke Dojo"],
     ["Kanji", "Kanji Collection"],
@@ -160,7 +160,7 @@ test("keeps the sound toggle inside the viewport and clear of the pause control"
   expect(separated).toBe(true);
   await expectNoHorizontalOverflow(page);
 
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "Mute sounds", exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });

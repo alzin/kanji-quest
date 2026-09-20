@@ -37,7 +37,7 @@ test("N4 previews explain the unlock and direct checkpoint links cannot bypass i
 test("the selected road persists across home, searchable collection, dojo, and daily preparation", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await unlockN4(page, true);
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("mastery-summary")).toHaveText(`0/${kanjiOfLevel("N4").length} mastered · 0% mastery progress`);
   await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Kanji", exact: true }).click();

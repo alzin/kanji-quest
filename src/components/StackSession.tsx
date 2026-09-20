@@ -6,7 +6,7 @@ import { acceptsReading } from "@/lib/production";
 import { dailyQuests, localDay, stackOf } from "@/lib/stack-progress";
 import { play } from "@/lib/sfx";
 import { dailyRunReward, checkpointPassed } from "./game/runner-math";
-import { StackGame } from "./game/StackGame";
+import { RiverStackGame as StackGame } from "./game/forest/RiverStackGame";
 import { composeSheets, type StackWord } from "./game/stack-seed";
 import type { StackStats } from "./game/stack-math";
 import { RunPreparation } from "./RunPreparation";
@@ -19,6 +19,10 @@ const EMPTY: StackStats = { correct: 0, wrong: 0, bestCombo: 0, score: 0, redeem
 function sum(a: StackStats, b: StackStats): StackStats { return { correct: a.correct + b.correct, wrong: a.wrong + b.wrong, bestCombo: Math.max(a.bestCombo, b.bestCombo), score: a.score + b.score, redeemed: a.redeemed + b.redeemed, chains: a.chains + b.chains, elapsed: a.elapsed + b.elapsed, cleared: a.cleared && b.cleared, wordsCleared: a.wordsCleared + b.wordsCleared, totalWords: a.totalWords + b.totalWords }; }
 
 export function StackSession({ gate, kind }: { gate: number | undefined; kind: StackMode }) {
+  return <div className="river-session"><StackSessionContent gate={gate} kind={kind} /></div>;
+}
+
+function StackSessionContent({ gate, kind }: { gate: number | undefined; kind: StackMode }) {
   const [attempt, setAttempt] = useState(0);
   const frozen = useMemo(() => {
     const save = getSnapshot();

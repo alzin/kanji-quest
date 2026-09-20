@@ -4,7 +4,7 @@ Do you know the JLPTs required Kanji lists? Do you know the best way / method to
 
 ## Development
 
-The redesigned home leads into **Spirit Trail**, a short forest adventure with two paths, lanterns, collectible session charms, mixed meaning/reading practice, and a typed recall finale. Word Weaver (Tsumiji), Torii Run, and the Ink Dojo remain available as alternate practice modes. See [Spirit Trail gameplay and learning rules](docs/SPIRIT_TRAIL.md).
+The title screen leads into **Spirit Trail**, a playable Phaser 4.2.1 forest adventure. Walk with Aki, gather fireflies, light a lantern through kanji meanings, rebuild a bridge through readings, carry its light through **Lantern Dash**, and wake the shrine with typed recall. The learning dashboard is now **Camp**. Word Weaver (Tsumiji), Lantern Dash (`/run?mode=runner`), and the Ink Dojo remain available as alternate practice modes. See [Spirit Trail architecture and playtest guide](docs/spirit-trail.md).
 
 The project includes an Express/TypeScript API with PostgreSQL on Neon, Google sign-in, and account progress saving. Guests can play freely with temporary progress in their current tab. See the [backend setup and deployment guide](backend/README.md) to configure Google OAuth and Neon, migrate the database, and start both applications.
 

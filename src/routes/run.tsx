@@ -1,11 +1,11 @@
 import { RunResults } from "@/components/RunResults";
-import { Expedition } from "@/components/Expedition";
+import { ForestAdventure } from "@/components/ForestAdventure";
 import { LessonFlash } from "@/components/LessonFlash";
 import { StackSession, type StackMode } from "@/components/StackSession";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
-import { RunnerGame } from "@/components/game/RunnerGame";
+import { LanternRunnerGame as RunnerGame } from "@/components/game/forest/LanternRunnerGame";
 import { RunPreparation } from "@/components/RunPreparation";
 import { checkpointPassed, dailyRunReward, type RunnerStats } from "@/components/game/runner-math";
 import { play } from "@/lib/sfx";
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/run")({
   head: () => ({
     meta: [
       { title: "Play — Kanji Dash" },
-      { name: "description", content: "Explore the Spirit Trail, weave words in Tsumiji, or read your way through Torii Run. A little kanji adventure every day." },
+      { name: "description", content: "Explore the Spirit Trail, weave words in Tsumiji, or carry light through Lantern Dash. A little kanji adventure every day." },
       { property: "og:title", content: "Play — Kanji Dash" },
       { property: "og:description", content: "Learn kanji through forest expeditions, word puzzles, and running adventures." },
     ],
@@ -45,11 +45,14 @@ function RunPage() {
       <span className="text-sm font-bold text-muted-foreground">Preparing your run…</span>
     </div>
   );
-  if (mode === "expedition" && gate === undefined) return <Expedition />;
+  if (mode === "expedition" && gate === undefined) return <ForestAdventure />;
   return mode !== "runner" ? <StackSession key={`${gate ?? "daily"}-${practice}`} gate={gate} kind={practice ?? "daily"} /> : <RunSession key={gate ?? "daily"} gate={gate} />;
 }
 
 function RunSession({ gate }: { gate: number | undefined }) {
+  return <div className="dash-session"><RunSessionContent gate={gate} /></div>;
+}
+function RunSessionContent({ gate }: { gate: number | undefined }) {
   const [session, setSession] = useState(0);
   const [prepared, setPrepared] = useState(false);
   const { questions, level, blockedGate } = useMemo(() => {

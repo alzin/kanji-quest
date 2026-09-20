@@ -1,0 +1,533 @@
+.dash-session {
+  --background: #173c32;
+  --foreground: #f0e6c7;
+  --paper: #173c32;
+  --ink: #102b26;
+  --card: #244837;
+  --card-foreground: #f0e6c7;
+  --surface: #2d523e;
+  --surface-sunken: #1b382d;
+  --muted-foreground: #b6c6a7;
+  --primary: #e3c382;
+  --primary-foreground: #21382b;
+  --primary-hover: #f0d797;
+  --secondary: #36583f;
+  --secondary-foreground: #eee6c8;
+  --border: #8c9d6e66;
+  --accent: #b7cbb4;
+  --accent-foreground: #183329;
+  --success: #b5d6a3;
+  --success-foreground: #16342a;
+  min-height: 100dvh;
+  color: #f0e6c7;
+  background: #173c32;
+}
+.dash-session .bg-paper {
+  background: #173c32;
+}
+.dash-session .text-paper {
+  color: #f0e6c7;
+}
+.dash-session .lesson-backdrop {
+  backdrop-filter: none;
+  background: #09231deb;
+}
+.dash-game {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  color: #f1e7c7;
+  background: #193f33;
+  overflow: hidden;
+  font-family: "Zen Kaku Gothic New", sans-serif;
+}
+.dash-canvas {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+.dash-canvas canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+.dash-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(#102c278c, transparent 27%, transparent 85%, #102c27e6),
+    radial-gradient(ellipse at 52% 47%, transparent 40%, #0d292c70 100%);
+}
+.dash-hud {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(26px, env(safe-area-inset-left));
+  right: max(26px, env(safe-area-inset-right));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+.dash-name h1 {
+  font:
+    29px "Shippori Mincho B1",
+    serif;
+  color: #f2dbac;
+  margin: 5px 0 3px;
+}
+.dash-name .forest-eyebrow {
+  font-size: 8px;
+  letter-spacing: 0.18em;
+}
+.dash-subtitle {
+  font-size: 11px;
+  color: #c6d0b3;
+}
+.dash-subtitle b {
+  color: #e9d198;
+  font-weight: 500;
+}
+.dash-totals {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 9px 14px;
+  background: #133b2fab;
+  border: 1px solid #bfd09630;
+  border-radius: 12px;
+}
+.dash-hearts {
+  display: flex;
+  gap: 4px;
+}
+.dash-hearts i {
+  font-style: normal;
+  color: #5c7960;
+  font-size: 23px;
+}
+.dash-hearts i.lit {
+  color: #eac987;
+  text-shadow: 0 0 14px #eac98733;
+}
+.dash-combo {
+  color: #f0dca3;
+  font:
+    22px "Shippori Mincho B1",
+    serif;
+}
+.dash-score {
+  font-size: 18px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dash-score small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  color: #b9caac;
+}
+.dash-question {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(370px, 42%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #c5c78b55;
+  border-radius: 12px 12px 4px 4px;
+  background: linear-gradient(125deg, #355640f5, #183c31f5);
+  box-shadow:
+    inset 0 1px #fff1,
+    0 12px 30px #0a242744;
+  text-align: center;
+  padding: 10px 14px;
+}
+.dash-question .forest-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: #c3d0ac;
+}
+.dash-prompt {
+  font:
+    700 clamp(24px, 3vw, 42px)/1.2 "Shippori Mincho B1",
+    serif;
+  color: #f7e7b6;
+}
+.dash-prompt rt {
+  font-size: 0.35em;
+  color: #c6d3b4;
+}
+.dash-timer {
+  width: 100%;
+  height: 3px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #c6c89724;
+  border-radius: 2px;
+  margin-top: 2px;
+}
+.dash-timer > div {
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  background: #e5c781;
+}
+.dash-lane-choices {
+  position: absolute;
+  right: 24px;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0;
+  pointer-events: none;
+}
+.dash-lane-choices button {
+  pointer-events: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 56px;
+  max-height: 90%;
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid #bbbd8e66;
+  border-radius: 5px 13px 13px 5px;
+  background: #1c4538f5;
+  color: #eee4bd;
+  box-shadow:
+    0 5px #122f2c80,
+    inset 0 1px #d6d6a922;
+  text-align: center;
+  cursor: pointer;
+}
+.dash-lane-choices button[aria-pressed="true"] {
+  background: #dbc280;
+  border-color: #f5dfa0;
+  color: #213e2d;
+  box-shadow:
+    0 5px #172f2880,
+    0 0 22px #ebd59530;
+}
+.dash-lane-choices button.dash-guided {
+  outline: 3px solid #f4dc9b;
+  outline-offset: 4px;
+}
+.dash-lane-choices kbd {
+  opacity: 0.75;
+  font: 11px sans-serif;
+}
+.dash-lane-choices span {
+  flex: 1;
+  font-size: clamp(12px, 1.8vw, 22px);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+.dash-lane-choices i {
+  font-size: 10px;
+  font-style: normal;
+}
+.dash-lane-choices button:focus-visible,
+.dash-controls button:focus-visible {
+  outline: 2px solid #ffebb5;
+  outline-offset: 3px;
+}
+.dash-route {
+  position: absolute;
+  bottom: 82px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(380px, 48%);
+  font-size: 8px;
+  color: #c1cba6;
+  letter-spacing: 0.12em;
+  pointer-events: none;
+}
+.dash-route > i {
+  flex: 1;
+  height: 3px;
+  background: #d1d2a52b;
+  border-radius: 3px;
+}
+.dash-route b {
+  display: block;
+  height: 100%;
+  background: #e9d193;
+  transition: width 0.3s;
+}
+.dash-controls {
+  position: absolute;
+  left: max(24px, env(safe-area-inset-left));
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.dash-controls button {
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+}
+.dash-pause-button,
+.dash-guide-button {
+  border: 1px solid #a8bd8466;
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: #ead8a7;
+  background: #14392fe6;
+}
+.dash-guide-button {
+  font-size: 11px;
+}
+.dash-controls button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.dash-control-hint {
+  flex: 1;
+  font-size: 12px;
+  color: #e6d5a6;
+}
+.dash-control-hint small {
+  display: block;
+  font-size: 10px;
+  color: #bccaae;
+  margin-top: 3px;
+}
+.dash-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  background: #173b31;
+  color: #e5d4a4;
+  z-index: 20;
+}
+.dash-loading > span {
+  font: 60px serif;
+}
+.dash-loading p {
+  font-size: 14px;
+}
+.dash-pause .forest-primary,
+.dash-lesson .forest-primary {
+  width: 100%;
+}
+.dash-lesson {
+  text-align: center;
+}
+.dash-lesson-word {
+  display: block;
+  font:
+    40px "Shippori Mincho B1",
+    serif;
+  margin: 30px 0 10px;
+}
+.forest-dash-dialog {
+  padding: 0;
+  width: min(1280px, calc(100vw - 40px));
+  max-width: none;
+  height: min(840px, calc(100dvh - 40px));
+  max-height: none;
+  overflow: hidden;
+  border: 1px solid #adc09355;
+  background: #183e32;
+}
+.forest-dash-dialog:has(.dash-intro) {
+  width: min(540px, calc(100vw - 24px));
+  height: auto;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+.dash-intro {
+  padding: 34px;
+  text-align: center;
+}
+.dash-intro h2 {
+  font:
+    32px "Shippori Mincho B1",
+    serif;
+  color: #f3e4b9;
+}
+.dash-intro p {
+  color: #bfd0b2;
+  font-size: 14px;
+  line-height: 1.85;
+  margin: 18px 0;
+}
+.dash-intro ol {
+  text-align: left;
+  list-style: decimal;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.9;
+  color: #d3d9bb;
+  margin: 20px 0;
+}
+.dash-intro-lantern {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 95px;
+  margin: 20px auto;
+  background: #d6b774;
+  color: #2b4430;
+  font: 49px serif;
+  border: 4px double #f5df9b;
+  border-radius: 16px 16px 22px 22px;
+  box-shadow: 0 0 50px #e8c77a22;
+}
+.dash-intro .dash-fine {
+  font-size: 11px;
+}
+.dash-intro .forest-primary {
+  width: 100%;
+}
+@media (max-width: 639px), (max-height: 499px) {
+  .dash-hud {
+    top: 10px;
+    left: 12px;
+    right: 12px;
+    gap: 8px;
+  }
+  .dash-name h1 {
+    font-size: 21px;
+    margin: 0;
+  }
+  .dash-name .forest-eyebrow {
+    display: none;
+  }
+  .dash-subtitle {
+    font-size: 9px;
+    display: block;
+    max-width: 190px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .dash-totals {
+    padding: 7px 9px;
+    gap: 10px;
+    border-radius: 8px;
+  }
+  .dash-hearts {
+    gap: 2px;
+  }
+  .dash-hearts i {
+    font-size: 16px;
+  }
+  .dash-combo {
+    font-size: 18px;
+  }
+  .dash-score {
+    font-size: 13px;
+  }
+  .dash-score small {
+    display: none;
+  }
+  .dash-question {
+    width: calc(100% - 24px);
+    max-width: 340px;
+    padding: 6px 12px;
+    gap: 3px;
+  }
+  .dash-question .forest-eyebrow {
+    font-size: 8px;
+  }
+  .dash-prompt {
+    font-size: 26px;
+    line-height: 1.05;
+  }
+  .dash-lane-choices {
+    right: 10px;
+  }
+  .dash-lane-choices button {
+    min-height: 48px;
+    padding: 8px;
+    gap: 5px;
+  }
+  .dash-lane-choices span {
+    font-size: 15px;
+  }
+  .dash-lane-choices kbd {
+    font-size: 9px;
+  }
+  .dash-route {
+    display: none;
+  }
+  .dash-controls {
+    left: 10px;
+    right: 10px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+  .dash-controls button {
+    padding-inline: 8px;
+  }
+  .dash-control-hint {
+    font-size: 10px;
+  }
+  .dash-control-hint small {
+    font-size: 8px;
+  }
+  .dash-session .dash-control-hint {
+    display: none;
+  }
+  .forest-dash-dialog {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+  }
+  .forest-dash-dialog:has(.dash-intro) {
+    border-radius: 12px;
+    border: 1px solid #adc09355;
+  }
+  .dash-intro {
+    padding: 25px 22px;
+  }
+  .dash-intro h2 {
+    font-size: 27px;
+  }
+}
+@media (max-height: 499px) {
+  .dash-question {
+    max-width: 290px;
+  }
+  .dash-prompt {
+    font-size: 23px;
+  }
+  .dash-question .forest-eyebrow {
+    font-size: 7px;
+  }
+  .dash-controls {
+    bottom: 4px;
+  }
+  .dash-controls button {
+    min-height: 44px;
+  }
+  .dash-lane-choices button {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-game *,
+  .dash-session * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

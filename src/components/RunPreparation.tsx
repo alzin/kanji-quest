@@ -73,6 +73,8 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
           ))}
         </ol>
 
+        {!learnOnly && <p className="mt-5 text-sm leading-relaxed text-muted-foreground"><strong className="text-primary">Lantern Dash.</strong> Carry light from the riverbank to the shrine. Learn these words, then tap a path or use ↑ ↓ / 1–3 to follow the correct reading or meaning. You have three hearts.</p>}
+
         {stage === "learn" && <>
           <div className="mt-6 grid items-start gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             <section aria-label="Words in this run" className="rounded-2xl border border-border bg-card p-4 shadow-e1">

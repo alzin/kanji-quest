@@ -9,7 +9,8 @@ async function state(page: Page): Promise<StackState | null> {
 
 export async function startSheet(page: Page, url = "run", saved?: unknown) {
   await page.clock.install(); await silenceSavePrompt(page);
-  await page.addInitScript(() => { Math.random = () => 0.999; });
+  // Deterministic but non-constant: Phaser allocates unique text texture IDs with Math.random.
+  await page.addInitScript(() => { let seed = 7919; Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; });
   if (saved) await page.addInitScript((s) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify(s)), saved);
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Meet your new words" }).or(page.getByTestId("stack-start"))).toBeVisible();
@@ -22,6 +23,7 @@ export async function startSheet(page: Page, url = "run", saved?: unknown) {
   await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
   await page.getByTestId("stack-start").click();
   await expect(page.getByTestId("stack-game")).toBeVisible();
+  await expect.poll(async () => { await page.clock.runFor(100); return await page.locator(".river-canvas canvas[data-ready]").count(); }).toBe(1);
   await expect.poll(async () => !!(await state(page))?.current).toBe(true);
 }
 
@@ -36,6 +38,7 @@ export function winningColumn(s: StackState): number {
 }
 
 export async function clearSheet(page: Page) {
+  await expect.poll(async () => { await page.clock.runFor(50); return await page.locator(".river-canvas canvas[data-ready]").count(); }).toBe(1);
   let correct = 0;
   for (let i = 0; i < 60; i++) {
     const s = await state(page); if (!s || s.done) return correct;

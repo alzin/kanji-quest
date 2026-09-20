@@ -3,6 +3,9 @@
 @import "tw-animate-css";
 @import "./spirit.css";
 @import "./atmosphere.css";
+@import "./forest.css";
+@import "./river.css";
+@import "./dash.css";
 
 @custom-variant dark (&:is(.dark *));
 

@@ -1,0 +1,673 @@
+/* River stones: shared by forest crossings and standalone Tsumiji trials. */
+.river-session,
+.river-game {
+  --river-ink: #102d2b;
+  --river-gold: #e8c985;
+  --river-text: #eee8ce;
+  --river-muted: #a8bdab;
+  color: var(--river-text);
+  background:
+    radial-gradient(ellipse at 50% 35%, #38564642, transparent 65%),
+    linear-gradient(125deg, #102a28, #1f3f32 50%, #102a28);
+  font-family: "Zen Kaku Gothic New", sans-serif;
+}
+.river-game {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 560px;
+  padding: max(20px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.river-game::before,
+.river-session::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    110deg,
+    transparent 0 160px,
+    #91bc8420 161px,
+    transparent 162px 260px
+  );
+  mask-image: linear-gradient(#0005, transparent 65%);
+}
+.river-game button {
+  cursor: pointer;
+}
+.river-game button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.river-game button:focus-visible,
+.river-session a:focus-visible {
+  outline: 2px solid #ffe2a0;
+  outline-offset: 3px;
+}
+.river-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1260px;
+  width: 100%;
+  margin: 0 auto 16px;
+  position: relative;
+}
+.river-header h1 {
+  font:
+    27px "Shippori Mincho B1",
+    serif;
+  margin: 5px 0 0;
+  color: #f4edcf;
+}
+.river-header .forest-eyebrow {
+  color: #bfcba2;
+  font-size: 9px;
+}
+.river-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--river-muted);
+}
+.river-header-actions button {
+  border: 1px solid #c5d3a638;
+  background: #153b31;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  color: #e9dbb0;
+  font-size: 20px;
+}
+.river-layout {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(300px, 490px) minmax(
+      150px,
+      1fr
+    );
+  gap: clamp(24px, 4vw, 70px);
+  width: 100%;
+  max-width: 1190px;
+  margin: 0 auto;
+  min-height: 0;
+  flex: 1;
+}
+.river-story,
+.river-companion {
+  align-self: center;
+  max-width: 255px;
+}
+.river-story h2 {
+  white-space: pre-line;
+  color: #f2e8bf;
+  font:
+    clamp(28px, 3vw, 43px) / 1.2 "Shippori Mincho B1",
+    serif;
+  margin: 18px 0;
+}
+.river-story p,
+.river-companion p {
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--river-muted);
+}
+.river-route {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  margin-top: 32px;
+  color: #8eaa97;
+}
+.river-route b {
+  color: var(--river-gold);
+}
+.river-bridge-art {
+  height: 116px;
+  margin: 24px 0 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: linear-gradient(
+    transparent 0 18%,
+    #598c8233 19% 78%,
+    transparent 80%
+  );
+}
+.river-bridge-art i {
+  height: 15px;
+  width: 21%;
+  max-width: 48px;
+  background: #485e48;
+  transform: rotate(-8deg);
+  border: 1px solid #89906b;
+  box-shadow: 0 9px #0e2d2988;
+  z-index: 1;
+}
+.river-bridge-art i.lit {
+  background: #e8c37b;
+  border-color: #ffe3a7;
+  box-shadow: 0 0 22px #eacc8344;
+}
+.river-bridge-art span {
+  position: absolute;
+  font: 80px serif;
+  color: #a2bca419;
+}
+.river-progress {
+  height: 4px;
+  background: #bccb9822;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.river-progress > span {
+  display: block;
+  height: 100%;
+  background: #d5bf7b;
+  transition: width 0.4s;
+}
+.river-story .river-progress-label {
+  margin: 8px 0;
+  font-size: 11px;
+}
+.river-play {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.river-score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #c6d1b7;
+  font-size: 12px;
+  padding: 0 4px;
+}
+.river-score b {
+  color: #ebd194;
+  font-variant-numeric: tabular-nums;
+}
+.river-mobile-progress {
+  display: none;
+}
+.river-aki svg {
+  width: 66px;
+  height: 66px;
+}
+.river-prompt {
+  border: 1px solid #becc9d45;
+  border-radius: 12px 12px 4px 4px;
+  color: #f7e9bd;
+  padding: 10px;
+  background: linear-gradient(145deg, #3d5641, #243f33);
+  box-shadow: inset 0 1px #fff2;
+  min-height: 94px;
+}
+.river-prompt > span {
+  display: block;
+  color: #c3d0ad;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+}
+.river-prompt strong {
+  display: block;
+  font:
+    700 29px/1.25 "Shippori Mincho B1",
+    serif;
+  margin: 6px 0;
+}
+.river-prompt small {
+  display: block;
+  font-size: 10px;
+  color: #b8c8ab;
+  min-height: 14px;
+}
+.river-board {
+  flex: 1;
+  min-height: 180px;
+  position: relative;
+  border: 2px solid #8e976345;
+  border-radius: 6px;
+  overflow: hidden;
+  touch-action: none;
+  box-shadow:
+    0 16px 40px #021b234d,
+    0 0 0 4px #0d292c;
+}
+.river-canvas {
+  position: absolute;
+  inset: 0;
+}
+.river-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.river-loading {
+  position: absolute;
+  inset: 0;
+  background: #15352e;
+  color: #e7d9ae;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.river-loading button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid #b3be91;
+  border-radius: 8px;
+}
+.river-columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+}
+.river-columns button {
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #84966d66;
+  border-radius: 5px 5px 10px 10px;
+  color: #d3c89e;
+  background: #2b4936;
+  font: 14px serif;
+  box-shadow: inset 0 1px #d8d09a22;
+}
+.river-columns button:hover {
+  background: #466348;
+}
+.river-columns button:active {
+  background: #b2a46b;
+  color: #16362b;
+}
+.river-feedback {
+  font-size: 11px;
+  line-height: 1.5;
+  min-height: 32px;
+  text-align: center;
+  color: #b7c5a8;
+  display: grid;
+  place-items: center;
+}
+.river-miss {
+  color: #ffd29c;
+}
+.river-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.river-controls > button {
+  border: 1px solid #84966d66;
+  min-height: 44px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #1b3a31;
+  color: #d7d2b0;
+  font-size: 11px;
+}
+.river-controls > button span {
+  margin-left: 5px;
+}
+.river-controls > button:first-child {
+  max-width: 36%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.river-controls > .river-drop {
+  background: #d7bd7c;
+  color: #243a2d;
+  font-weight: 700;
+  min-width: 85px;
+}
+.river-controls button[aria-pressed="true"] {
+  border-color: #b9bf93;
+}
+.river-aki {
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 76px;
+  margin-bottom: 23px;
+  font: 38px serif;
+  color: #efcd8e;
+  background: #58734838;
+  border: 1px solid #a7b68244;
+  border-radius: 40% 40% 50% 50%;
+}
+.river-companion .forest-eyebrow {
+  font-size: 9px;
+  color: #d4c98e;
+}
+.river-companion > p {
+  margin: 16px 0;
+}
+.river-next {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 30px 0;
+}
+.river-next > span:not(:first-child) {
+  border-bottom: 1px solid #b0c19529;
+  padding: 8px 0;
+  font:
+    19px "Shippori Mincho B1",
+    serif;
+  color: #d8dbbb;
+}
+.river-calm {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  text-align: left;
+  border: 1px solid #b1c68b44;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #e2d4a8;
+  margin: 18px 0;
+  background: #31533c55;
+}
+.river-calm small {
+  display: block;
+  color: #a7bd9e;
+  font-size: 10px;
+  margin-top: 3px;
+}
+.river-companion .river-fine,
+.river-fine {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #a6b79e;
+}
+.river-companion .river-keyboard {
+  font-size: 10px;
+  color: #8ca78e;
+  line-height: 2;
+  margin-top: 26px;
+}
+.forest-crossing-dialog {
+  width: min(1240px, calc(100vw - 40px));
+  max-width: none;
+  padding: 0;
+  overflow: hidden;
+  max-height: calc(100dvh - 32px);
+  background: #16372e;
+}
+.forest-crossing-dialog:has(.river-intro) {
+  width: min(530px, calc(100vw - 24px));
+}
+.river-game-encounter {
+  height: calc(100dvh - 60px);
+  max-height: 880px;
+  min-height: 530px;
+  padding: 20px 24px;
+}
+.river-intro {
+  padding: 36px;
+  text-align: center;
+}
+.river-intro h2 {
+  font:
+    32px "Shippori Mincho B1",
+    serif;
+}
+.river-intro p {
+  line-height: 1.85;
+  font-size: 14px;
+  margin: 18px 0;
+  color: #beccb2;
+}
+.river-intro-seal {
+  display: block;
+  font: 65px serif;
+  color: #d6bd7b;
+  margin: 20px 0;
+}
+.river-intro .forest-primary {
+  width: 100%;
+}
+.river-example {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 20px 0;
+}
+.river-example span {
+  background: #36583f;
+  border: 1px solid #a9b17a77;
+  color: #eee0b0;
+  border-radius: 8px;
+  padding: 14px 20px;
+  font:
+    26px "Shippori Mincho B1",
+    serif;
+}
+.river-example i {
+  color: #cebb7e;
+}
+.river-help ol {
+  margin: 20px 0;
+  padding-left: 24px;
+  list-style: decimal;
+  line-height: 1.9;
+  color: #c7d0b7;
+  font-size: 13px;
+}
+.river-help .forest-primary,
+.river-pause .forest-primary {
+  width: 100%;
+}
+.river-session {
+  min-height: 100dvh;
+  position: relative;
+}
+.river-session .stack-page {
+  position: relative;
+  color: #e8e0c2;
+  background: transparent;
+}
+.river-session .stack-page .text-muted-foreground {
+  color: #afc2a6;
+}
+.river-session .stack-page .bg-card {
+  background: #284c39;
+}
+.river-session .stack-page .bg-secondary {
+  background: #37553d;
+}
+.river-session .stack-page .text-primary {
+  color: #ebca84;
+}
+.river-session .stack-page .text-success { color: #b5d5a8; }
+.river-session .stack-page .text-accent { color: #b5cadd; }
+.river-session .stack-page .bg-primary {
+  background: #ddc07b;
+  color: #223b2c;
+}
+.river-session .stack-page .border-border {
+  border-color: #97aa7655;
+}
+.river-session .stack-page input {
+  color: #f5e8bd;
+}
+@media (max-width: 1000px) {
+  .river-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 470px);
+    gap: 30px;
+    max-width: 810px;
+  }
+  .river-companion {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .river-game {
+    padding: max(12px, env(safe-area-inset-top)) 12px
+      max(10px, env(safe-area-inset-bottom));
+    min-height: 540px;
+  }
+  .river-header {
+    margin-bottom: 10px;
+    gap: 6px;
+  }
+  .river-header h1 {
+    font-size: 22px;
+  }
+  .river-header-actions {
+    gap: 5px;
+  }
+  .river-header-actions > span {
+    display: none;
+  }
+  .river-header .forest-eyebrow {
+    font-size: 8px;
+    letter-spacing: 0.09em;
+  }
+  .river-layout {
+    display: flex;
+    max-width: 500px;
+  }
+  .river-play {
+    width: 100%;
+  }
+  .river-story {
+    display: none;
+  }
+  .river-mobile-progress {
+    display: inline;
+  }
+  .river-play {
+    gap: 5px;
+  }
+  .river-prompt {
+    min-height: 83px;
+    padding: 7px;
+  }
+  .river-prompt strong {
+    font-size: 25px;
+    margin: 4px 0;
+  }
+  .river-feedback {
+    font-size: 10px;
+  }
+  .river-controls > button {
+    padding: 6px 9px;
+  }
+  .river-controls > .river-drop {
+    min-width: 70px;
+  }
+  .forest-crossing-dialog {
+    width: 100vw;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .river-game-encounter {
+    height: 100dvh;
+    max-height: none;
+  }
+  .forest-crossing-dialog:has(.river-intro) {
+    border: 1px solid #adbc7844;
+    border-radius: 12px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+  .river-intro {
+    padding: 26px 22px;
+  }
+  .river-intro-seal {
+    margin: 16px 0;
+    font-size: 48px;
+  }
+  .river-intro h2 {
+    font-size: 27px;
+  }
+}
+@media (max-height: 600px) and (min-width: 701px) {
+  .river-game {
+    min-height: 360px;
+    padding: 8px 16px;
+  }
+  .river-header {
+    margin-bottom: 5px;
+  }
+  .river-header h1 {
+    font-size: 20px;
+  }
+  .river-play {
+    gap: 4px;
+  }
+  .river-prompt {
+    min-height: 52px;
+    padding: 4px;
+  }
+  .river-prompt strong {
+    font-size: 21px;
+    margin: 2px 0;
+  }
+  .river-prompt small {
+    display: none;
+  }
+  .river-board {
+    min-height: 90px;
+  }
+  .river-feedback {
+    min-height: 16px;
+    font-size: 10px;
+  }
+  .river-story h2 {
+    font-size: 27px;
+  }
+  .river-bridge-art,
+  .river-route {
+    display: none;
+  }
+  .river-game-encounter {
+    height: 100dvh;
+  }
+  .forest-crossing-dialog {
+    max-height: 100dvh;
+    width: 100vw;
+    border: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .river-game *,
+  .river-session * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@media (max-height: 500px) and (min-width: 701px) {
+  .river-layout { display: block; max-width: 960px; }
+  .river-story, .river-companion { display: none; }
+  .river-play { display: grid; height: 100%; grid-template-columns: minmax(210px, .7fr) minmax(320px, 1fr); grid-template-rows: auto 1fr auto auto; gap: 7px 20px; }
+  .river-score { grid-column: 1; grid-row: 1; }
+  .river-mobile-progress { display: inline; }
+  .river-prompt { grid-column: 1; grid-row: 2; }
+  .river-prompt strong { font-size: 32px; }
+  .river-prompt small { display: block; }
+  .river-board { grid-column: 2; grid-row: 1 / 4; }
+  .river-columns { grid-column: 2; grid-row: 4; }
+  .river-feedback { grid-column: 1; grid-row: 3; }
+  .river-controls { grid-column: 1; grid-row: 4; }
+}

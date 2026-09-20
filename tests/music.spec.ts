@@ -42,78 +42,77 @@ function installProbe() {
 const probe = (page: Page) => page.evaluate(() => (window as any).__musicProbe as { contexts: number; starts: number; active: number; max: number; gains: number[]; silent: number });
 async function start(page: Page) {
   await page.goto("run?mode=expedition");
-  await page.getByRole("button", { name: /Follow the river/ }).click();
+  await expect(page.getByRole("button", { name: "Follow the trail" })).toBeEnabled();
+  await page.getByRole("button", { name: "Follow the trail" }).click();
 }
+const pause = (page: Page) => page.getByRole("button", { name: "Pause adventure" }).click();
+const resume = (page: Page) => page.getByRole("button", { name: "Back to the trail" }).click();
 test.beforeEach(async ({ page }) => { await silenceSavePrompt(page); await page.addInitScript(installProbe); });
 
 test("music starts on a gesture, ducks for Japanese, and survives pause without extra contexts", async ({ page }) => {
   test.skip(!await page.evaluate(() => "AudioContext" in window || "webkitAudioContext" in window), "Windows Playwright WebKit has no Web Audio implementation; graceful fallback is tested separately.");
   await page.goto("run?mode=expedition");
+  await expect(page.getByRole("button", { name: "Follow the trail" })).toBeEnabled();
   expect((await probe(page)).contexts).toBe(0);
-  await page.getByRole("button", { name: /Follow the river/ }).click();
+  await page.getByRole("button", { name: "Open field notes" }).click();
   await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(0);
   await expect.poll(async () => (await probe(page)).gains.at(-1)).toBe(.045);
   await page.evaluate(() => (window as any).__lastSpeech.onend());
   await expect.poll(async () => (await probe(page)).gains.at(-1)).toBe(.3);
-  while (await page.getByRole("button", { name: "Meet the next word" }).isVisible()) await page.getByRole("button", { name: "Meet the next word" }).click();
-  await page.getByRole("button", { name: "Step onto the trail" }).click();
-  await page.getByRole("button", { name: "Pause adventure" }).click();
+  await page.getByRole("button", { name: "Ready for the trail" }).click();
+  await pause(page);
   await expect.poll(async () => (await probe(page)).active).toBe(0);
   const paused = (await probe(page)).starts;
-  await page.waitForTimeout(400);
-  expect((await probe(page)).starts).toBe(paused);
-  await page.getByRole("button", { name: "Back to the trail" }).click();
+  await page.waitForTimeout(400); expect((await probe(page)).starts).toBe(paused);
+  await resume(page);
   await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(paused);
-  expect((await probe(page)).contexts).toBe(1);
-  expect((await probe(page)).silent).toBe(0);
+  expect((await probe(page)).contexts).toBe(1); expect((await probe(page)).silent).toBe(0);
   expect((await probe(page)).max).toBeLessThanOrEqual(32);
-  await page.getByRole("button", { name: "Pause adventure" }).click();
-  await page.getByRole("link", { name: "Leave unfinished trail" }).click();
+  await pause(page);
+  await page.getByRole("link", { name: "Leave unfinished adventure" }).click();
   await expect.poll(async () => (await probe(page)).active).toBe(0);
   const stopped = (await probe(page)).starts;
-  await page.waitForTimeout(400);
-  expect((await probe(page)).starts).toBe(stopped);
+  await page.waitForTimeout(400); expect((await probe(page)).starts).toBe(stopped);
 });
 
 test("music mute persists separately from effects and master mute silences both", async ({ page }) => {
   test.skip(!await page.evaluate(() => "AudioContext" in window || "webkitAudioContext" in window), "Windows Playwright WebKit has no Web Audio implementation; graceful fallback is tested separately.");
-  await start(page);
-  await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(0);
+  await start(page); await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(0);
+  await pause(page);
   await page.getByRole("button", { name: "Mute background music" }).click();
-  await expect.poll(async () => (await probe(page)).active).toBe(0);
   await expect(page.getByRole("button", { name: "Mute sounds", exact: true })).toHaveAttribute("aria-pressed", "false");
   expect(await page.evaluate(() => localStorage.getItem("kanji-dash-music"))).toBe("off");
+  await resume(page); await expect.poll(async () => (await probe(page)).active).toBe(0);
   await page.reload();
+  await expect(page.getByRole("button", { name: "Follow the trail" })).toBeEnabled();
+  await pause(page);
   await expect(page.getByRole("button", { name: "Enable background music" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: /Follow the river/ }).click();
-  expect((await probe(page)).starts).toBe(0);
   await page.getByRole("button", { name: "Enable background music" }).click();
-  await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(0);
-  await page.getByRole("button", { name: "Mute sounds", exact: true }).click();
-  await expect.poll(async () => (await probe(page)).active).toBe(0);
+  await resume(page); await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(0);
+  await pause(page); await page.getByRole("button", { name: "Mute sounds", exact: true }).click();
   await expect(page.getByRole("button", { name: "Mute background music" })).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("button", { name: "Unmute sounds", exact: true }).click();
-  await expect.poll(async () => (await probe(page)).active).toBeGreaterThan(0);
+  await resume(page); await expect.poll(async () => (await probe(page)).active).toBe(0);
+  await pause(page); await page.getByRole("button", { name: "Unmute sounds", exact: true }).click();
+  await resume(page); await expect.poll(async () => (await probe(page)).active).toBeGreaterThan(0);
   expect((await probe(page)).contexts).toBe(1);
 });
 
-test("a hidden page stops the soundtrack", async ({ page }) => {
+test("a hidden page stops the soundtrack and waits for the player to resume", async ({ page }) => {
   test.skip(!await page.evaluate(() => "AudioContext" in window || "webkitAudioContext" in window), "Windows Playwright WebKit has no Web Audio implementation; graceful fallback is tested separately.");
-  await start(page);
-  await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(0);
+  await start(page); await expect.poll(async () => (await probe(page)).starts).toBeGreaterThan(0);
   await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: true }); document.dispatchEvent(new Event("visibilitychange")); });
   await expect.poll(async () => (await probe(page)).active).toBe(0);
   await page.evaluate(() => { Object.defineProperty(document, "hidden", { configurable: true, value: false }); document.dispatchEvent(new Event("visibilitychange")); });
-  await expect.poll(async () => (await probe(page)).active).toBeGreaterThan(0);
+  await expect(page.getByRole("dialog", { name: "Adventure paused" })).toBeVisible();
+  await resume(page); await expect.poll(async () => (await probe(page)).active).toBeGreaterThan(0);
 });
 
 test("an unsupported audio device still offers a playable trail and saved music controls", async ({ page }) => {
   await page.addInitScript(() => { delete (window as any).AudioContext; delete (window as any).webkitAudioContext; });
-  const errors: string[] = []; page.on("pageerror", (e) => errors.push(e.message));
-  await start(page);
-  await expect(page.getByRole("region", { name: "Meet your trail words" })).toBeVisible();
-  await page.getByRole("button", { name: "Mute background music" }).click();
-  await page.reload();
-  await expect(page.getByRole("button", { name: "Enable background music" })).toHaveAttribute("aria-pressed", "true");
+  const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
+  await start(page); await expect(page.locator("canvas[data-player-x]")).toBeVisible();
+  await pause(page); await page.getByRole("button", { name: "Mute background music" }).click();
+  await page.reload(); await expect(page.getByRole("button", { name: "Follow the trail" })).toBeEnabled();
+  await pause(page); await expect(page.getByRole("button", { name: "Enable background music" })).toHaveAttribute("aria-pressed", "true");
   expect(errors).toEqual([]);
 });

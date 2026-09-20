@@ -26,7 +26,7 @@ test("keeps due reviews, partial mastery, and exact checkpoint seals consistent 
   const cards = Object.fromEntries(kanjiOfChapter(1).map((kanji) => [kanji.c, progress(2)]));
   cards["六"] = progress(3, Date.now() - 1_000);
   await seedSave(page, cards, [3]);
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toBeVisible();
   await expect(page.getByTestId("mastery-summary")).toHaveText("1/96 mastered · 5% mastery progress");
   await expect(page.getByTestId("mastery-summary")).toBeVisible();
@@ -52,7 +52,7 @@ test("does not display 100% before every kanji is mastered", async ({ page }) =>
   const cards = Object.fromEntries(allKanji.map((kanji) => [kanji.c, progress(3)]));
   cards[allKanji[0]!.c] = progress(2);
   await seedSave(page, cards);
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("mastery-summary")).toHaveText("95/96 mastered · 99% mastery progress");
   await expect(page.getByTestId("mastery-summary")).toBeVisible();
   await expect(page.getByText("A small adventure is enough for today.", { exact: true })).toBeVisible();
@@ -63,7 +63,7 @@ test("offers a short checkpoint when all eligible kanji are waiting for their re
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await seedSave(page, cards);
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("A small adventure is enough for today.", { exact: true })).toBeVisible();
   await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Ready for your checkpoint", exact: true })).toBeVisible();
@@ -87,14 +87,14 @@ test("refreshes due reviews over time while guest progress stays isolated to its
   const start = new Date("2026-09-06T03:00:00Z");
   await page.clock.install({ time: start });
   await seedSave(page, { "一": progress(1, start.getTime() + 60_000) });
-  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("stat-mon")).toHaveText("37");
   await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toHaveCount(0);
   await page.clock.runFor(61_000);
   await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toBeVisible();
 
   const other = await context.newPage();
-  await other.goto("./", { waitUntil: "domcontentloaded" });
+  await other.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(other.getByTestId("stat-runs")).toHaveText("0");
   await expect(other.getByTestId("mastery-summary")).toHaveText("0/96 mastered · 0% mastery progress");
   await other.evaluate(() => {

@@ -69,7 +69,7 @@ function MapPage() {
           Small wins, 4–6 kanji at a time. Clear a checkpoint or reach 55% mastery progress to open the next region.
         </p>
         <LevelSelector level={level} preview />
-        <Link to="/run" search={{ mode: "runner" }} className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-muted-foreground">Classic run →</Link>
+        <Link to="/run" search={{ mode: "runner" }} className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-muted-foreground">Lantern Dash →</Link>
 
         <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-e1" aria-label="Checkpoint progress">
           <div className="flex items-center justify-between gap-2">

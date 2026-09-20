@@ -5,7 +5,7 @@ import { AccountStatus } from "@/components/AccountStatus";
 import { TrailEmblem } from "@/components/TrailEmblem";
 
 const links = [
-  { to: "/", label: "Home", icon: "home" },
+  { to: "/camp", label: "Camp", icon: "home" },
   { to: "/map", label: "Map", icon: "map" },
   { to: "/practice", label: "Dojo", icon: "brush" },
   { to: "/collection", label: "Kanji", icon: "kanji" },
@@ -29,7 +29,7 @@ export function Nav() {
               key={l.to}
               to={l.to}
               preload="intent"
-              activeOptions={{ exact: l.to === "/" }}
+              activeOptions={{ exact: l.to === "/camp" }}
               className="app-tab"
               activeProps={{ "aria-current": "page" }}
             >
