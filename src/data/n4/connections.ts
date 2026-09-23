@@ -1,6 +1,5 @@
 import { card } from "./card";
 
-// Home, family, and everyday relationships, including foundation bridge cards.
 export const connections = [
   card(7, "本", "book; origin", "ホン", "もと", "木 (tree)", 5, "A short mark points to the root of a tree, the origin of its growth.", ["本[ほん]", "hon", "book"], ["日[に]本[ほん]", "nihon", "Japan"]),
   card(7, "外", "outside", "ガイ, ゲ", "そと, ほか, はず(す)", "夕 (evening)", 5, "Step outside to look at the evening moon beside a signpost.", ["外[そと]", "soto", "outside"], ["外[がい]国[こく]", "gaikoku", "foreign country"]),

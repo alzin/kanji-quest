@@ -104,7 +104,6 @@ export class ForestScene extends Phaser.Scene {
         .setScale(1.5)
         .setOrigin(0.5, 1)
         .setDepth(p.y);
-    // A tiny camp sits at the entrance to the trail.
     const camp = this.add.graphics().setDepth(646);
     camp.fillStyle(0x172f2b, 0.25).fillEllipse(218, 640, 110, 30);
     camp.fillStyle(0xd4a775).fillTriangle(218, 562, 164, 637, 273, 637);
@@ -266,7 +265,6 @@ export class ForestScene extends Phaser.Scene {
       delete this.bridge.navigate;
       delete this.bridge.celebrate;
     });
-    // Small shafts of afternoon light sit behind the HUD, above the scenery.
     const rays = this.add.graphics().setDepth(1600);
     rays.fillStyle(0xffe6a8, 0.035);
     for (const x of [290, 605, 1020, 1250])

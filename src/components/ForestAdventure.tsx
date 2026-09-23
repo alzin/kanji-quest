@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ForestCanvas } from "./game/forest/ForestCanvas";
 import type { ForestBridge } from "./game/forest/ForestScene";
 import { SITES } from "./game/forest/world";
@@ -206,7 +206,7 @@ export function ForestAdventure() {
     play(correct ? "correct" : "wrong", { combo: next.combo });
     if (correct) bridge.celebrate?.();
   }
-  function advance() {
+  const advance = useCallback(() => {
     if (!feedback || paused || account.prompt) return;
     const next = feedback.next;
     setTrail(next);
@@ -250,7 +250,13 @@ export function ForestAdventure() {
       // Let the player see the restored shrine before opening the report.
       setToast("The forest remembers. Your discoveries have been recorded.");
     }
-  }
+  }, [feedback, paused, account.prompt, words.length, restored]);
+  useEffect(() => {
+    if (!feedback?.correct || paused || account.prompt || !encounter || journal)
+      return;
+    const timer = setTimeout(advance, 1000);
+    return () => clearTimeout(timer);
+  }, [feedback, paused, account.prompt, encounter, journal, advance]);
   const closeJournal = () => {
     const first = !introduced;
     setJournal(false);
@@ -646,13 +652,15 @@ export function ForestAdventure() {
                   {!current.retry && "You’ll meet this word again."}
                 </small>
               )}
-              <button
-                ref={continueButton}
-                className="forest-primary"
-                onClick={advance}
-              >
-                Continue <span aria-hidden="true">→</span>
-              </button>
+              {!feedback.correct && (
+                <button
+                  ref={continueButton}
+                  className="forest-primary"
+                  onClick={advance}
+                >
+                  Continue <span aria-hidden="true">→</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="forest-hint">

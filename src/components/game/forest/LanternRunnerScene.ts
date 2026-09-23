@@ -87,7 +87,6 @@ class LanternRunnerScene extends Phaser.Scene {
       width,
       height,
     );
-    // Sunlit haze behind the treeline; the running paths remain clear of foliage.
     g.fillStyle(0xe0cc86, 0.07).fillTriangle(
       width * 0.65,
       0,

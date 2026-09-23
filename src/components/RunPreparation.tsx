@@ -52,8 +52,6 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
     <div className="app-shell min-h-screen bg-paper">
       <Nav />
       <main className="mx-auto max-w-4xl px-4 pb-12">
-        {/* Page-level control sits in the page header; the per-word voice controls live
-            beside the word itself, further down. */}
         <div className="mt-5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{title} · Dojo preparation</p>
           <h1 ref={heading} tabIndex={-1} className="mt-1.5 font-serif text-[1.875rem] font-bold leading-tight outline-none sm:text-4xl">
@@ -108,7 +106,6 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
                 <WordRuby vocab={word.vocab} focus={word.kanji.c} className="text-4xl font-bold sm:text-5xl" />
                 <p data-testid="study-reading" className="mt-4 font-serif text-xl text-muted-foreground">{vocabKana(word.vocab)}</p>
                 <p data-testid="study-meaning" className="mt-1 text-lg font-bold">{word.vocab.m}</p>
-                {/* The controls that speak this word sit under this word. */}
                 <WordAudio reading={vocabKana(word.vocab)} wordKey={`learn-${index}`} className="mt-4 justify-center" />
               </div>
               <div className="mt-6 rounded-xl bg-surface-sunken p-4 text-sm leading-relaxed">
@@ -142,7 +139,6 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
             {check.choices.map((c) => <button key={c} type="button" disabled={feedback === "correct"} className={choice}
               onClick={() => setFeedback(c === check.answer ? "correct" : "wrong")}>{c}</button>)}
           </div>
-          {/* Icon plus wording, never colour alone. */}
           {feedback && <div role="status" className={`mt-4 flex items-start gap-2.5 rounded-xl p-3.5 text-sm leading-relaxed ${feedback === "correct" ? "bg-success/10 text-success" : "bg-primary/8 text-foreground"}`}>
             <AppIcon name={feedback === "correct" ? "check" : "alert"} className={`mt-0.5 h-4 w-4 shrink-0 ${feedback === "correct" ? "text-success" : "text-primary"}`} />
             <span>

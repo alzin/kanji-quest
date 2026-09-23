@@ -6,8 +6,6 @@ export function LevelSelector({ level, preview = false, onChange }: { level: JLP
   const n4Unlocked = isLevelUnlocked(save, "N4");
   return (
     <div className="mt-4">
-      {/* Two options, so a segmented control rather than two cards: a sunken track with
-          the selected segment raised out of it (light from the sky). */}
       <div role="group" aria-label="JLPT level" className="flex gap-1 rounded-xl border border-border bg-surface-sunken p-1">
         {LEVELS.map((option) => {
           const locked = !isLevelUnlocked(save, option);

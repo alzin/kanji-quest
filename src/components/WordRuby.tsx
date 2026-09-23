@@ -8,7 +8,6 @@ type Props = {
   className?: string;
 };
 
-/** A word with per-kanji furigana, so a compound also teaches its parts. */
 export function WordRuby({ vocab, focus, className }: Props) {
   return (
     <span className={`font-serif ${className ?? ""}`.trim()}>

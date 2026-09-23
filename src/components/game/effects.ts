@@ -60,7 +60,6 @@ const SPEED_LINE_PX_PER_SECOND = 900;
 const SPEED_LINE_Y: readonly number[] = [0.38, 0.42, 0.46, 0.5, 0.53, 0.44, 0.4, 0.48];
 const DEG = Math.PI / 180;
 
-// Palette (fixed strings: no per-frame string building)
 const INK = "#1c1a17";
 const GOLD = "#d8b24a";
 const GOLD_TEXT = "#b8912a"; // gold that stays legible on paper
@@ -92,7 +91,6 @@ export type EffectsState = {
   pause: { t: number; paused: boolean }; resumeDash: Timer;
   dust: { x: number; y: number; t: number }[]; speedLines: Float32Array;
   milestone: { combo: number; t: number } | null;
-  // --- extras (not in the shared sketch, safe to ignore) ---
   /** Last combo reported through spawnCorrect/spawnWrong; drives tier blooms and speed lines. */
   combo: number;
   bracketOn: boolean;
@@ -111,8 +109,6 @@ export type EffectsState = {
 
 export type DrawFonts = { serif: (px: number) => string; sans: (px: number) => string };
 
-// ---------------------------------------------------------------------------
-// Tables
 
 export function isMilestone(combo: number): boolean {
   return MILESTONES.includes(combo);
@@ -126,8 +122,6 @@ export function comboTier(combo: number): 0 | 1 | 2 | 3 {
   return combo >= 10 ? 3 : combo >= 5 ? 2 : combo >= 3 ? 1 : 0;
 }
 
-// ---------------------------------------------------------------------------
-// Math helpers
 
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
@@ -171,7 +165,6 @@ function bezierEase(x1: number, y1: number, x2: number, y2: number): (u: number)
   };
 }
 
-/** The stamp slam: overshoots past 1, then settles. */
 const slamEase = bezierEase(0.34, 1.56, 0.64, 1);
 
 /** Keyframe rows: [time, ...values]. Smoothstep between rows; clamped outside. */
@@ -239,8 +232,6 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
-// ---------------------------------------------------------------------------
-// State
 
 export function createEffects(opts: EffectsOptions): EffectsState {
   const seed = (opts.seed ?? 1) | 0;
@@ -283,7 +274,6 @@ export function createEffects(opts: EffectsOptions): EffectsState {
 export function setReducedMotion(fx: EffectsState, on: boolean): void {
   fx.reducedMotion = on;
   if (!on) return;
-  // Motion that is already in flight stops at once; informational elements stay.
   fx.particleCount = 0;
   fx.pendingBurst = false;
   fx.speedLines.fill(0);
@@ -302,8 +292,6 @@ export function nextRandom(fx: EffectsState): number {
   return fx.rng / 4294967296;
 }
 
-// ---------------------------------------------------------------------------
-// Particles
 
 function emit(fx: EffectsState, x: number, y: number, vx: number, vy: number, life: number, kind: number): void {
   let index: number;
@@ -346,8 +334,6 @@ function particleRadius(index: number): number {
   return 2.5 + 0.5 * ((index * 5) & 3);
 }
 
-// ---------------------------------------------------------------------------
-// Advance
 
 /**
  * Advance every effect. dt is clamped to MAX_STEP_SECONDS. Wall-clock effects
@@ -356,11 +342,9 @@ function particleRadius(index: number): number {
  */
 export function advanceEffects(fx: EffectsState, dtSeconds: number, paused: boolean): boolean {
   const dt = Number.isFinite(dtSeconds) ? clamp(dtSeconds, 0, MAX_STEP_SECONDS) : 0;
-  // A zero, negative or non-finite frame changes nothing (not even the pause flag: the next real frame handles it).
   if (dt <= 0) return isAnythingAlive(fx, paused);
   fx.clock += dt;
 
-  // Pause fade (wall-clock; hiding is instant).
   if (paused) {
     if (!fx.pause.paused) {
       fx.pause.paused = true;
@@ -379,7 +363,6 @@ export function advanceEffects(fx: EffectsState, dtSeconds: number, paused: bool
     if (!fx.reducedMotion) milestoneBurst(fx, fx.anchorX, fx.anchorY);
   }
 
-  // Wall-clock timelines.
   tick(fx.shake, dt, SHAKE_SECONDS);
   tick(fx.kick, dt, KICK_SECONDS);
   tick(fx.hop, dt, HOP_SECONDS);
@@ -434,7 +417,6 @@ export function advanceEffects(fx: EffectsState, dtSeconds: number, paused: bool
     if (fx.bracketOn) tick(fx.bracket, dt, BRACKET_SLIDE_SECONDS);
     for (const d of fx.dust) tick(d, dt, DUST_SECONDS);
 
-    // Tier-3 speed lines: pooled, spawned on a jittered timer, recycled off the left edge.
     const lines = fx.speedLines;
     for (let i = 0; i < MAX_SPEED_LINES; i++) {
       const o = i * SPEED_LINE_STRIDE;
@@ -476,11 +458,8 @@ function isAnythingAlive(fx: EffectsState, paused: boolean): boolean {
   return false;
 }
 
-// ---------------------------------------------------------------------------
-// Spawns
 
 export function spawnCorrect(fx: EffectsState, a: { x: number; y: number; gate: object; combo: number }): void {
-  // Stamp slot: a free one, else the oldest.
   let slot = fx.stamps[0];
   for (const s of fx.stamps) {
     if (!s.gate) { slot = s; break; }
@@ -584,13 +563,11 @@ export function spawnFootfall(fx: EffectsState, x: number, y: number): void {
   slot.t = 0;
 }
 
-/** Resume from the pause button / Esc or from "Keep running": forward lean + paper speed lines. */
 export function noteResume(fx: EffectsState): void {
   if (fx.reducedMotion) return;
   fx.resumeDash.t = 0;
 }
 
-/** Lock-in brackets: active while the next gate is within 0.6 s; lane follows the runner's rounded lane. */
 export function setBracketLane(fx: EffectsState, lane: number, active: boolean): void {
   if (!active) {
     fx.bracketOn = false;
@@ -604,7 +581,6 @@ export function setBracketLane(fx: EffectsState, lane: number, active: boolean):
   fx.bracket.lane = lane;
 }
 
-/** Measure an echo pill once, at spawn: shrinks the font from 14 to 11 px until the pill fits maxWidth. */
 export function measureEcho(
   ctx: CanvasRenderingContext2D, fonts: DrawFonts, text: string, score: string, maxWidth: number,
 ): { width: number; fontPx: number; text: string; score: string } {
@@ -632,8 +608,6 @@ export function measureEcho(
   return { width, fontPx, text, score };
 }
 
-// ---------------------------------------------------------------------------
-// Getters (read inside the draw pass)
 
 /** Canvas offset for this frame: apply with ctx.setTransform(pr,0,0,pr,x*pr,y*pr). {0,0} when idle or reduced motion. */
 export function getShake(fx: EffectsState): { x: number; y: number } {

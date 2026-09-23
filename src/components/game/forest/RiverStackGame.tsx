@@ -260,7 +260,7 @@ export function RiverStackGame({
       else if (["ArrowRight", "d", "D"].includes(e.key))
         action = { type: "move", direction: 1 };
       else if (["c", "C", "Shift"].includes(e.key)) action = { type: "hold" };
-      else if (["ArrowDown", " "].includes(e.key)) action = { type: "drop" };
+      else if (["ArrowDown", " ", "s", "S"].includes(e.key)) action = { type: "drop" };
       else if (/^[1-6]$/.test(e.key))
         action = { type: "column", column: Number(e.key) - 1 };
       if (action) {
@@ -616,7 +616,7 @@ export function RiverStackGame({
             </>
           )}
           <p className="river-keyboard">
-            ← → Move · ↓ / Space Drop
+            ← → Move · ↓ / S / Space Drop
             <br />C Hold · Esc Pause
           </p>
         </aside>
@@ -704,7 +704,7 @@ function RiverHelp({
       </p>
       <ol>
         <li>Tap a numbered lane or use ← → to aim.</li>
-        <li>Tap that lane again, swipe down, or press Space to drop.</li>
+        <li>Tap that lane again, swipe down, or press ↓, S, or Space to drop.</li>
         <li>Hold a stone with C to try the next word first.</li>
       </ol>
       <p>A missed match leaves ink. Match that word later to wash it away.</p>

@@ -16,8 +16,6 @@ import { initializeAccount } from "@/lib/account";
 
 import appCss from "../styles.css?url";
 
-/** The two full-page fallbacks share the app's paper, serif and vermillion rather than
- *  the framework default, so a wrong turn still looks like the same product. */
 function Fallback({ mark, title, body, children }: { mark: string; title: string; body: string; children: ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-4 py-12">
@@ -140,7 +138,6 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  // Audio unlockers, the [data-sfx] click delegate and the visibility suspend; boot() returns its disposer.
   useEffect(() => boot(), []);
   useEffect(() => initializeAccount(), []);
 
@@ -148,9 +145,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <InstallAppProvider>
         <PwaRegistration />
-        {/* Account actions live here alone: the header only shows who you are. */}
         <SaveProgressDialog />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </InstallAppProvider>
     </QueryClientProvider>

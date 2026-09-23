@@ -140,6 +140,5 @@ test("a finished run offers to save it, and declining leaves the game untouched"
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Run complete!", exact: true })).toBeVisible();
   expect(await savedTotals(page)).toEqual({ correct: 5, wrong: 0, coins: 15, runsCompleted: 1 });
-  // Declining snoozes the offer until three more runs or checkpoints are earned.
   expect(await page.evaluate(() => sessionStorage.getItem("kanji-dash-save-prompt-v1"))).toBe("4");
 });

@@ -4,7 +4,6 @@ import { Nav } from "@/components/Nav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { LAST_UPDATED } from "@/lib/legal";
 
-/** Shared reading layout for the privacy policy and terms pages. */
 export function LegalPage({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">

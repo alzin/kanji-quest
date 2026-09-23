@@ -41,8 +41,6 @@ export function RunResults({ gate, questions, results, pendingCheckpoint, restar
             )}
             {gate && <p className="mt-1 text-xs text-muted-foreground">Pass: at least {Math.ceil(questions.length * 0.7)} correct out of {questions.length}.</p>}
             {next !== undefined && <p className="mt-2 text-sm font-bold text-primary">Next region open: {CHAPTER_NAMES[next]!.name} · {kanjiOfChapter(next).length} kanji</p>}
-            {/* What was learned, at full size; the game statistics sit under it, smaller.
-                Every colour is paired with a word, so none of it is read from hue alone. */}
             <div className="tile-in mt-6 rounded-xl border border-border bg-surface-sunken p-4 text-left" style={tileDelay(0)}>
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">This run</span>
@@ -81,8 +79,6 @@ export function RunResults({ gate, questions, results, pendingCheckpoint, restar
                 <div className="text-xs font-bold text-muted-foreground">Mon earned</div>
               </div>
             </div>
-            {/* One filled button only: the single best next step. Everything else is an
-                outline, so the eye is never asked to choose between two blocks of colour. */}
             <div className="results-actions mt-6 flex flex-col gap-2">
               {next !== undefined && <Link to="/run" search={{ gate: next, mode: "runner" }} data-sfx="tap" className="breathe-ring min-h-12 rounded-xl bg-primary py-3 text-center font-serif font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Prepare next region</Link>}
               {pendingCheckpoint !== undefined && (

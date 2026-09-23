@@ -6,8 +6,6 @@ import { recordProduction } from "@/lib/srs";
 
 const SIZE = 320;
 
-// Trace-over practice: draw strokes on top of a faint guide glyph.
-// "Check" measures how much of the glyph's ink you covered.
 export function StrokePractice({ kanji }: { kanji: Kanji }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const guideRef = useRef<HTMLCanvasElement>(null);
@@ -57,7 +55,6 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
     setResult(null);
   };
 
-  // sample the guide glyph's target pixels
   const targetPixels = (): Uint8Array => {
     const data = guideRef.current!.getContext("2d")!.getImageData(0, 0, SIZE, SIZE).data;
     const mask = new Uint8Array(SIZE * SIZE);
@@ -101,7 +98,6 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
 
   return (
     <div className="min-w-0">
-      {/* Reserve phone viewport space for the header, touch controls, and bottom tabs. */}
       <div className="relative mx-auto w-full max-w-[clamp(204px,calc(100svh_-_450px_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px)),320px)] overflow-hidden rounded-xl border-2 border-border bg-paper shadow-inner md:max-w-[320px]">
         <canvas
           key={resultCount}
@@ -150,7 +146,6 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
           onPointerCancel={endStroke}
           onLostPointerCapture={endStroke}
         />
-        {/* Hanko badge for a pass; the role="status" text below stays the accessible result. */}
         {result?.pass && (
           <div aria-hidden="true" className="dojo-stamp">
             印
