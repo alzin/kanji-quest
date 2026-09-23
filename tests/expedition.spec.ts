@@ -37,6 +37,37 @@ async function reachSite(page: Page, index: number) {
     ),
   ).toBeVisible();
 }
+test("correct answers advance automatically, pause holds feedback, and misses wait for Continue", async ({ page }) => {
+  await enterTrail(page);
+  await reachSite(page, 0);
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 100)));
+  const word = (await page.getByTestId("forest-word").innerText()).trim();
+  const vocab = allKanji.flatMap((k) => k.vocab).find((v) => v.w === word)!;
+  await page.getByRole("group", { name: "Choose an answer" }).getByText(vocab.m, { exact: true }).click();
+  await expect(page.locator(".forest-feedback")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Pause encounter" }).click();
+  await page.clock.runFor(2000);
+  await expect(page.getByTestId("forest-word")).toHaveText(word);
+  await page.getByRole("button", { name: "Back to the trail" }).click();
+  await page.clock.runFor(1100);
+  await expect(page.locator(".forest-feedback")).toHaveCount(0);
+  await expect(page.getByTestId("forest-word")).not.toHaveText(word);
+  const nextWord = (await page.getByTestId("forest-word").innerText()).trim();
+  const nextVocab = allKanji.flatMap((k) => k.vocab).find((v) => v.w === nextWord)!;
+  for (const button of await page.locator(".forest-answers button").all()) {
+    if ((await button.locator("span").innerText()) !== nextVocab.m) {
+      await button.click();
+      break;
+    }
+  }
+  await page.clock.runFor(2000);
+  await expect(page.getByTestId("forest-word")).toHaveText(nextWord);
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.locator(".forest-feedback")).toHaveCount(0);
+});
+
 test("all six river lanes fill the board and align with their controls after resizing", async ({
   page,
 }, info) => {
@@ -50,7 +81,7 @@ test("all six river lanes fill the board and align with their controls after res
       .getByRole("group", { name: "Choose an answer" })
       .getByText(vocab.m, { exact: true })
       .click();
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(page.locator(".forest-feedback")).toHaveCount(0);
   }
   await reachSite(page, 1);
   await page.clock.pauseAt(
@@ -210,7 +241,9 @@ async function completeTrail(
           ).toBeVisible();
         } else await choices.getByText(answer, { exact: true }).click();
       }
-      await page.getByRole("button", { name: "Continue", exact: true }).click();
+      if (options.mistake && count === 1)
+        await page.getByRole("button", { name: "Continue", exact: true }).click();
+      else await expect(page.locator(".forest-feedback")).toHaveCount(0);
     }
     await expect(page.locator("canvas")).toHaveAttribute(
       "data-restored",

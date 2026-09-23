@@ -54,6 +54,21 @@ export async function clearSheet(page: Page) {
 
 const reviewSave = () => ({ curriculumVersion: CURRICULUM_VERSION, unlockedChapters: [1, 13, 14], selectedLevel: "N5", clearedChapters: [], progress: Object.fromEntries(allKanji.map((k, i) => [k.c, { mastery: 2, ivl: 1, due: i < 12 ? 1 : 8_000_000_000_000, ease: 2.5, correct: 0, wrong: 0 }])), streak: { count: 0, last: "" } });
 
+test("S drops stones with either letter case", async ({ page }) => {
+  await startSheet(page);
+  for (const key of ["s", "S"]) {
+    const before = (await state(page))!;
+    const column = winningColumn(before);
+    expect(column).toBeGreaterThanOrEqual(0);
+    await page.keyboard.press(String(column + 1));
+    await page.keyboard.press(key);
+    await expect(page.getByTestId("stack-feedback")).toBeVisible();
+    expect((await state(page))!.current).toBeNull();
+    await page.clock.runFor(600);
+    await expect.poll(async () => (await state(page))?.current?.target).not.toBe(before.current!.target);
+  }
+});
+
 test("daily stack is the default, new words skip recall, and a sheet saves exact rewards once", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await startSheet(page);

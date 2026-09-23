@@ -94,7 +94,7 @@ export function StackGame({ words, title, seed, tempo = 0, forceFast = false, ma
     const blur = () => pause(true);
     const key = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.altKey || e.ctrlKey || e.metaKey) return;
-      const handled = ["ArrowLeft", "ArrowRight", "a", "A", "d", "D", "ArrowDown", " ", "c", "C", "Shift", "Escape"].includes(e.key);
+      const handled = ["ArrowLeft", "ArrowRight", "a", "A", "d", "D", "ArrowDown", " ", "s", "S", "c", "C", "Shift", "Escape"].includes(e.key);
       if (!handled) return;
       e.preventDefault();
       if (e.key === "Escape") pause(!pausedRef.current);

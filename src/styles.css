@@ -221,6 +221,8 @@
 }
 
 .app-shell {
+  /* Match the page palette instead of inheriting a surrounding game's text. */
+  color: var(--foreground);
   min-height: 100dvh;
   padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
 }
