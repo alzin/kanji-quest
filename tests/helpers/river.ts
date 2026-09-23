@@ -36,8 +36,16 @@ export async function clearRiver(page: Page) {
     }
     const col = riverWinningColumn(s);
     expect(col).toBeGreaterThanOrEqual(0);
-    await page.getByTestId(`stack-column-${col}`).click();
-    await page.getByRole("button", { name: "Drop", exact: false }).click();
+    // Activate the real buttons with Enter while time is frozen. WebKit's
+    // pointer-stability checks can otherwise wait on frozen animation frames;
+    // pointer controls are covered separately by the layout/control tests.
+    const column = page.getByTestId(`stack-column-${col}`);
+    const drop = page.getByRole("button", { name: "Drop", exact: false });
+    await expect(column).toBeVisible();
+    await expect(column).toBeEnabled();
+    await column.press("Enter");
+    await expect(drop).toBeEnabled();
+    await drop.press("Enter");
     await expect
       .poll(async () => (await riverState(page))?.feedbackId ?? -1)
       .not.toBe(s.feedbackId);
