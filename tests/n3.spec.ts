@@ -34,6 +34,7 @@ test("N4 completion opens N3 and its selection persists through collection, dojo
   await page.setViewportSize({ width: 320, height: 568 });
   await unlockN3(page);
   await page.goto("map", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "Save your progress" })).toBeEnabled();
   await page.getByRole("button", { name: /^N4 / }).click();
   await expect(page.getByText("JLPT N4 kanji seal earned!", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Start the N3 road →", exact: true }).click();
