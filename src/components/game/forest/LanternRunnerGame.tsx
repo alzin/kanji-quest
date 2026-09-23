@@ -166,7 +166,7 @@ export function LanternRunnerGame({
       setAnnouncement(
         `${correct ? "Light carried" : "A word to remember"} · ${q.vocab.w} · ${vocabKana(q.vocab)} · ${q.vocab.m}`,
       );
-      play(correct ? "correct" : "wrong", { combo: s.combo });
+      play(correct ? "correct" : "wrong", { combo: s.combo, hearts: s.hearts });
       if (forest && !correct && !s.done) {
         setPause(true, true);
         setLesson(q);
