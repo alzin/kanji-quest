@@ -26,7 +26,8 @@ export async function clearRiver(page: Page) {
     if (!s.current) {
       await expect
         .poll(async () => {
-          await page.clock.runFor(500);
+          await page.clock.fastForward(600);
+          await page.clock.runFor(100);
           const next = await riverState(page);
           return !next || next.done || !!next.current;
         })

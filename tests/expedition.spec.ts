@@ -164,7 +164,8 @@ async function completeTrail(
         await expect.poll(async () => (await riverState(page))?.wrong).toBe(1);
         await expect
           .poll(async () => {
-            await page.clock.runFor(500);
+            await page.clock.fastForward(600);
+            await page.clock.runFor(100);
             return !!(await riverState(page))?.current;
           })
           .toBe(true);
