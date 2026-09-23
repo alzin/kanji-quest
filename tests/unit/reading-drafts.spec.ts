@@ -5,17 +5,17 @@ import { passageDrafts } from "../../content/drafts/passages";
 import { kanjiOfLevel } from "../../src/data";
 
 test("keywords are present and unique within each existing level", () => {
-  for (const level of ["N5", "N4"] as const) {
+  for (const level of ["N5", "N4", "N3"] as const) {
     const cards = kanjiOfLevel(level);
     expect(cards.every((k) => !!k.keyword?.trim())).toBe(true);
     expect(new Set(cards.map((k) => k.keyword!.toLowerCase())).size).toBe(cards.length);
   }
 });
 
-test("110 unpublished original drafts cover all regions without introducing later kanji", () => {
+test("110 unpublished original drafts cover N5/N4 regions without introducing later kanji", () => {
   expect(sentenceDrafts).toHaveLength(110);
   const known = new Set<string>();
-  for (const region of REGIONS) {
+  for (const region of REGIONS.filter((r) => r.level === "N5" || r.level === "N4")) {
     [...region.chars].forEach((c) => known.add(c));
     const sentences = sentenceDrafts.filter((s) => s.region === region.id);
     expect(sentences, region.name).toHaveLength(2);

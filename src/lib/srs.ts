@@ -1,4 +1,4 @@
-import { allKanji, kanjiByChar, kanjiOfChapter, kanjiOfLevel, levelOfChapter, LEVEL_CHAPTERS, CHAPTER_COUNT, CURRICULUM_VERSION, REGIONS, LEGACY_CHAPTERS, type JLPTLevel } from "@/data";
+import { allKanji, kanjiByChar, kanjiOfChapter, kanjiOfLevel, levelOfChapter, LEVELS, LEVEL_CHAPTERS, CHAPTER_COUNT, CURRICULUM_VERSION, REGIONS, LEGACY_CHAPTERS, type JLPTLevel } from "@/data";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import {
   meaningChoices, readingChoices, vocabKana, wordSegments,
@@ -131,7 +131,7 @@ export function normalizeSave(value: unknown): SaveData {
     runsCompleted: count(raw["runsCompleted"]),
     gatesCleared: clearedChapters.length,
     clearedChapters,
-    selectedLevel: raw["selectedLevel"] === "N4" ? "N4" : "N5",
+    selectedLevel: LEVELS.includes(raw["selectedLevel"] as JLPTLevel) ? raw["selectedLevel"] as JLPTLevel : "N5",
     stack: normalizeStack(raw["stack"], REGIONS.map((r) => r.id)),
   };
   retainChapterAccess(normalized);
@@ -315,16 +315,17 @@ export function isLevelCleared(s: SaveData, level: JLPTLevel): boolean {
 }
 
 export function isLevelUnlocked(s: SaveData, level: JLPTLevel): boolean {
-  return level === "N5" || isLevelCleared(s, "N5");
+  return LEVELS.slice(0, LEVELS.indexOf(level)).every((previous) => isLevelCleared(s, previous));
 }
 
 /** Browsing a locked road never changes the level of a daily lesson. */
 export function learningLevel(s: SaveData): JLPTLevel {
-  return s.selectedLevel === "N4" && isLevelUnlocked(s, "N4") ? "N4" : "N5";
+  return isLevelUnlocked(s, s.selectedLevel) ? s.selectedLevel
+    : [...LEVELS].reverse().find((level) => isLevelUnlocked(s, level)) ?? "N5";
 }
 
 export function selectLevel(level: JLPTLevel) {
-  if (level !== "N5" && level !== "N4") return;
+  if (!LEVELS.includes(level)) return;
   mutate((s) => { s.selectedLevel = level; });
 }
 

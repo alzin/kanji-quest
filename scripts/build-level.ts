@@ -5,7 +5,7 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { KANJI_CHARACTERS } from "../backend/src/domain/curriculum.ts";
+import { N5_N4_CHARACTERS } from "../backend/src/domain/curriculum.ts";
 import type { Kanji } from "../src/data/n5/types.ts";
 
 export type AuthoredLevel = {
@@ -45,7 +45,7 @@ export function buildLevel(level: string, kanjidic: string, jmdict: string, list
   check(authored.level === level, "Authored level does not match the selected road");
   check(typeof authored.reviewedBy === "string" && authored.reviewedBy.trim().length >= 2, "Native review attribution is required");
   check(/^\d{4}-\d{2}-\d{2}$/.test(authored.reviewedOn) && new Date(`${authored.reviewedOn}T12:00:00Z`).toISOString().slice(0, 10) === authored.reviewedOn, "Record a valid review date");
-  const existing = new Set([...KANJI_CHARACTERS, ...authored.previouslyAdded]);
+  const existing = new Set([...N5_N4_CHARACTERS, ...authored.previouslyAdded]);
   const expected = new Set((list.match(/\p{Script=Han}/gu) ?? []).filter((c) => !existing.has(c)));
   check(expected.size > 0, "The reference list contains no new characters");
   const metadata = new Map(tags(kanjidic, "character").map((entry) => [tags(entry, "literal")[0]!, entry]));

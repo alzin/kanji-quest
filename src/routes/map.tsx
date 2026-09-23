@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { AppIcon } from "@/components/AppIcon";
 import { LevelSelector } from "@/components/LevelSelector";
-import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter } from "@/data";
+import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter, previousLevel, nextLevel } from "@/data";
 import { useSave, chapterMasteryPct, getCard, getSnapshot, isChapterUnlocked, isGateCleared, isLevelUnlocked, selectLevel } from "@/lib/srs";
 import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
 import { isAudioRunning, play } from "@/lib/sfx";
@@ -13,9 +13,9 @@ export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
       { title: "World Map — Kanji Dash" },
-      { name: "description", content: `Explore ${LEVEL_CHAPTERS.N5.length} N5 and ${LEVEL_CHAPTERS.N4.length} N4 regions, with 4–6 kanji and a checkpoint seal in each.` },
+      { name: "description", content: `Explore ${LEVEL_CHAPTERS.N5.length} N5, ${LEVEL_CHAPTERS.N4.length} N4 and ${LEVEL_CHAPTERS.N3.length} N3 regions, with 4–6 kanji and a checkpoint seal in each.` },
       { property: "og:title", content: "World Map — Kanji Dash" },
-      { property: "og:description", content: "Earn your N5 seal and continue along the N4 road." },
+      { property: "og:description", content: "Earn your seals along the N5, N4 and N3 roads." },
     ],
   }),
   component: MapPage,
@@ -29,6 +29,8 @@ function localDay(date: Date): string {
 function MapPage() {
   const save = useSave();
   const level = save.selectedLevel;
+  const previous = previousLevel(level);
+  const next = nextLevel(level);
   const chapters = LEVEL_CHAPTERS[level];
   const levelUnlocked = isLevelUnlocked(save, level);
   const allCleared = chapters.every((ch) => isGateCleared(save, ch));
@@ -64,11 +66,11 @@ function MapPage() {
       <main className="mx-auto max-w-2xl px-4 pb-8">
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your journey</p>
         <h1 className="mt-2 font-serif text-3xl font-bold">The {level} Road</h1>
-        <p className="mt-1 font-serif text-sm text-accent">{level === "N5" ? "東海道 · Tōkaidō" : "中山道 · Nakasendō"}</p>
+        <p className="mt-1 font-serif text-sm text-accent">{{ N5: "東海道 · Tōkaidō", N4: "中山道 · Nakasendō", N3: "甲州街道 · Kōshū Kaidō" }[level]}</p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
           Small wins, 4–6 kanji at a time. Clear a checkpoint or reach 55% mastery progress to open the next region.
         </p>
-        <LevelSelector level={level} preview />
+        <LevelSelector level={level} />
         <Link to="/run" search={{ mode: "runner" }} className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-muted-foreground">Lantern Dash →</Link>
 
         <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-e1" aria-label="Checkpoint progress">
@@ -76,12 +78,11 @@ function MapPage() {
             <span className="text-sm font-bold">One road. {chapters.length} seals.</span>
             <span className="text-xs font-bold text-primary tabular-nums">{seals} / {chapters.length} earned</span>
           </div>
-          {/* One column per region, however many there are: 19 seals used to wrap into a
-              row of ten and an orphan. */}
-          <div className="mt-3 grid gap-1.5" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${chapters.length}, minmax(0, 1fr))` }}>
+          {/* Keep longer roads in balanced rows so every seal fits on narrow phones. */}
+          <div className="mt-3 grid gap-1.5" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${chapters.length > 36 ? Math.ceil(chapters.length / 4) : chapters.length}, minmax(0, 1fr))` }}>
             {chapters.map((ch) => <span key={ch} className={`h-1.5 rounded-full ${isGateCleared(save, ch) ? "bg-primary" : "bg-secondary"}`} />)}
           </div>
-          {!levelUnlocked && <button type="button" onClick={() => selectLevel("N5")} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Continue the N5 road</button>}
+          {!levelUnlocked && previous && <button type="button" onClick={() => selectLevel(previous)} className="mt-4 min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Continue the {previous} road</button>}
         </section>
 
         {allCleared && (
@@ -91,8 +92,8 @@ function MapPage() {
             </div>
             <div>
               <div className="font-serif text-lg font-bold">JLPT {level} kanji seal earned!</div>
-              <p className="text-sm text-muted-foreground">{level === "N5" ? "Every checkpoint cleared. Your N4 road is now open." : "Both roads explored. Keep revisiting your words to build lasting mastery."}</p>
-              {level === "N5" && <button type="button" onClick={() => selectLevel("N4")} className="mt-2 min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Start the N4 road →</button>}
+              <p className="text-sm text-muted-foreground">{next ? `Every checkpoint cleared. Your ${next} road is now open.` : "All three roads explored. Keep revisiting your words to build lasting mastery."}</p>
+              {next && <button type="button" onClick={() => selectLevel(next)} className="mt-2 min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Start the {next} road →</button>}
             </div>
           </div>
         )}
@@ -121,7 +122,7 @@ function MapPage() {
                     <p className="mb-3 ml-[52px] text-xs leading-relaxed text-muted-foreground sm:ml-[68px]">
                       {levelUnlocked
                         ? "The road ahead opens one region at a time — clear a checkpoint, or reach 55% mastery progress."
-                        : `The road ahead opens once you earn all ${LEVEL_CHAPTERS.N5.length} N5 checkpoint seals.`}
+                        : previous ? `The road ahead opens once you earn all ${LEVEL_CHAPTERS[previous].length} ${previous} checkpoint seals.` : ""}
                     </p>
                   )}
                   <div className="flex items-center gap-3 py-1.5 sm:gap-4">

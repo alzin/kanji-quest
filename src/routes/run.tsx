@@ -13,7 +13,7 @@ import {
   buildRunQueue, buildGateQuiz, grade, finishRun, clearGate,
   getCard, getSnapshot, isChapterUnlocked, isGateCleared, learningLevel, selectLevel, type Question,
 } from "@/lib/srs";
-import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter, levelOfChapter } from "@/data";
+import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter, levelOfChapter, previousLevel } from "@/data";
 
 export const Route = createFileRoute("/run")({
   validateSearch: (s: Record<string, unknown>): { gate?: number | undefined; mode?: "runner" | "stack" | "expedition"; practice?: StackMode } => {
@@ -78,7 +78,7 @@ function RunSessionContent({ gate }: { gate: number | undefined }) {
     setSession((value) => value + 1);
   };
 
-  const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : level === "N4" ? "Daily run · N4" : "Daily run";
+  const title = gate ? `${CHAPTER_NAMES[gate]!.name} — Checkpoint` : level === "N5" ? "Daily run" : `Daily run · ${level}`;
   const pendingCheckpoint = !gate ? LEVEL_CHAPTERS[level].find((ch) => isChapterUnlocked(getSnapshot(), ch) && !isGateCleared(getSnapshot(), ch)) : undefined;
 
   // One ceremony per results object: the hanko thump for 合格, an open question for 再挑戦,
@@ -93,13 +93,14 @@ function RunSessionContent({ gate }: { gate: number | undefined }) {
 
   if (blockedGate && !results) {
     const gateLevel = levelOfChapter(gate!)!;
+    const prerequisite = previousLevel(gateLevel);
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 py-12 text-center">
         <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-border text-muted-foreground">
           <AppIcon name="lock" className="h-8 w-8" />
         </div>
         <h1 className="mt-6 font-serif text-3xl font-bold">This {gateLevel} checkpoint is locked</h1>
-        <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">{gateLevel === "N4" ? `Earn all ${LEVEL_CHAPTERS.N5.length} N5 seals first. ` : ""}Clear the previous checkpoint or reach 55% mastery progress in that region to continue.</p>
+        <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">{prerequisite ? `Earn all ${LEVEL_CHAPTERS[prerequisite].length} ${prerequisite} seals first. ` : ""}Clear the previous checkpoint or reach 55% mastery progress in that region to continue.</p>
         <Link to="/map" onClick={() => selectLevel(gateLevel)} className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">View the {gateLevel} road</Link>
       </div>
     );

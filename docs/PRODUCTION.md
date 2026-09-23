@@ -380,6 +380,11 @@ git checkout production && git merge --ff-only main && git push origin productio
 
 The workflow type-checks, runs backend tests, builds both images tagged with the
 commit SHA, waits for your approval, deploys, and smoke-tests both services.
+It also updates the separate Pages test API (`kanji-quest-api`) to the same API
+image and checks database readiness on both APIs. Each service retains its own
+database, OAuth configuration and secret references. When a frontend change adds
+new save fields or curriculum IDs, promote its matching API before testing account
+saves on Pages; the Pages workflow alone only publishes the frontend.
 
 If a release adds a migration, run step 6 **before** pushing to `production`.
 

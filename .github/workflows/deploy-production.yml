@@ -99,6 +99,14 @@ jobs:
           gcloud run deploy "${{ vars.API_SERVICE }}" --image "$IMAGE_BASE/api:$SHA" \
             --project "$PROJECT" --region "$REGION" --quiet
 
+      # Pages also ships the new curriculum from main. Keep its separate test
+      # backend compatible with those saves, retaining its own database,
+      # OAuth settings and secret references.
+      - name: Deploy Pages test API
+        run: |
+          gcloud run deploy kanji-quest-api --image "$IMAGE_BASE/api:$SHA" \
+            --project "$PROJECT" --region "$REGION" --quiet
+
       - name: Deploy web
         run: |
           gcloud run deploy "${{ vars.WEB_SERVICE }}" --image "$IMAGE_BASE/web:$SHA" \
@@ -113,4 +121,8 @@ jobs:
           web=$(gcloud run services describe "${{ vars.WEB_SERVICE }}" \
             --project "$PROJECT" --region "$REGION" --format 'value(status.url)')
           curl -fsS --retry 5 --retry-delay 5 "$api/api/health"
+          curl -fsS --retry 5 --retry-delay 5 "$api/api/ready"
+          test_api=$(gcloud run services describe kanji-quest-api \
+            --project "$PROJECT" --region "$REGION" --format 'value(status.url)')
+          curl -fsS --retry 5 --retry-delay 5 "$test_api/api/ready"
           curl -fsS --retry 5 --retry-delay 5 -o /dev/null "$web/"

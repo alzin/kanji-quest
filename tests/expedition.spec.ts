@@ -5,6 +5,10 @@ import { silenceSavePrompt } from "./helpers/savePrompt";
 import { clearRiver, riverState } from "./helpers/river";
 import { completeDash, dashState, loseDash, dashReady } from "./helpers/dash";
 
+// These complete multi-stage walks also run in the general PWA suite. Keep the
+// same budget there as in playwright.forest.config.ts.
+test.setTimeout(240_000);
+
 test.beforeEach(async ({ page }) => {
   await silenceSavePrompt(page);
   await page.clock.install();
@@ -40,7 +44,7 @@ async function reachSite(page: Page, index: number) {
 test("correct answers advance automatically, pause holds feedback, and misses wait for Continue", async ({ page }) => {
   await enterTrail(page);
   await reachSite(page, 0);
-  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 100)));
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1_000)));
   const word = (await page.getByTestId("forest-word").innerText()).trim();
   const vocab = allKanji.flatMap((k) => k.vocab).find((v) => v.w === word)!;
   await page.getByRole("group", { name: "Choose an answer" }).getByText(vocab.m, { exact: true }).click();
@@ -132,10 +136,13 @@ async function completeTrail(
   for (let site = 0; site < 3; site++) {
     await reachSite(page, site);
     if (site === 1) {
+      // Screenshots and WebKit IPC must not spend the player's falling time.
+      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1_000)));
       await page.getByRole("button", { name: "Place the word stones" }).click();
-      await expect(
-        page.locator(".river-canvas canvas[data-ready]"),
-      ).toBeVisible();
+      await expect.poll(async () => {
+        await page.clock.runFor(50);
+        return page.locator(".river-canvas canvas[data-ready]").count();
+      }).toBe(1);
       if (options.hints)
         await page
           .getByRole("button", { name: "Ask Aki", exact: true })
@@ -156,16 +163,21 @@ async function completeTrail(
         await page.getByRole("button", { name: "Drop" }).click();
         await expect.poll(async () => (await riverState(page))?.wrong).toBe(1);
         await expect
-          .poll(async () => !!(await riverState(page))?.current)
+          .poll(async () => {
+            await page.clock.fastForward(600);
+            await page.clock.runFor(100);
+            return !!(await riverState(page))?.current;
+          })
           .toBe(true);
       }
       await clearRiver(page);
       await page.getByRole("button", { name: "Restore the crossing" }).click();
+      await page.clock.resume();
       count += 4;
     }
     if (site === 2) {
       await page.clock.pauseAt(
-        new Date(await page.evaluate(() => Date.now() + 100)),
+        new Date(await page.evaluate(() => Date.now() + 1_000)),
       );
       await page
         .getByRole("button", { name: "Begin the lantern dash" })

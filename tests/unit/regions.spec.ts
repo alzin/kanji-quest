@@ -8,12 +8,12 @@ import { buildGateQuiz, buildRunQueue, isChapterUnlocked, isLevelCleared, isLeve
 const progress = (mastery: 1 | 2 | 3, due = 0) => ({ mastery, due, ivl: 1, ease: 2.5, correct: 3, wrong: 0 });
 const freshSave = () => normalizeSave({ curriculumVersion: CURRICULUM_VERSION });
 
-test("both roads cover the same curriculum in unique, complete sets of 4–6 kanji", () => {
+test("all roads cover the curriculum in unique, complete sets of 4–6 kanji", () => {
   expect(LEVEL_CHAPTERS.N5).toHaveLength(19);
   expect(LEVEL_CHAPTERS.N4).toHaveLength(36);
-  expect(new Set(REGIONS.map((r) => r.id)).size).toBe(55);
-  expect(REGIONS.flatMap((r) => [...r.chars])).toHaveLength(285);
-  expect(new Set(REGIONS.flatMap((r) => [...r.chars])).size).toBe(285);
+  expect(new Set(REGIONS.map((r) => r.id)).size).toBe(125);
+  expect(REGIONS.flatMap((r) => [...r.chars])).toHaveLength(626);
+  expect(new Set(REGIONS.flatMap((r) => [...r.chars])).size).toBe(626);
   for (const region of REGIONS) {
     expect(region.chars.length).toBeGreaterThanOrEqual(4);
     expect(region.chars.length).toBeLessThanOrEqual(6);
@@ -29,7 +29,7 @@ test("both roads cover the same curriculum in unique, complete sets of 4–6 kan
 
 test("each seal immediately opens the next short region, including nonconsecutive IDs", () => {
   const save = freshSave();
-  for (const level of ["N5", "N4"] as const) {
+  for (const level of ["N5", "N4", "N3"] as const) {
     for (const [index, ch] of LEVEL_CHAPTERS[level].entries()) {
       expect(isChapterUnlocked(save, ch)).toBe(true);
       const next = nextChapter(ch);

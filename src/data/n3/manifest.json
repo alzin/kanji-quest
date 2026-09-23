@@ -1,0 +1,12 @@
+{
+  "level": "N3",
+  "cards": 341,
+  "regions": 70,
+  "nativeReviewed": false,
+  "dictionaryDate": "2026-09-21",
+  "inputs": {
+    "kanji-quest-kanji.json": "561b72ea9df703c58fae0c68585812e172aaa7611d2fcee6719d55fd2dfd4fa4",
+    "kanjidic2-en-3.6.2.json": "5ba47349fa6a0d26d4df613ee6ec70b0a87d10f862c56365e43150e9209079c6",
+    "jmdict-eng-common-3.6.2.json": "f27da1024781f596e998e35749d9430a2afdda3a2389ee09d0f67b96b509405b"
+  }
+}

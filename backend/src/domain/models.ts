@@ -39,7 +39,7 @@ export type SaveData = {
   runsCompleted: number;
   gatesCleared: number;
   clearedChapters: number[];
-  selectedLevel: "N5" | "N4";
+  selectedLevel: "N5" | "N4" | "N3";
   stack?: StackProgress;
 };
 

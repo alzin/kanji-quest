@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import assert from "node:assert/strict";
 import { allKanji, kanjiByChar, REGIONS } from "../../src/data";
 import type { Kanji, Vocab } from "../../src/data/n5/types";
 import {
@@ -124,18 +125,20 @@ test("reading questions offer three distinct spellings with exactly one correct"
         buildQuestion(kanji, "reading", vocab));
       const where = `${kanji.c} ${vocab.w} seed ${seed}: ${question.choices.join(" | ")}`;
 
-      expect(question.type, where).toBe("reading");
-      expect(question.prompt, where).toBe(vocab.w);
-      expect(question.answer, where).toBe(kana);
-      expect(question.choices, where).toHaveLength(3);
-      expect(new Set(question.choices).size, where).toBe(3);
-      expect(question.choices.filter((c) => c === question.answer), where).toHaveLength(1);
+      // Native assertions keep exhaustive curriculum checks from recording hundreds
+      // of thousands of Playwright report steps; failure messages still identify the word/seed.
+      assert.equal(question.type, "reading", where);
+      assert.equal(question.prompt, vocab.w, where);
+      assert.equal(question.answer, kana, where);
+      assert.equal(question.choices.length, 3, where);
+      assert.equal(new Set(question.choices).size, 3, where);
+      assert.equal(question.choices.filter((c) => c === question.answer).length, 1, where);
 
       for (const choice of question.choices) {
-        expect(choice, where).toMatch(HIRAGANA);
+        assert.match(choice, HIRAGANA, where);
         if (choice !== question.answer) {
-          expect(kanaByWord.get(vocab.w)!.has(choice), `${where}: ${choice} is a real reading`).toBe(false);
-          expect(Math.abs(length(choice) - length(kana)), where).toBeLessThanOrEqual(2);
+          assert.equal(kanaByWord.get(vocab.w)!.has(choice), false, `${where}: ${choice} is a real reading`);
+          assert.ok(Math.abs(length(choice) - length(kana)) <= 2, where);
         }
       }
     }
@@ -161,7 +164,7 @@ test("a word's other genuine readings are never offered as a wrong answer", () =
     const safe = correctReadings(vocab.w);
     for (let seed = 1; seed <= 12; seed += 1) {
       for (const choice of withSeed(seed * 31 + kanji.c.codePointAt(0)!, () => readingChoices(card))) {
-        expect(safe.has(choice), `${vocab.w}: "${choice}" is also correct`).toBe(false);
+        assert.equal(safe.has(choice), false, `${vocab.w}: "${choice}" is also correct`);
       }
     }
   }
@@ -195,14 +198,14 @@ test("meaning questions offer three distinct meanings with exactly one correct",
       const question = withSeed(seed * 97 + kanji.c.codePointAt(0)!, () =>
         buildQuestion(kanji, "meaning", vocab));
       const where = `${kanji.c} ${vocab.w} seed ${seed}: ${question.choices.join(" | ")}`;
-      expect(question.answer, where).toBe(vocab.m);
-      expect(question.prompt, where).toBe(vocab.w);
-      expect(question.choices, where).toHaveLength(3);
-      expect(new Set(question.choices).size, where).toBe(3);
-      expect(question.choices.filter((c) => c === question.answer), where).toHaveLength(1);
+      assert.equal(question.answer, vocab.m, where);
+      assert.equal(question.prompt, vocab.w, where);
+      assert.equal(question.choices.length, 3, where);
+      assert.equal(new Set(question.choices).size, 3, where);
+      assert.equal(question.choices.filter((c) => c === question.answer).length, 1, where);
       const own = new Set(cards.filter((c) => c.vocab.w === vocab.w).map((c) => c.vocab.m.toLowerCase()));
       for (const choice of question.choices.filter((c) => c !== question.answer)) {
-        expect(own.has(choice.toLowerCase()), `${where}: ${choice}`).toBe(false);
+        assert.equal(own.has(choice.toLowerCase()), false, `${where}: ${choice}`);
       }
     }
   }
@@ -212,10 +215,10 @@ test("every card shows a word rather than a bare kanji", () => {
   for (const { kanji, vocab } of cards) {
     for (const type of ["reading", "meaning"] as const) {
       const question = withSeed(7, () => buildQuestion(kanji, type, vocab));
-      expect(question.prompt, `${kanji.c} ${type}`).toContain(kanji.c);
-      expect(question.vocab.w, `${kanji.c} ${type}`).toBe(vocab.w);
-      expect(question.segments.map((s) => s.t).join(""), `${kanji.c} ${type}`).toBe(vocab.w);
-      expect(question.sub.trim(), `${kanji.c} ${type}`).toBeTruthy();
+      assert.ok(question.prompt.includes(kanji.c), `${kanji.c} ${type}`);
+      assert.equal(question.vocab.w, vocab.w, `${kanji.c} ${type}`);
+      assert.equal(question.segments.map((s) => s.t).join(""), vocab.w, `${kanji.c} ${type}`);
+      assert.ok(question.sub.trim(), `${kanji.c} ${type}`);
     }
   }
 });

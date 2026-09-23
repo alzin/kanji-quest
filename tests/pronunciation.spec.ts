@@ -55,9 +55,9 @@ test("preparation speaks exact kana, replays, and respects saved mute", async ({
 test("run speaks active gates and cancels speech on pause", async ({ page }) => {
   await page.clock.install();
   await page.goto("run?mode=runner");
-  await completePreparation(page, { advanceClock: true });
-  // Keep real test/CPU time from advancing a gate while speech is inspected.
-  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 100)));
+  // Freeze before the runner mounts so module loading and browser IPC do not
+  // consume a gate's answer time.
+  await completePreparation(page, { advanceClock: true, pauseClock: true });
   await page.clock.runFor(500);
   await expect.poll(() => page.evaluate(() => (window as any).__runSpeechLog.length)).toBeGreaterThan(0);
   const cancels = await page.evaluate(() => (window as any).__speechCancels);
@@ -67,7 +67,7 @@ test("run speaks active gates and cancels speech on pause", async ({ page }) => 
   const count = await page.evaluate(() => (window as any).__speechLog.length);
   await page.clock.fastForward(5000);
   expect(await page.evaluate(() => (window as any).__speechLog.length)).toBe(count);
-  await page.getByRole("button", { name: "Resume game", exact: true }).click();
+  await page.getByRole("dialog", { name: "Run paused" }).getByRole("button", { name: "Resume the dash", exact: true }).click();
   await page.keyboard.press("ArrowUp");
   await page.clock.runFor(5000);
   expect(await page.evaluate(() => (window as any).__speechLog.length)).toBeGreaterThan(count + 1);
