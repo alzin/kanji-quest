@@ -29,7 +29,7 @@ node --experimental-strip-types scripts/build-level.ts N3 kanjidic2.xml JMdict_e
 ## Remaining plan work
 
 1. Compound-hole blocks, two-column sentence strips, sentence-row line clears, scroll routes, reveal tracking, passage saves and passage-based level completion are not implemented. Their data need a native-language review before publication.
-2. The approximately 1,900 N3–N1 cards and their original glosses, mnemonics and three contexts have not been authored/imported. The runtime and backend still expose N5/N4 only. Later level integration and regenerated backend curriculum remain necessary; curriculum version stays 2.
+2. N3 is now integrated into the runtime and backend: 341 additive cards, 70 regions and 1,022 dictionary-confirmed vocabulary contexts. See `src/data/n3/SOURCES.md` for coverage, attribution and review status. N2/N1 content and integration remain outstanding; curriculum version stays 2.
 3. The composer guarantees a reachable perfect path and safe decoy *content*. It does not guarantee that each current word's own decoy is exposed among column tops. No 20% guessing-rate claim is established.
 4. Retries are inserted after two queued tasks, but reachability can change the actual spawn order. Fresh-word ordering prefers intervening pieces where possible; an all-new first sheet cannot supply two already-known blocks. There is no enforced one-minute introduction delay.
 5. Gravity uses the specified deterministic 150 ms resolver phase; the canvas snaps settled columns at the end rather than tweening every falling stack tile. Human timing, guess rates and retrieval distributions across mastery tiers still need playtesting. The recording uses scripted fast decisions and does not establish a 60–90-second human sheet time.

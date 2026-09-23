@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import { Nav } from "@/components/Nav";
-import { StampShop } from "@/components/StampShop";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { LevelSelector } from "@/components/LevelSelector";
 import { allKanji, kanjiOfLevel, CHAPTER_NAMES, LEVEL_CHAPTERS } from "@/data";
@@ -13,9 +12,9 @@ export const Route = createFileRoute("/collection")({
   head: () => ({
     meta: [
       { title: "Kanji Collection — Kanji Dash" },
-      { name: "description", content: `${allKanji.length} kanji across the N5 and N4 study roads, with readings, mnemonics, vocabulary, and mastery progress.` },
+      { name: "description", content: `${allKanji.length} kanji across the N5, N4 and N3 study roads, with readings, mnemonics, vocabulary, and mastery progress.` },
       { property: "og:title", content: "Kanji Collection — Kanji Dash" },
-      { property: "og:description", content: "Explore N5 and N4 kanji and track your mastery." },
+      { property: "og:description", content: "Explore N5, N4 and N3 kanji and track your mastery." },
     ],
   }),
   component: CollectionPage,
@@ -213,7 +212,7 @@ function CollectionPage() {
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your library</p>
         <h1 className="mt-1.5 font-serif text-3xl font-bold sm:text-4xl">Kanji Collection</h1>
         <p className="mt-2 text-sm text-muted-foreground">Every kanji on your road. Tap one to see its readings, mnemonic and words.</p>
-        <LevelSelector level={level} preview onChange={() => { setFilter(null); setQuery(""); setSelected(null); }} />
+        <LevelSelector level={level} onChange={() => { setFilter(null); setQuery(""); setSelected(null); }} />
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold">
           <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded-sm border border-border bg-card" /> Unseen</span>
           <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded-sm border border-gold/60 bg-gold/20" /> Learning</span>
@@ -331,10 +330,13 @@ function CollectionPage() {
           </div>
         )}
 
+        {level === "N3" && <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
+          N3 dictionary data uses <a className="underline" href="https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project">JMdict</a> and <a className="underline" href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project">KANJIDIC2</a>, copyright Jim Breen and the <a className="underline" href="https://www.edrdg.org/edrdg/licence.html">EDRDG</a>, under <a className="underline" href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Vocabulary is selected and formatted for this study road.
+        </p>}
+
         {selected && (
           <KanjiDialog kanji={selected} progress={getCard(save, selected.c)} returnFocusTo={openerRef.current} onDismiss={dismissDetail} />
         )}
-        <StampShop />
       </main>
     </div>
   );

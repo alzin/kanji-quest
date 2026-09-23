@@ -1,25 +1,28 @@
-import { LEVELS, LEVEL_CHAPTERS, kanjiOfLevel, type JLPTLevel } from "@/data";
+import { LEVELS, LEVEL_CHAPTERS, kanjiOfLevel, previousLevel, type JLPTLevel } from "@/data";
 import { isLevelUnlocked, selectLevel, useSave } from "@/lib/srs";
 
-export function LevelSelector({ level, preview = false, onChange }: { level: JLPTLevel; preview?: boolean; onChange?: () => void }) {
+export function LevelSelector({ level, onChange }: { level: JLPTLevel; onChange?: () => void }) {
   const save = useSave();
-  const n4Unlocked = isLevelUnlocked(save, "N4");
+  const prerequisite = previousLevel(level);
+  const nextLocked = LEVELS.find((option) => !isLevelUnlocked(save, option));
+  const unlockTarget = !isLevelUnlocked(save, level) ? level : nextLocked;
+  const unlockPrerequisite = unlockTarget ? previousLevel(unlockTarget) : undefined;
   return (
     <div className="mt-4">
       <div role="group" aria-label="JLPT level" className="flex gap-1 rounded-xl border border-border bg-surface-sunken p-1">
         {LEVELS.map((option) => {
           const locked = !isLevelUnlocked(save, option);
           return (
-            <button key={option} type="button" aria-pressed={option === level} disabled={locked && !preview}
+            <button key={option} type="button" aria-pressed={option === level}
               onClick={() => { selectLevel(option); onChange?.(); }}
-              className={`min-h-11 flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${option === level ? "bg-card text-primary shadow-e1" : "text-muted-foreground hover:text-foreground"}`}>
-              {option} <span className="ml-1 text-xs font-normal">{kanjiOfLevel(option).length} kanji{locked ? preview ? " · Preview" : " · Locked" : ""}</span>
+              className={`min-h-11 min-w-0 flex-1 rounded-lg px-2 py-2 text-sm font-bold transition-colors ${option === level ? "bg-card text-primary shadow-e1" : "text-muted-foreground hover:text-foreground"}`}>
+              {option} <span className="block text-xs font-normal sm:ml-1 sm:inline">{kanjiOfLevel(option).length} kanji{locked ? " · Preview" : ""}</span>
             </button>
           );
         })}
       </div>
-      {!n4Unlocked && <p className="mt-2 text-xs text-muted-foreground">Earn all {LEVEL_CHAPTERS.N5.length} N5 checkpoint seals to unlock N4 lessons and runs.</p>}
-      {n4Unlocked && level === "N4" && <p className="mt-2 text-xs text-muted-foreground">New N4 words, with due N5 reviews to keep your foundation strong.</p>}
+      {unlockPrerequisite && <p className="mt-2 text-xs text-muted-foreground">Earn all {LEVEL_CHAPTERS[unlockPrerequisite].length} {unlockPrerequisite} checkpoint seals to unlock {unlockTarget} lessons and runs.</p>}
+      {prerequisite && isLevelUnlocked(save, level) && <p className="mt-2 text-xs text-muted-foreground">New {level} words, with due {level === "N3" ? "N5 and N4" : "N5"} reviews to keep your foundation strong.</p>}
     </div>
   );
 }

@@ -34,7 +34,7 @@ function chapterList(value: unknown, field: string): number[] {
 export function parseSaveData(value: unknown): SaveData {
   const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack"]);
   if (raw.curriculumVersion !== CURRICULUM_VERSION) invalid("curriculumVersion");
-  if (raw.selectedLevel !== "N5" && raw.selectedLevel !== "N4") invalid("selectedLevel");
+  if (raw.selectedLevel !== "N5" && raw.selectedLevel !== "N4" && raw.selectedLevel !== "N3") invalid("selectedLevel");
   const unlockedChapters = chapterList(raw.unlockedChapters, "unlockedChapters");
   const clearedChapters = chapterList(raw.clearedChapters, "clearedChapters");
   if (raw.gatesCleared !== clearedChapters.length) invalid("gatesCleared");

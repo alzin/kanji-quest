@@ -7,7 +7,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { TrailEmblem } from "@/components/TrailEmblem";
 import { TrailCompanion } from "@/components/TrailCompanion";
 import { useSave, dueCount, learningLevel, levelMasteryPct, streakCount, isChapterUnlocked, isGateCleared, isLevelUnlocked, selectLevel } from "@/lib/srs";
-import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfLevel } from "@/data";
+import { CHAPTER_NAMES, LEVEL_CHAPTERS, LEVELS, previousLevel, kanjiOfLevel } from "@/data";
 import { explorerRank } from "@/lib/expedition";
 import { localDay, stackOf } from "@/lib/stack-progress";
 
@@ -28,7 +28,9 @@ function Home() {
   const checkpoint = road.find((ch) => isChapterUnlocked(save, ch) && !isGateCleared(save, ch));
   const chapter = checkpoint ?? road[road.length - 1]!;
   const region = CHAPTER_NAMES[chapter]!;
-  const all = kanjiOfLevel(level), mastered = all.filter((k) => save.progress[k.c]?.mastery === 3).length;
+  const collectionLevel = save.selectedLevel;
+  const preview = !isLevelUnlocked(save, collectionLevel);
+  const all = kanjiOfLevel(collectionLevel), mastered = all.filter((k) => save.progress[k.c]?.mastery === 3).length;
   const encountered = all.filter((k) => (save.progress[k.c]?.mastery ?? 0) > 0).length;
   const stack = stackOf(save), today = localDay();
   const quests = [
@@ -76,7 +78,7 @@ function Home() {
         </div>
         <aside className="trail-sidebar">
           <section className="trail-daily"><div className="trail-daily-title"><TrailEmblem /><span>TODAY’S LITTLE QUESTS</span><b>{completed}/3</b></div><p>Good things grow with a little care.</p><div className="trail-quest-list">{quests.map((q) => <Link key={q.title} to={q.to} search={q.mode ? { mode: q.mode } : {}} className={`trail-quest ${q.done ? "done" : ""}`}><span className="quest-check">{q.done ? "✓" : ""}</span><span><strong>{q.title}</strong><small>{q.detail}</small></span><span aria-hidden="true">›</span></Link>)}</div><div className="trail-daily-foot"><TrailEmblem kind="spark" /><span>{completed === 3 ? "A lovely day’s work. See you on the trail." : due ? `${due} ${due === 1 ? "word is" : "words are"} ready to meet you again.` : "A small adventure is enough for today."}</span></div></section>
-          <section className="trail-collection"><div className="trail-collection-title"><h2>Your field notes</h2><div role="group" aria-label="JLPT level">{(["N5", "N4"] as const).map((l) => <button key={l} aria-label={`${l} ${kanjiOfLevel(l).length} kanji${!isLevelUnlocked(save, l) ? " · Locked" : ""}`} aria-pressed={l === level} disabled={!isLevelUnlocked(save, l)} title={!isLevelUnlocked(save, l) ? "Earn the N5 seals to unlock N4" : `Study ${l}`} onClick={() => selectLevel(l)}>{l}{!isLevelUnlocked(save, l) && " · 🔒"}</button>)}</div></div><p><strong>{encountered}</strong> / {all.length} kanji discovered</p><div className="trail-meter"><span style={{ width: `${encountered / all.length * 100}%` }} /></div><div className="trail-field-characters" aria-hidden="true">{all.slice(0, 6).map((k) => <span key={k.c} className={(save.progress[k.c]?.mastery ?? 0) > 0 ? "seen" : ""}>{k.c}</span>)}</div><Link to="/collection">Open your collection <AppIcon name="arrow" /></Link><small data-testid="mastery-summary">{mastered}/{all.length} mastered · {levelMasteryPct(save, level)}% mastery progress</small></section>
+          <section className="trail-collection"><div className="trail-collection-title"><h2>Your field notes</h2><div role="group" aria-label="JLPT level">{LEVELS.map((l) => <button key={l} aria-label={`${l} ${kanjiOfLevel(l).length} kanji${!isLevelUnlocked(save, l) ? " · Preview" : ""}`} aria-pressed={l === collectionLevel} title={!isLevelUnlocked(save, l) ? `Preview ${l}; earn the ${previousLevel(l)} seals to unlock lessons` : `Study ${l}`} onClick={() => selectLevel(l)}>{l}</button>)}</div></div>{preview && <p>Browsing {collectionLevel}. Your daily adventure continues on {level} until you earn the required seals.</p>}<p><strong>{encountered}</strong> / {all.length} kanji discovered</p><div className="trail-meter"><span style={{ width: `${encountered / all.length * 100}%` }} /></div><div className="trail-field-characters" aria-hidden="true">{all.slice(0, 6).map((k) => <span key={k.c} className={(save.progress[k.c]?.mastery ?? 0) > 0 ? "seen" : ""}>{k.c}</span>)}</div><Link to="/collection">Open your collection <AppIcon name="arrow" /></Link><small data-testid="mastery-summary">{mastered}/{all.length} mastered · {levelMasteryPct(save, collectionLevel)}% mastery progress</small></section>
         </aside>
       </div>
       <div className="trail-bottom-note"><TrailEmblem kind="leaf" /><p>No rush. Small steps. A little more Japanese than yesterday.</p><span><span data-testid="stat-runs">{save.runsCompleted}</span> sessions explored</span></div>

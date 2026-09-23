@@ -12,9 +12,9 @@ test("N4 adds complete, unique cards while preserving every N5 identity", () => 
   expect(kanjiOfLevel("N5")).toBe(n5Kanji);
   expect(n5Kanji).toHaveLength(96);
   expect(kanjiOfLevel("N4")).toHaveLength(189);
-  expect(allKanji).toHaveLength(285);
-  expect(kanjiByChar.size).toBe(285);
-  expect(CHAPTER_COUNT).toBe(55);
+  expect(allKanji).toHaveLength(626);
+  expect(kanjiByChar.size).toBe(626);
+  expect(CHAPTER_COUNT).toBe(125);
   for (const ch of LEVEL_CHAPTERS.N4) {
     expect(levelOfChapter(ch)).toBe("N4");
     expect(CHAPTER_NAMES[ch]?.name).toBeTruthy();
@@ -53,7 +53,7 @@ test("legacy saves preserve totals and can never grant N4 seals implicitly", () 
   expect(current.clearedChapters).toEqual([...new Set([7, 12, ...LEVEL_CHAPTERS.N5])].sort((a, b) => a - b));
   expect(current.gatesCleared).toBe(21);
   expect(normalizeSave(current)).toEqual(current);
-  expect(normalizeSave({ selectedLevel: "N3" }).selectedLevel).toBe("N5");
+  expect(normalizeSave({ selectedLevel: "N2" }).selectedLevel).toBe("N5");
 });
 
 test("N4 opens only after every N5 seal, then uses road order and the unrounded threshold", () => {

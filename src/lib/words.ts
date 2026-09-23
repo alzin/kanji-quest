@@ -1,4 +1,5 @@
 import { allKanji, kanjiByChar, REGIONS } from "@/data";
+import { n3Readings } from "@/data/n3/readings";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import { hasKanji, isHiragana, isKanji, isPlausibleReading, phoneticVariants, readingList } from "./kana";
 
@@ -30,6 +31,12 @@ for (const card of allVocab) {
   const set = kanaByWord.get(card.vocab.w) ?? new Set<string>();
   set.add(card.kana);
   kanaByWord.set(card.vocab.w, set);
+}
+// Dictionary-confirmed alternatives must never become wrong-answer lanes.
+for (const [word, readings] of Object.entries(n3Readings)) {
+  const set = kanaByWord.get(word) ?? new Set<string>();
+  readings.forEach((reading) => set.add(reading));
+  kanaByWord.set(word, set);
 }
 
 /**

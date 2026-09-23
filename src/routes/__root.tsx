@@ -88,13 +88,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Kanji Dash turns JLPT N5 and N4 kanji study into a 2D runner game: daily missions, spaced repetition, stroke practice, and checkpoint runs.",
+          "Kanji Dash turns JLPT N5, N4 and N3 kanji study into a 2D runner game: daily missions, spaced repetition, stroke practice, and checkpoint runs.",
       },
       { property: "og:title", content: "Kanji Dash — Master JLPT Kanji by Running" },
       {
         property: "og:description",
         content:
-          "Learn JLPT N5 and N4 kanji through a daily runner game with spaced repetition, vocabulary, and writing practice.",
+          "Learn JLPT N5, N4 and N3 kanji through a daily runner game with spaced repetition, vocabulary, and writing practice.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

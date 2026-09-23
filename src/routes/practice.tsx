@@ -5,7 +5,7 @@ import { StrokePractice } from "@/components/StrokePractice";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { kanjiOfLevel } from "@/data";
 import { LevelSelector } from "@/components/LevelSelector";
-import { useSave, getCard, isChapterUnlocked, learningLevel } from "@/lib/srs";
+import { useSave, getCard, isChapterUnlocked, isLevelUnlocked, learningLevel } from "@/lib/srs";
 
 export const Route = createFileRoute("/practice")({
   head: () => ({
@@ -21,16 +21,19 @@ export const Route = createFileRoute("/practice")({
 
 function PracticePage() {
   const save = useSave();
-  const level = learningLevel(save);
+  const level = save.selectedLevel;
+  const lessonLevel = learningLevel(save);
+  const preview = !isLevelUnlocked(save, level);
   const candidates = useMemo(() => {
     const allKanji = kanjiOfLevel(level);
+    if (preview) return allKanji;
     const seen = allKanji.filter((k) => {
       const p = save.progress[k.c];
       return p && p.mastery > 0 && p.mastery < 3;
     });
     if (seen.length) return seen;
     return allKanji.filter((k) => isChapterUnlocked(save, k.ch)).slice(0, 12);
-  }, [save, level]);
+  }, [save, level, preview]);
 
   const [idx, setIdx] = useState(0);
   const currentIndex = Math.max(0, Math.min(idx, candidates.length - 1));
@@ -50,9 +53,9 @@ function PracticePage() {
         <section aria-label="Guided word learning" className="mt-5 flex flex-col gap-4 rounded-2xl border border-primary/30 bg-card p-5 shadow-e2 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="font-serif text-lg font-bold">Words → writing → recall → run</h2>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Study the exact words in your next run, with writing practice along the way.</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{preview ? `You can freely practice ${level} writing here. Guided lessons and runs currently use ${lessonLevel} until you earn the required seals.` : "Study the exact words in your next run, with writing practice along the way."}</p>
           </div>
-          <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Learn today’s words</Link>
+          <Link to="/run" search={{ gate: undefined }} data-sfx="tap" className="pressable inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">{preview ? `Learn today’s ${lessonLevel} words` : "Learn today’s words"}</Link>
         </section>
 
         <div className="mt-8 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

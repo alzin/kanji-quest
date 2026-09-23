@@ -34,7 +34,7 @@ test("progress validation accepts current saves, copies input, and rejects corru
     { ...save, curriculumVersion: 1 }, { ...save, selectedLevel: "N1" },
     { ...save, coins: -1 }, { ...save, runsCompleted: 1.1 },
     { ...save, coins: Number.MAX_SAFE_INTEGER + 1 },
-    { ...save, unlockedChapters: [56] }, { ...save, clearedChapters: [1, 1], gatesCleared: 2 },
+    { ...save, unlockedChapters: [999] }, { ...save, clearedChapters: [1, 1], gatesCleared: 2 },
     { ...save, clearedChapters: [1], gatesCleared: 0 },
     { ...save, streak: { count: 1, last: "" } },
     { ...save, streak: { count: 1, last: "2026-02-30" } },
@@ -147,6 +147,11 @@ async function exerciseDatabase(pool: Pool) {
   assert.ok(updated.save?.coins === 30 || updated.save?.coins === 40);
   await assert.rejects(progress.save(user.id, emptySave(), 1), (error: unknown) => error instanceof AppError && error.code === "PROGRESS_CONFLICT");
   assert.deepEqual(await progress.get(user.id), updated, "Stale saves cannot overwrite newer progress.");
+  const n3Save: SaveData = { ...emptySave(), selectedLevel: "N3", coins: updated.save!.coins,
+    clearedChapters: [...CHAPTER_IDS], gatesCleared: CHAPTER_IDS.length, unlockedChapters: [56, 125],
+    progress: { "夫": { mastery: 2, ivl: 3, ease: 2.5, due: 1234, correct: 5, wrong: 1 } } };
+  await progress.save(user.id, n3Save, updated.version);
+  assert.deepEqual((await progress.get(user.id)).save, n3Save, "N3 selection, seals and card schedules survive a database round trip.");
   await assert.rejects(repository.save(randomUUID(), emptySave(), 0), "Foreign keys reject progress for missing accounts.");
 
   await pool.query("DELETE FROM users WHERE id = $1", [user.id]);
