@@ -58,11 +58,8 @@ test("toFxRecord remembers the streak's own day so a pre-run Home visit cannot h
   const yesterday = "2026-09-07";
   const before = toFxRecord(save({ streak: { count: 1, last: yesterday } }), TODAY);
   expect(before.lastStreakDay).toBe(yesterday);
-  // Home visited before the run: no ignite ...
   expect(diffFx(before, save({ streak: { count: 1, last: yesterday } }), TODAY).streakDayChanged).toBe(false);
-  // ... run happened: ignite ...
   expect(diffFx(before, save(), TODAY).streakDayChanged).toBe(true);
-  // ... and once remembered it is not repeated.
   const after = toFxRecord(save(), TODAY);
   expect(after.lastStreakDay).toBe(TODAY);
   expect(diffFx(after, save(), TODAY).streakDayChanged).toBe(false);
@@ -102,7 +99,6 @@ test("rememberFx round-trips through tab storage without reading or writing dura
   } finally {
     delete g.window;
   }
-  // Without a window both are silent no-ops.
   expect(readFx()).toEqual(empty);
   expect(() => rememberFx(save(), TODAY)).not.toThrow();
 });

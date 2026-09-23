@@ -1,4 +1,3 @@
-// Kana arithmetic used to build word readings and their confusable variants.
 
 const GOJUON: [string, string][] = [
   ["", "あいうえお"],
@@ -97,7 +96,6 @@ export function readingList(field: string): string[] {
   return [...new Set(field.split(/[,、]/).map(readingStem).filter((r) => r.length > 0 && isHiragana(r)))];
 }
 
-// ---------- Confusable variants ----------
 
 /** Long vowels the kana script writes with a trailing う (こう) or お (おお). */
 function longVowelMate(kana: string): string | null {

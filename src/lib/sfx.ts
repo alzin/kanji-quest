@@ -20,7 +20,6 @@ import { useSyncExternalStore } from "react";
  *    so the module is a silent no-op wherever Web Audio is missing or refuses.
  */
 
-// ---------- Types ----------
 
 export type SoundId =
   | "tap" | "sheet" | "laneChange" | "correct" | "comboMilestone" | "mastered"
@@ -99,7 +98,6 @@ function clamp01(value: number | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
 }
 
-// ---------- Voice recipes ----------
 
 type Filter = NonNullable<Voice["filter"]>;
 
@@ -143,7 +141,6 @@ function bell(freq: number, at: number, peak: number, tailMs = 700): Voice[] {
   ];
 }
 
-// Soft taiko "don".
 function taiko(at: number): Voice[] {
   return [
     sine(at, 150, 0.35, 4, 380, { freqEnd: 55, glideMs: 180 }),
@@ -152,7 +149,6 @@ function taiko(at: number): Voice[] {
   ];
 }
 
-// Low temple bell for the last heart.
 function templeBell(at: number): Voice[] {
   return [
     sine(at, 196, 0.12, 5, 900, { ceremony: true }),
@@ -161,12 +157,10 @@ function templeBell(at: number): Voice[] {
   ];
 }
 
-// Paper "fwip": a bandpassed noise sweep downwards.
 function fwip(at: number, peak = 0.09, from = 2800, to = 700, sweepMs = 130): Voice[] {
   return [noise(at, { type: "bandpass", freq: from, q: 1.2, freqEnd: to }, peak, 15, 135, { glideMs: sweepMs })];
 }
 
-// Hyoshigi clapper "kon".
 function clapper(at: number, peak = 0.22, freqScale = 1): Voice[] {
   return [
     noise(at, { type: "bandpass", freq: 2100 * freqScale, q: 9 }, peak, 1, 54),
@@ -175,7 +169,6 @@ function clapper(at: number, peak = 0.22, freqScale = 1): Voice[] {
   ];
 }
 
-// Shared hanko thump. Always ceremony.
 function stamp(at: number, level: number): Voice[] {
   const l = clamp01(level, 1);
   return [
@@ -185,14 +178,12 @@ function stamp(at: number, level: number): Voice[] {
   ];
 }
 
-// Mon tally ticks. Always ceremony.
 function coins(at: number, earned: number | undefined): Voice[] {
   const tick = (freq: number, offset: number, gain: number): Voice => sine(at + offset, freq, gain, 1, 69, { ceremony: true });
   if (earned === 0) return [tick(2637, 0, 0.03)];
   return [tick(2637, 0, 0.05), tick(3136, 0.07, 0.05), tick(3520, 0.14, 0.05)];
 }
 
-// Rising resolution phrase over a low pad. Always ceremony.
 function arpeggio(at: number): Voice[] {
   return [
     ...pluck(587.33, at, 0.18, 320, 0, true),
@@ -203,7 +194,6 @@ function arpeggio(at: number): Voice[] {
   ];
 }
 
-// ---------- Planner ----------
 
 export function planSound(id: SoundId, opts: SoundOpts = {}): SoundPlan {
   const voices: Voice[] = [];
@@ -343,7 +333,6 @@ export function planSound(id: SoundId, opts: SoundOpts = {}): SoundPlan {
   return hapticPattern === undefined ? { id, voices, minIntervalMs } : { id, voices, haptic: hapticPattern, minIntervalMs };
 }
 
-// ---------- Preference store (own key, never inside the save) ----------
 
 export const SOUND_PREF_KEY = "kanji-dash-sound";
 
@@ -420,7 +409,6 @@ export function setSoundEnabled(on: boolean): void {
   }
 }
 
-// ---------- Renderer ----------
 
 type AudioWindow = { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
 
@@ -748,7 +736,6 @@ export function haptic(pattern: number | number[]): void {
   }
 }
 
-// ---------- Boot: gesture unlockers, [data-sfx] delegate, visibility suspend ----------
 
 const GESTURES = ["pointerup", "touchend", "keydown", "click"] as const;
 const GESTURE_OPTIONS: AddEventListenerOptions = { capture: true, passive: true };

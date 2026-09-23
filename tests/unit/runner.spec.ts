@@ -206,10 +206,8 @@ test("phones fade a finished gate out over the clear time at any frame rate, the
         expect(opacity).toBeCloseTo(Math.max(0, 1 - elapsed / COMPACT_CLEAR_SECONDS), 8);
         previous = opacity;
       }
-      // Gone as soon as the fade completes, and never a frame later than that.
       expect(elapsed).toBeGreaterThanOrEqual(COMPACT_CLEAR_SECONDS - 1e-9);
       expect(elapsed - frameSize).toBeLessThan(COMPACT_CLEAR_SECONDS);
-      // The pending gates stay fully visible and untouched.
       expect(s.gates.filter((g) => g.resolved === -1)).toHaveLength(2);
       for (const pending of s.gates) expect(getGateOpacity(pending, layout)).toBe(1);
     }

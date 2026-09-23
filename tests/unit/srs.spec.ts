@@ -27,7 +27,6 @@ import {
 } from "../../src/lib/srs";
 import { emptyStack } from "../../src/lib/stack-progress";
 
-// These tests exercise the store in one process; none require a browser or server.
 test.describe.configure({ mode: "serial" });
 
 const DAY = 86_400_000;
@@ -107,13 +106,11 @@ test("curriculum has unique cards and complete chapter, reading, and vocabulary 
       expect(vocab.w, where).toContain(k.c);
       expect(vocab.r.trim(), where).toBeTruthy();
       expect(vocab.m.trim(), where).toBeTruthy();
-      // Ruby spans must rebuild both the word and a readable hiragana spelling.
       expect(vocab.f.map((span) => span.t).join(""), where).toBe(vocab.w);
       expect(vocabKana(vocab), where).toMatch(/^[ぁ-ゖ]+$/);
       for (const span of vocab.f) {
         expect(span.t.length, where).toBeGreaterThan(0);
         if (span.r !== undefined) expect(span.r, `${where} span ${span.t}`).toMatch(/^[ぁ-ゖ]+$/);
-        // Only kanji carry a reading; kana spans read as themselves.
         if (!/[一-鿿々]/.test(span.t)) expect(span.r, `${where} span ${span.t}`).toBeUndefined();
       }
     }

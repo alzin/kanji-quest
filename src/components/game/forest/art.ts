@@ -54,7 +54,6 @@ export function makeForestArt(scene: Phaser.Scene) {
             : ["#31543f", "#345943", "#385b43", "#3a5e45", "#3e6247"];
         rect(c, colors[Math.floor(random() * colors.length)]!, x, y, 4, 4);
       }
-    // Scattered leaves, tiny flowers, grass tufts and worn path stones.
     for (let i = 0; i < 10500; i++) {
       const x = Math.floor(random() * 768),
         y = Math.floor(random() * 480),
@@ -82,7 +81,6 @@ export function makeForestArt(scene: Phaser.Scene) {
         rect(c, "#537c50", x, y, 1, 3);
       }
     }
-    // Continuous river and stepped moss banks.
     for (let y = 0; y < 480; y++) {
       const x = Math.round(riverX(y * 2) / 2);
       rect(c, "#203e37", x - 44, y, 88, 1);
@@ -102,14 +100,12 @@ export function makeForestArt(scene: Phaser.Scene) {
         rect(c, "#4c9290", x - 13 + random() * 20, y + 3, 12, 1);
       }
     }
-    // Shrine courtyard, individually weathered paving stones.
     for (let y = 132; y < 173; y += 10)
       for (let x = 506; x < 599; x += 15) {
         rect(c, "#647770", x, y, 14, 9);
         rect(c, "#84938a", x + 1, y, 12, 2);
         if (random() > 0.65) rect(c, "#4d7350", x, y + 6, 4, 3);
       }
-    // Flowers around the shrine clearing.
     for (let i = 0; i < 95; i++) {
       const t = random() * Math.PI * 2,
         radius = 70 + random() * 32;

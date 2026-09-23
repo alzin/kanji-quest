@@ -28,7 +28,6 @@ const cards: { kanji: Kanji; vocab: Vocab }[] = allKanji.flatMap((kanji) =>
   kanji.vocab.map((vocab) => ({ kanji, vocab })),
 );
 
-/** Every reading a surface word takes anywhere, so homographs are not "wrong". */
 const kanaByWord = new Map<string, Set<string>>();
 for (const { vocab } of cards) {
   const set = kanaByWord.get(vocab.w) ?? new Set<string>();
@@ -98,7 +97,6 @@ test("word segments rebuild the word, mark the studied kanji and gloss only hard
     for (const segment of focused) expect(segment.t, where).toContain(kanji.c);
     for (const segment of segments) {
       if (!segment.t.includes(kanji.c)) expect(segment.focus, `${where}: ${segment.t}`).toBeUndefined();
-      // The answer is never printed above the kanji being graded.
       if (segment.focus) expect(segment.furigana, `${where}: ${segment.t}`).toBeUndefined();
     }
 
@@ -135,7 +133,6 @@ test("reading questions offer three distinct spellings with exactly one correct"
 
       for (const choice of question.choices) {
         expect(choice, where).toMatch(HIRAGANA);
-        // A wrong lane must never hold a real reading of the same word.
         if (choice !== question.answer) {
           expect(kanaByWord.get(vocab.w)!.has(choice), `${where}: ${choice} is a real reading`).toBe(false);
           expect(Math.abs(length(choice) - length(kana)), where).toBeLessThanOrEqual(2);
@@ -203,7 +200,6 @@ test("meaning questions offer three distinct meanings with exactly one correct",
       expect(question.choices, where).toHaveLength(3);
       expect(new Set(question.choices).size, where).toBe(3);
       expect(question.choices.filter((c) => c === question.answer), where).toHaveLength(1);
-      // No distractor may be a meaning this very word also carries.
       const own = new Set(cards.filter((c) => c.vocab.w === vocab.w).map((c) => c.vocab.m.toLowerCase()));
       for (const choice of question.choices.filter((c) => c !== question.answer)) {
         expect(own.has(choice.toLowerCase()), `${where}: ${choice}`).toBe(false);

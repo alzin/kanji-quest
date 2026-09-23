@@ -119,7 +119,6 @@ export function getGameLayout(width: number, height: number): GameLayout {
 
 function spawnGate(q: Question, x: number, random: () => number): RunnerGate {
   const order = [0, 1, 2];
-  // Fisher-Yates gives each lane the same chance of containing the answer.
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [order[i], order[j]] = [order[j]!, order[i]!];
@@ -196,7 +195,6 @@ export function resizeRunner(s: RunnerState, beforeWidth: number, beforeHeight: 
   for (const gate of s.gates) gate.x = getDecisionX(after) + (gate.x - getDecisionX(before)) * scale;
 }
 
-/** Finished gates fade out on phones; desktop keeps them until they leave the screen. */
 export function getGateOpacity(gate: RunnerGate, layout: GameLayout): number {
   if (gate.resolved === -1 || !layout.compact) return 1;
   return Math.max(0, Math.min(1, 1 - gate.sinceResolved / COMPACT_CLEAR_SECONDS));

@@ -16,7 +16,6 @@ test("requires every word and both recall checks without grading preparation", a
   await page.clock.fastForward(100_000);
   await expect(page.getByLabel("Kanji runner game")).toHaveCount(0);
 
-  // The visible word counts as viewed, and writing practice stays open.
   const list = page.getByRole("region", { name: "Words in this run" });
   await expect(list.getByRole("status")).toHaveText("1 / 5 words viewed");
   await list.getByRole("button").last().click();
@@ -43,7 +42,6 @@ test("requires every word and both recall checks without grading preparation", a
   await expect(page.getByRole("button", { name: "Try this word again" })).toHaveCount(0);
   await expect(recall.getByRole("button", { name: answers[0]!.reading, exact: true })).toBeEnabled();
 
-  // A correct retry advances automatically, and leaving cancels the pending advance.
   await recall.getByRole("button", { name: answers[0]!.reading, exact: true }).click();
   await expect(recall.getByRole("status")).toContainText("Correct.");
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
@@ -61,7 +59,6 @@ test("requires every word and both recall checks without grading preparation", a
   await expect(page.getByRole("heading", { name: "Run complete!", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Run again", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ready for your checkpoint" })).toBeVisible();
-  // The region's five words are scheduled; its short checkpoint is available on the map.
 });
 
 test("reload and checkpoint links always enter preparation", async ({ page }) => {

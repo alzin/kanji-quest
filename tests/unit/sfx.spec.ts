@@ -322,7 +322,6 @@ test.describe("preference and engine in Node", () => {
       expect(log.some((v) => v.type === "sine" && v.freq === 95 && Math.abs(v.at - STAMP_LAND_SECONDS) < 1e-9)).toBe(true);
       expect(log.every((v) => v.at >= 0)).toBe(true);
 
-      // Muting suspends nothing loudly and play() becomes a no-op again.
       const before = log.length;
       setSoundEnabled(false);
       play("tap");

@@ -32,7 +32,6 @@ test("keeps thumb navigation available and every screen clear at 320px", async (
     expect(target!.height).toBeGreaterThanOrEqual(44);
     await expectNoHorizontalOverflow(page);
 
-    // The final card or tile row must be reachable above the fixed tab bar.
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect.poll(async () => page.getByRole("main").evaluate((main) => {
       const navigation = document.querySelector('nav[aria-label="Main navigation"]')!;
@@ -91,7 +90,6 @@ test("searches kanji and keeps detail dismissal and focus accessible on mobile",
   await expect(close).toBeFocused();
   await expect(close).toBeInViewport();
   await expectNoHorizontalOverflow(page);
-  // A short mobile viewport must still allow reading the full detail body.
   const details = dialog.getByRole("region", { name: "Readings, mnemonic, and vocabulary" });
   await details.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await expect(details.getByRole("listitem").last()).toBeInViewport({ ratio: 1 });

@@ -144,7 +144,6 @@ function CollectionPage() {
     setRail({ start: el.scrollLeft > 4, end: remaining > 4 });
   }, []);
 
-  // Re-measure when the rail resizes and when the level swaps its chips out.
   useEffect(() => {
     const el = railRef.current;
     if (!el) return;

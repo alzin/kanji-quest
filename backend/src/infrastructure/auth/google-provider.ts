@@ -22,7 +22,6 @@ export class GoogleOAuthProvider implements GoogleProvider {
     try {
       const { tokens } = await this.client.getToken({ code, codeVerifier: verifier });
       if (!tokens.id_token) throw new Error('Missing ID token');
-      // Google library checks signature, issuer, audience, and expiration.
       const ticket = await this.client.verifyIdToken({ idToken: tokens.id_token, audience: this.clientId });
       const payload = ticket.getPayload();
       const claims = payload as unknown as Record<string, unknown> | undefined;

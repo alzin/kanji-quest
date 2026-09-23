@@ -64,7 +64,6 @@ export function WordAudio({ reading, wordKey, paused = false, variant = "inline"
     : "Automatically reads each word in Japanese. Use Voice to mute.";
 
   if (variant === "hud") {
-    // Same shape as the pause and mute circles so the run has one control language.
     const hud = "flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-paper shadow backdrop-blur active:scale-90 disabled:opacity-40";
     return <div className={`inline-flex items-center gap-1.5 ${className}`}>
       <button type="button" onClick={() => setVoiceEnabled(!enabled)}
