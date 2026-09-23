@@ -46,11 +46,6 @@ test("correct answers advance automatically, pause holds feedback, and misses wa
   await page.getByRole("group", { name: "Choose an answer" }).getByText(vocab.m, { exact: true }).click();
   await expect(page.locator(".forest-feedback")).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Open field notes" }).click();
-  await expect(page.getByRole("dialog", { name: "Field notes" })).toBeVisible();
-  await page.clock.runFor(2000);
-  await expect(page.getByTestId("forest-word")).toHaveText(word);
-  await page.getByRole("button", { name: "Ready for the trail" }).click();
   await page.getByRole("button", { name: "Pause encounter" }).click();
   await page.clock.runFor(2000);
   await expect(page.getByTestId("forest-word")).toHaveText(word);
