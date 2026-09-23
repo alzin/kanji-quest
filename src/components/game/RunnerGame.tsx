@@ -44,19 +44,16 @@ const RIDGES: ReadonlyArray<readonly [number, string, number, number]> = [
   [0.3, "#96aa92", 0.58, 0.12],
 ];
 const STAMP_ROTATION = -8 * (Math.PI / 180);
-/** Complete CSS font strings for the effects module (it caches them per size). */
 const FONTS: DrawFonts = {
   serif: (px) => `800 ${px}px "Shippori Mincho B1", serif`,
   sans: (px) => `700 ${px}px "Zen Kaku Gothic New", sans-serif`,
 };
 
-/** The word as the echo pill shows it: kanji + kana, plus the meaning on meaning questions. */
 function echoText(q: Question): string {
   const kana = vocabKana(q.vocab);
   return q.type === "meaning" ? `${q.prompt} ${kana} · ${q.vocab.m}` : `${q.prompt} ${kana}`;
 }
 
-/** HUD combo colour tiers: ×1-2 indigo, ×3-4 gold, ×5+ vermillion. */
 function comboClass(combo: number): string {
   // Gold is too faint for 16 px text on the paper card, so the ×3-4 tier uses a darker amber.
   return combo >= 5 ? "text-primary" : combo >= 3 ? "text-[#8a6a14]" : "text-accent";
@@ -91,7 +88,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     updatePaused(!pausedRef.current);
   };
 
-  // external pause (lesson flash)
   useEffect(() => {
     (window as any).__kanjiDashPause = (p: boolean) => {
       lessonPausedRef.current = p;
@@ -210,7 +206,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
     const laneY = (lane: number, layout: GameLayout) =>
       layout.laneTop + layout.laneSpan * ((lane + 0.5) / LANES);
 
-    // Echo pill above the runner: measured once at spawn, centre clamped to the canvas, kept off the question panel.
     const spawnWordEcho = (q: Question, score: string, color: "moss" | "vermillion", lifeSeconds: number) => {
       const W = canvas.width / pixelRatio;
       const H = canvas.height / pixelRatio;
@@ -226,13 +221,11 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       spawnEcho(fx, { text: m.text, score: m.score, width: m.width, fontPx: m.fontPx, x, y, color, lifeSeconds });
     };
     lessonResumeRef.current = () => {
-      // "Keep running": re-expose the missed word in vermillion and lean into the next gate.
       if (lastMiss) spawnWordEcho(lastMiss, "", "vermillion", 1.2);
       lastMiss = null;
       noteResume(fx);
     };
 
-    // 「 」 lock-in brackets: two 14 px L strokes, `inset` px outside the sign rectangle.
     const drawBrackets = (x0: number, y0: number, x1: number, y1: number, inset: number) => {
       ctx.strokeStyle = VERMILLION;
       ctx.lineWidth = 3;
@@ -246,7 +239,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.stroke();
     };
 
-    // Vermillion 印 stamp: circle, paper inner ring and the kanji, rotated -8° and scaled about (cx, cy).
     const drawStamp = (cx: number, cy: number, r: number, scale: number, alpha: number) => {
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -275,7 +267,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.restore();
     };
 
-    // Brush × over the chosen sign: each stroke is revealed with a line dash over 60 ms of gate.sinceResolved.
     const drawCross = (cx: number, cy: number, half: number, since: number, instant: boolean) => {
       const length = half * 2 * Math.SQRT2;
       const p1 = instant ? 1 : Math.min(1, since / 0.06);
@@ -310,7 +301,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.lineCap = "butt";
     };
 
-    // Gold outline (4 -> 1.5 px, alpha .9 -> 0) and a small ○ at the left edge of the sign that was right.
     const drawCorrectOutline = (x0: number, y0: number, w: number, h: number, since: number, window: number, instant: boolean) => {
       const u = instant ? 0 : Math.min(1, since / window);
       const alpha = 0.9 * (1 - u);
@@ -378,7 +368,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       }
       if (s.done) finish();
 
-      // ---------- render ----------
       // sky (washi paper wash), cached per size and overdrawn 8 px so the shake never shows the canvas edge
       if (!skyGradient || skyWidth !== W || skyHeight !== H) {
         skyGradient = ctx.createLinearGradient(0, 0, 0, H);
@@ -405,7 +394,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      // parallax ridges
       const period = layout.compact ? 210 : 400;
       const drawHills = (speed: number, color: string, base: number, amp: number) => {
         ctx.fillStyle = color;
@@ -425,7 +413,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       for (const [speed, color, base, amp] of RIDGES) {
         drawHills(speed, color, H * base, Math.min(H * amp, period * 0.42));
       }
-      // speed lines, milestone sun rays and the desktop milestone seal live in the sky band
       drawEffectsScenery(ctx, fx, { W, H, compact: layout.compact, sunX, sunY, sunR, fonts: FONTS });
 
       // ground (overdrawn 8 px for the shake): a grass verge, then the road. Light comes
@@ -484,7 +471,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         ctx.fill();
       }
 
-      // lanes
       for (let l = 0; l < LANES; l++) {
         const y = laneY(l, layout);
         ctx.strokeStyle = "rgba(60,50,30,0.25)";
@@ -499,7 +485,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       // lane tap flash band and the word echo pill (behind the signs, so an incoming sign occludes them)
       drawEffectsUnderGates(ctx, fx, layout, W, FONTS);
 
-      // gates
       const activeGate = s.gates
         .filter((g) => g.resolved === -1)
         .reduce<Gate | null>((nearest, g) => (!nearest || g.x < nearest.x ? g : nearest), null);
@@ -511,7 +496,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       const wordFont = (size: number) => `800 ${size}px "Shippori Mincho B1", serif`;
       const rubyFont = (size: number) => `700 ${size}px "Zen Kaku Gothic New", sans-serif`;
 
-      // A span is as wide as its kanji or its furigana, whichever needs more room.
       const measureWord = (segments: PromptSegment[], wordSize: number, rubySize: number) => {
         const widths = segments.map((segment) => {
           ctx.font = wordFont(wordSize);
@@ -538,7 +522,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           Math.min(layout.compact ? 40 : 54, height - pad * 2 - rubySize - rubyGap - helperFontSize - 4),
         );
 
-        // Long words shrink rather than spill past the panel.
         const maxWidth = width - 16;
         let measured = measureWord(g.q.segments, wordSize, rubySize);
         while (measured.total > maxWidth && wordSize > 12) {
@@ -581,7 +564,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       };
 
       ctx.textAlign = "center";
-      // Lock-in: the brackets follow the runner's lane while the next gate is within 0.6 s of the decision line.
       const decisionX = getDecisionX(layout);
       const tLeft = activeGate ? (activeGate.x - decisionX) / getGateSpeed(W, layout) : Infinity;
       const bracketLane = Math.round(s.lane);
@@ -591,7 +573,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         const panelW = Math.min(226, W - 24);
         drawQuestion(activeGate, W / 2, layout.questionTop, panelW, layout.questionHeight);
         if (tLeft <= 1.5) {
-          // decision timer: a gold bar shrinking under the panel tells WHEN; the brackets tell WHICH
           ctx.fillStyle = GOLD;
           ctx.fillRect(W / 2 - panelW / 2, layout.questionTop + layout.questionHeight + 1, panelW * getDecisionTimerBar(fx, tLeft), 3);
           ctx.strokeStyle = INK;
@@ -615,7 +596,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       }
 
       for (const g of s.gates) {
-        // On compact screens, reveal one moving decision at a time.
         if (layout.compact && g.resolved === -1 && g !== activeGate) continue;
         const bx = g.x;
         if (!layout.compact) {
@@ -626,7 +606,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         const stamp = g.resolved === 1 ? getStampFor(fx, g) : null;
         const wrongMark = g.resolved === 0 ? getWrongMark(fx, g) : null;
         const locking = bracket !== null && g === activeGate;
-        // lane signposts (a finished gate fades away on phones)
         ctx.globalAlpha = gateAlpha;
         for (let l = 0; l < LANES; l++) {
           const choice = g.laneChoices[l];
@@ -636,7 +615,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           const isWrong = g.resolved === 0 && l === g.correctLane;
           const x0 = bx - layout.signWidth / 2;
           const y0 = y - layout.signHeight / 2;
-          // The locking sign grows 5%; the stamped sign squashes under the slam. Both scale about the centre.
           let sx = 1;
           let sy = 1;
           if (locking && bracket && l === bracketLane) {
@@ -655,7 +633,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           }
           const pending = g.resolved === -1;
           const settled = isCorrect || isWrong;
-          // Cast shadow first: the signs hang above the road, so they have to lift off it.
           const signAlpha = ctx.globalAlpha;
           ctx.globalAlpha = signAlpha * (pending ? 0.2 : 0.12);
           ctx.fillStyle = INK;
@@ -668,7 +645,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           roundRect(ctx, x0, y0, layout.signWidth, layout.signHeight, 8);
           ctx.fill();
           ctx.stroke();
-          // Light from the sky: highlight along the top inner edge, shade along the bottom.
           ctx.lineWidth = 1.5;
           ctx.strokeStyle = pending ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)";
           ctx.beginPath();
@@ -710,7 +686,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         ctx.globalAlpha = 1;
       }
 
-      // player: the ink runner
       const px = layout.playerX;
       const py = laneY(s.lane, layout);
       const run = Math.sin(s.dist * 0.05);
@@ -769,10 +744,8 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.ellipse(px + 1, py + 26, 15, 3.5, 0, 0, TAU);
       ctx.fill();
       ctx.globalAlpha = 1;
-      // far arm, then far leg
       limb(shoulderX, shoulderY, stride * 0.95 + 0.5, 9, 8, 0.45, 4.5, INK_FAR);
       limb(hipX, hipY, -stride - 0.22, 12, 12, 0.4, 5.5, INK_FAR);
-      // haori tail, flicking out behind the shoulders
       ctx.fillStyle = INK;
       ctx.beginPath();
       ctx.moveTo(hipX - 2, shoulderY + 5);
@@ -781,7 +754,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.quadraticCurveTo(hipX - 5, hipY - 4, hipX - 3, hipY - 7);
       ctx.closePath();
       ctx.fill();
-      // torso, leaning into the run
       ctx.beginPath();
       ctx.moveTo(shoulderX - 6, shoulderY - 1);
       ctx.quadraticCurveTo(shoulderX + 7, shoulderY + 1, shoulderX + 5, shoulderY + 9);
@@ -790,7 +762,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.quadraticCurveTo(hipX - 6, shoulderY + 10, shoulderX - 6, shoulderY - 1);
       ctx.closePath();
       ctx.fill();
-      // obi sash: the one spot of colour on the body
       ctx.strokeStyle = VERMILLION;
       ctx.lineWidth = 4;
       ctx.lineCap = "butt";
@@ -798,10 +769,8 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.moveTo(hipX - 5, hipY - 7);
       ctx.lineTo(hipX + 6, hipY - 9);
       ctx.stroke();
-      // near leg, then near arm
       limb(hipX, hipY, stride + 0.22, 12, 12, 0.4, 6, INK);
       limb(shoulderX, shoulderY, -stride * 0.95 - 0.5, 9, 8, 0.45, 5, INK, 3);
-      // head, with the hair gathered at the back
       ctx.fillStyle = INK;
       ctx.beginPath();
       ctx.arc(headX, headY, 7, 0, TAU);
@@ -831,13 +800,10 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
       ctx.lineJoin = "miter";
       ctx.restore();
 
-      // damage: a short wash then an edge vignette; last heart: a breathing edge
       drawDamageVignette(ctx, fx, W, H, s.flash);
       if (s.hearts <= 1) drawLastHeartVignette(ctx, fx, W, H);
-      // footfall dust and ink/gold particles
       drawEffectsFront(ctx, fx, W, H);
 
-      // pause overlay (fades in over 150 ms; hiding is instant)
       if (pausedRef.current && !s.done) {
         const fade = getPauseFade(fx);
         const pauseTitle = getPauseTitle(fx);
@@ -887,8 +853,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
   return (
     <div className="relative h-full w-full">
       <canvas ref={canvasRef} className="h-full w-full touch-none" aria-label="Kanji runner game" />
-      {/* HUD: run identity and hearts on the left, the two counters on the right. Both
-          cards hug their content so a phone does not get a near-empty white slab. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2 sm:p-4">
         <div className="min-w-0 rounded-lg border border-border bg-card/90 px-2.5 py-1.5 shadow-e1 backdrop-blur sm:px-3 sm:py-2">
           <div className="truncate text-[11px] font-bold uppercase leading-tight tracking-widest text-muted-foreground">
@@ -898,7 +862,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-lg leading-none sm:gap-2">
             {Array.from({ length: RUNNER_HEARTS }).map((_, i) => (
-              // heart-out plays once when a heart flips to the border colour; heart-last breathes on the final heart
               <span key={i} className={i < hud.hearts ? (hud.hearts === 1 ? "text-primary heart-last" : "text-primary") : "text-border heart-out"}>♥</span>
             ))}
           </div>
@@ -918,8 +881,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
           </div>
         </div>
       </div>
-      {/* One control row along the bottom: pause, the how-to-play hint, then the three
-          sound controls. Nothing floats over the lanes any more. */}
       <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-2 p-2 sm:gap-3 sm:p-4">
         <button
           type="button"
@@ -946,7 +907,6 @@ export function RunnerGame({ questions, onAnswer, onFinish, title }: Props) {
         <SoundToggle variant="hud" className="shrink-0" />
         <MusicToggle compact />
       </div>
-      {/* one live region for answers and milestones (updated once per answer) */}
       <div role="status" className="sr-only">{announcement}</div>
     </div>
   );

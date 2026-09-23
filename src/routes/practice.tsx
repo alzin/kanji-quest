@@ -22,7 +22,6 @@ export const Route = createFileRoute("/practice")({
 function PracticePage() {
   const save = useSave();
   const level = learningLevel(save);
-  // Practice the current road's seen cards, then its earliest unlocked cards.
   const candidates = useMemo(() => {
     const allKanji = kanjiOfLevel(level);
     const seen = allKanji.filter((k) => {

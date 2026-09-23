@@ -1,4 +1,3 @@
-/** Small UI emblems stay vector-sharp; the world uses the original painted environment. */
 export function TrailEmblem({ kind = "lantern", className = "" }: { kind?: "lantern" | "leaf" | "spark" | "gate"; className?: string }) {
   return <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     {kind === "lantern" && <><path d="M19 9V6h10v3M14 12h20M14 36h20M24 39v5" /><path d="M16 13c-8 8-8 14 0 22h16c8-8 8-14 0-22Z" fill="currentColor" fillOpacity=".1" /><path d="M21 14c-3 8-3 13 0 20m6-20c3 8 3 13 0 20M12 23h24" /></>}

@@ -2,7 +2,6 @@ import { allKanji, kanjiByChar, REGIONS } from "@/data";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import { hasKanji, isHiragana, isKanji, isPlausibleReading, phoneticVariants, readingList } from "./kana";
 
-/** One drawable span of the word shown on a gate. */
 export type PromptSegment = {
   t: string;
   furigana?: string; // shown above the span when its kanji is not yet due to be known
@@ -11,7 +10,6 @@ export type PromptSegment = {
 
 export type WordCard = { kanji: Kanji; vocab: Vocab; kana: string };
 
-/** The reading a word actually has, assembled from its ruby spans. */
 export function vocabKana(vocab: Vocab): string {
   return vocab.f.map((s) => (s.r && s.r.length > 0 ? s.r : s.t)).join("");
 }
@@ -20,7 +18,6 @@ export function vocabSurface(vocab: Vocab): string {
   return vocab.f.map((s) => s.t).join("");
 }
 
-// ---------- Indexes ----------
 
 const allVocab: WordCard[] = allKanji.flatMap((kanji) =>
   kanji.vocab.map((vocab) => ({ kanji, vocab, kana: vocabKana(vocab) })),
@@ -88,7 +85,6 @@ const ALSO_CORRECT: Record<string, string[]> = {
   "夕飯": ["ゆうめし"],
 };
 
-/** Every spelling that must never appear in a wrong lane for this word. */
 export function correctReadings(word: string): Set<string> {
   // With no surrounding kana or context, a bare kanji's other listed readings
   // must not become a supposedly wrong lane (門: もん / かど, 音: おと / ね).
@@ -120,7 +116,6 @@ export function readingsOf(character: string): string[] {
   return readingsByKanji.get(character) ?? [];
 }
 
-// ---------- Display ----------
 
 const chapterOrder = new Map(REGIONS.map((region, index) => [region.id, index]));
 
@@ -146,7 +141,6 @@ export function wordSegments(vocab: Vocab, focus: Kanji): PromptSegment[] {
   });
 }
 
-// ---------- Distractors ----------
 
 function shuffle<T>(items: T[], random: () => number): T[] {
   const out = [...items];
@@ -233,7 +227,6 @@ function editDistance(a: string, b: string): number {
   return previous[right.length]!;
 }
 
-/** Three choices — the real reading plus the two most confusable wrong ones. */
 export function readingChoices(card: WordCard, random: () => number = Math.random, count = 2): string[] {
   const correctLength = lengthOf(card.kana);
   const forbidden = correctReadings(card.vocab.w);

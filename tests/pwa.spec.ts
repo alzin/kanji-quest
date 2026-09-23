@@ -117,7 +117,6 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await page.goto(`${origin}/camp`, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("stat-runs")).toHaveText("4");
     expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!))).toEqual(savedProgress);
-    // N4 assets must also be available when the only online visit was N5 home.
     await page.evaluate((save) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({
       ...save, selectedLevel: "N4", gatesCleared: 6, clearedChapters: [1, 2, 3, 4, 5, 6],
     })), savedProgress);
@@ -130,7 +129,6 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await completePreparation(page, { advanceClock: true, pauseClock: true });
     await expect(page.getByLabel("Kanji runner game")).toBeVisible();
     await expect(page.locator(".dash-subtitle")).toContainText("Me & My Neighborhood — Checkpoint");
-    // The new daily mode also boots entirely from the precached application.
     await page.clock.resume();
     await page.goto(`${origin}/run?mode=stack`, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Meet your new words" })).toBeVisible();
@@ -142,7 +140,6 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await expect(page.locator(".river-canvas canvas[data-ready]")).toBeVisible();
     await page.getByRole("button", { name: "Pause game", exact: true }).click();
     await expect(page.getByRole("heading", { name: "A quiet pause" })).toBeVisible();
-    // The Phaser engine, procedural art, and field notes all boot from the offline cache.
     const trailResponse = await page.goto(`${origin}/run?mode=expedition`, { waitUntil: "domcontentloaded" });
     expect(trailResponse?.fromServiceWorker()).toBe(true);
     await expect(page.getByRole("heading", { name: "Find the sleeping lantern" })).toBeVisible();
@@ -176,7 +173,6 @@ test("shows platform installation help and handles the Android prompt", async ({
     });
     await page.getByRole("button", { name: "Install app", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("You can install later using your browser's menu.");
-    // The one-use prompt is consumed, but the button still offers manual help.
     await page.getByRole("button", { name: "Install app", exact: true }).click();
     await expect(page.getByText(/Open your browser's menu and choose Install app/)).toBeVisible();
     await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));

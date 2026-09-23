@@ -8,7 +8,6 @@ function givenName(name: string, email: string) {
   return trimmed ? trimmed.split(/\s+/)[0]! : email.split("@")[0]!;
 }
 
-/** Identity only: a name when all is well, an action when saving actually needs one. */
 export function AccountStatus() {
   const account = useAccount();
   // A guest has nothing pending in the cloud, so an unreachable backend is not their alarm.

@@ -7,7 +7,6 @@ import {
 import { useSyncExternalStore } from "react";
 import { COSMETICS, copyStack, dayGap, emptyStack, ensureStackDay, normalizeStack, stackOf, type StackProgress } from "./stack-progress";
 
-// ---------- Types ----------
 
 export type Mastery = 0 | 1 | 2 | 3; // unseen, learning, reviewing, mastered
 
@@ -139,7 +138,6 @@ export function normalizeSave(value: unknown): SaveData {
   return normalized;
 }
 
-// ---------- Store ----------
 
 let state: SaveData = emptySave();
 let hydrated = false;
@@ -270,7 +268,6 @@ function mutate(fn: (s: SaveData) => void) {
   emit();
 }
 
-// ---------- Progress helpers ----------
 
 export function getCard(s: SaveData, c: string): CardProgress {
   return (
@@ -377,7 +374,6 @@ export function streakCount(s: SaveData, now = Date.now()): number {
   return 0;
 }
 
-// ---------- Question building ----------
 
 export type QuestionType = "reading" | "meaning";
 
@@ -433,7 +429,6 @@ export function buildQuestion(
   return { ...base, sub: "What does this word mean?", choices, answer: vocab.m };
 }
 
-// ---------- Run queue ----------
 
 export const NEW_PER_RUN = 5;
 export const MAX_REVIEWS = 5;
@@ -539,7 +534,6 @@ export function buyCosmetic(id: string): boolean {
   return true;
 }
 
-// ---------- Grading ----------
 
 export function grade(c: string, correct: boolean, now = Date.now(), placement?: { rt: number; fallTime: number; hinted: boolean }) {
   if (!kanjiByChar.has(c)) return;

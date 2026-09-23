@@ -53,7 +53,6 @@ function run(state: EffectsState, seconds: number, paused = false, frame = 1 / 6
   return alive;
 }
 
-/** JSON view of the state with typed arrays expanded and gates reduced to their prompt. */
 function snapshot(state: EffectsState) {
   return JSON.stringify(state, (_, value) => {
     if (value instanceof Float32Array) return Array.from(value);
@@ -155,7 +154,6 @@ test("pools stay bounded after a hundred spawns and never throw", () => {
     advanceEffects(state, 1 / 60, false);
     expect(state.particleCount).toBeLessThanOrEqual(MAX_PARTICLES);
   }
-  // Five answers inside one frame (a long fast-forward) also stay inside the pool.
   for (let i = 0; i < 5; i++) spawnCorrect(state, { x: 60, y: 300, gate: g0!, combo: 10 + i });
   expect(state.particleCount).toBeLessThanOrEqual(MAX_PARTICLES);
   expect(() => drawEverything(state)).not.toThrow();
@@ -180,7 +178,6 @@ test("a frame longer than the clamp is the same step as a 0.1 s frame", () => {
   expect(alive1).toBe(alive2);
   expect(snapshot(long)).toBe(snapshot(short));
   expect(long.clock).toBeCloseTo(MAX_STEP_SECONDS, 12);
-  // Non-finite and negative frames are ignored entirely.
   const before = snapshot(long);
   for (const dt of [-1, Number.NaN, Number.POSITIVE_INFINITY]) advanceEffects(long, dt, false);
   expect(snapshot(long)).toBe(before);
@@ -255,7 +252,6 @@ test("reduced motion removes motion but keeps the informational elements", () =>
   expect(state.dust.every((d) => d.t >= 0.28)).toBe(true);
   for (let i = 0; i < MAX_SPEED_LINES; i++) expect(state.speedLines[i * 4 + 3]).toBe(0);
 
-  // Flipping the flag mid-flight stops motion that is already running.
   const moving = fx(false);
   spawnWrong(moving, { x: 60, y: 300, gate: g1!, chosenLane: 2 });
   spawnCorrect(moving, { x: 60, y: 300, gate: g0!, combo: 1 });
@@ -304,7 +300,6 @@ test("stamps slam in, squash the sign, fade out at 0.7 s and are keyed by gate i
   expect(squashed).toBe(true);
   expect(previous.alpha).toBeLessThan(0.2);
 
-  // Four slots: the fifth stamp recycles the oldest.
   const many = fx();
   const five = gates(5);
   five.forEach((gate, i) => {
@@ -366,7 +361,6 @@ test("the lane flash fades strictly to nothing within 0.2 s", () => {
     flash = next;
   }
   expect(elapsed).toBeLessThanOrEqual(LANE_FLASH_SECONDS + 1e-9);
-  // A newer tap restarts the flash on the new lane.
   spawnLaneChange(state, { dir: 1, lane: 0 });
   advanceEffects(state, 0.1, false);
   spawnLaneChange(state, { dir: 1, lane: 1 });
@@ -446,14 +440,12 @@ test("the runner pose composes locomotion, lean, hop, stumble and the resume lea
   const state = fx();
   const [gate] = gates(1);
   expect(getRunnerPose(state, 0, 0)).toEqual({ sx: 1, sy: 1, dy: 0, rot: 0 });
-  // Locomotion: bob and foot-plant squash from the stride phase alone.
   const plant = getRunnerPose(state, 0.05, 0);
   expect(plant.sx).toBeGreaterThan(1);
   expect(plant.sy).toBeLessThan(1);
   const apex = getRunnerPose(state, 1, 0);
   expect(apex.dy).toBe(-3);
   expect(apex.sy).toBeGreaterThan(1);
-  // Lane lean clamps at ±0.24 rad.
   expect(getRunnerPose(state, 0, 0.5).rot).toBeCloseTo(0.15, 9);
   expect(getRunnerPose(state, 0, 2).rot).toBe(0.24);
   expect(getRunnerPose(state, 0, -2).rot).toBe(-0.24);

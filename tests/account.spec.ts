@@ -90,7 +90,6 @@ test("guests can use the app, retain only tab progress, and never rewrite legacy
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: legacyKey, value: save(777, 77) });
   await page.goto("camp");
   await expect(saveButton(page)).toBeEnabled();
-  // Nothing is at stake yet, so nothing interrupts a new player.
   await expect(saveDialog(page)).toHaveCount(0);
   await expect(page.getByLabel("0 mon coins", { exact: true })).toBeVisible();
   await selectN4(page);
@@ -112,7 +111,6 @@ test("Google sign-in transfers guest progress, saves with CSRF, and sign-out iso
   await seedGuest(page, save(55, 3));
   await page.goto("camp");
   await expect(page.getByLabel("55 mon coins", { exact: true })).toBeVisible();
-  // The header keeps one quiet way in; the offer itself follows a finished run.
   await saveButton(page).click();
   await expect(saveDialog(page).getByRole("heading", { name: "Keep your progress" })).toBeVisible();
   await saveDialog(page).getByRole("button", { name: "Continue with Google" }).click();
@@ -121,7 +119,6 @@ test("Google sign-in transfers guest progress, saves with CSRF, and sign-out iso
   expect(api.readHeaders).toEqual(["csrf-user-a"]);
   expect(api.writes[0]).toMatchObject({ expectedVersion: 0, csrf: "csrf-user-a", save: { coins: 55, runsCompleted: 3 } });
   expect(await page.evaluate((key) => sessionStorage.getItem(key), guestKey)).toBeNull();
-  // Identity only: a name, no email and no account chrome.
   await expect(saveDialog(page)).toHaveCount(0);
   await expect(page.getByText("Signed in as Aki", { exact: true })).toBeVisible();
   await expect(page.getByText("aki@gmail.com")).toHaveCount(0);
@@ -171,7 +168,6 @@ test("offline edits retain their original version across reload and retry safely
   await expect(status(page, "Progress saved to your account.")).toBeVisible();
   api.failWrites = true;
   await selectN4(page);
-  // The header flags the problem; the fix lives in the dialog it opens.
   await page.getByRole("button", { name: "Not saved" }).click();
   await expect(saveDialog(page).getByRole("button", { name: "Retry cloud connection" })).toBeVisible();
   await page.keyboard.press("Escape");
@@ -205,7 +201,6 @@ test("session expiry retains the old account cache without handing it to another
   await expect(status(page, "Progress saved to your account.")).toBeVisible();
   api.expireNext = true;
   await selectN4(page);
-  // A lost session is exactly when the sign-in offer should come back, and it says why.
   await expect(saveDialog(page).getByText("Your session ended. Sign in again to recover this account’s pending progress.")).toBeVisible();
   await expect(saveDialog(page).getByRole("button", { name: "Continue with Google" })).toBeVisible();
   await page.keyboard.press("Escape");

@@ -31,7 +31,6 @@ function chapterList(value: unknown, field: string): number[] {
   return [...value].sort((a: number, b: number) => a - b) as number[];
 }
 
-/** Reject malformed writes rather than silently dropping account progress. */
 export function parseSaveData(value: unknown): SaveData {
   const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack"]);
   if (raw.curriculumVersion !== CURRICULUM_VERSION) invalid("curriculumVersion");

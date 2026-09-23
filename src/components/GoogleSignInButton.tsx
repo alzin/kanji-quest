@@ -1,6 +1,5 @@
 import { beginGoogleSignIn } from "@/lib/account";
 
-/** Google's own button: their mark, their palette, their wording — unmodified. */
 export function GoogleSignInButton({ disabled }: { disabled?: boolean }) {
   return (
     <button type="button" className="google-signin" disabled={disabled} onClick={beginGoogleSignIn} data-sfx="tap">

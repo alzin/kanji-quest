@@ -60,7 +60,6 @@ class RiverStackScene extends Phaser.Scene {
     g.clear();
     g.fillGradientStyle(0x163f3d, 0x163f3d, 0x102b31, 0x102b31, 1);
     g.fillRect(0, 0, width, height);
-    // Soft lanes in running water, rather than an empty spreadsheet grid.
     for (let c = 0; c < s.cols; c++) {
       g.fillStyle(c % 2 ? 0x96c4ab : 0x142e2c, 0.045).fillRect(
         c * cw,
