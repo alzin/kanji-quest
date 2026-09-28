@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "test:pwa": "npm run build && playwright test",
     "test:pages": "npm run build:pages && playwright test --config playwright.pages.config.ts",
-    "test:forest": "npm run build && playwright test --config playwright.forest.config.ts"
+    "test:forest": "npm run build && playwright test --config playwright.forest.config.ts",
+    "test:firefly": "playwright test --config playwright.firefly.config.ts firefly.spec.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",

@@ -27,7 +27,8 @@ export type SoundId =
   | "runComplete" | "runEnded" | "checkpointPassed" | "checkpointFailed"
   | "stamp" | "coins" | "sealEarned" | "streakBell"
   | "strokeEnd" | "dojoPass" | "dojoFail" | "unmute"
-  | "tileMove" | "hardDrop" | "chain" | "wash" | "topOut";
+  | "tileMove" | "hardDrop" | "chain" | "wash" | "topOut"
+  | "gateHit" | "gateStreak" | "gateMiss" | "gateIntro" | "paceUp";
 
 export type SoundOpts = {
   combo?: number;      // correct, comboMilestone
@@ -67,6 +68,7 @@ export const SOUND_IDS: readonly SoundId[] = [
   "stamp", "coins", "sealEarned", "streakBell",
   "strokeEnd", "dojoPass", "dojoFail", "unmute",
   "tileMove", "hardDrop", "chain", "wash", "topOut",
+  "gateHit", "gateStreak", "gateMiss", "gateIntro", "paceUp",
 ];
 
 // D yo-pentatonic ladder: D4 E4 G4 A4 B4 D5 E5 G5 A5 B5 D6. The top rung is held.
@@ -194,6 +196,22 @@ function arpeggio(at: number): Voice[] {
   ];
 }
 
+// Arcade layer for the word runner: punchy chip tones and kicks, still in the D
+// yo-pentatonic key so they sit on the music. Always ceremony: one answer, one full sound.
+function chip(freq: number, at: number, peak: number, decayMs: number, wave: OscillatorType = "square", extra: Partial<Voice> = {}): Voice {
+  return { at, kind: "osc", wave, freq, gain: peak, attackMs: 2, decayMs, filter: { type: "lowpass", freq: 4200, q: 0.8 }, ceremony: true, ...extra };
+}
+
+function kick(at: number, peak = 0.28): Voice[] {
+  return [
+    sine(at, 170, peak, 2, 150, { freqEnd: 55, glideMs: 110, ceremony: true }),
+    noise(at, { type: "lowpass", freq: 1200, q: 0.7 }, peak * 0.3, 1, 30, { ceremony: true }),
+  ];
+}
+
+function sparkle(at: number, peak = 0.05, decayMs = 220): Voice {
+  return noise(at, { type: "highpass", freq: 6500, q: 0.7 }, peak, 2, decayMs, { ceremony: true });
+}
 
 export function planSound(id: SoundId, opts: SoundOpts = {}): SoundPlan {
   const voices: Voice[] = [];
@@ -319,6 +337,41 @@ export function planSound(id: SoundId, opts: SoundOpts = {}): SoundPlan {
     case "dojoPass":
       voices.push(...pluck(587.33, 0, 0.16, 260), ...stamp(0.15, 0.65));
       hapticPattern = 15;
+      break;
+    case "gateHit": {
+      // Three quick rising notes that climb the ladder with the streak, on a kick.
+      const base = Math.min(Math.max(safeCombo(opts.combo), 1), 7);
+      const notes = [base + 1, base + 2, base + 3].map((i) => (PENTATONIC_LADDER[i] ?? 587.33) * 2);
+      voices.push(...kick(0, 0.26), chip(notes[0]!, 0, 0.085, 110), chip(notes[1]!, 0.055, 0.085, 110), chip(notes[2]!, 0.11, 0.1, 220));
+      voices.push(sine(0.11, notes[2]! * 2, 0.05, 2, 260, { ceremony: true }), sparkle(0.1, 0.045));
+      hapticPattern = 14;
+      break;
+    }
+    case "gateStreak":
+      // A short fanfare for every third answer in a row, when Burst charges up.
+      voices.push(...kick(0, 0.3), ...kick(0.24, 0.22));
+      voices.push(chip(587.33, 0, 0.07, 120, "sawtooth", { filter: { type: "lowpass", freq: 3500, q: 0.8 } }));
+      voices.push(chip(880, 0.07, 0.07, 120, "sawtooth", { filter: { type: "lowpass", freq: 3500, q: 0.8 } }));
+      voices.push(chip(1174.66, 0.14, 0.07, 120, "sawtooth", { filter: { type: "lowpass", freq: 3500, q: 0.8 } }));
+      voices.push(chip(1174.66, 0.24, 0.08, 520, "square", { lfo: { hz: 6, depth: 0.05 } }), chip(880, 0.24, 0.06, 520), chip(1318.5, 0.24, 0.05, 520));
+      voices.push(sparkle(0.24, 0.07, 480), noise(0.24, { type: "highpass", freq: 3000, q: 0.7 }, 0.06, 2, 480, { ceremony: true }));
+      hapticPattern = [14, 30, 14, 30, 30];
+      break;
+    case "gateMiss":
+      // A friendly "bwoop" down with a soft thud: clearly wrong, never a heart lost.
+      voices.push(chip(440, 0, 0.11, 280, "square", { freqEnd: 150, glideMs: 240, filter: { type: "lowpass", freq: 1600, q: 0.8 } }));
+      voices.push(chip(415, 0, 0.05, 260, "sawtooth", { freqEnd: 140, glideMs: 240, filter: { type: "lowpass", freq: 1200, q: 0.8 } }));
+      voices.push(sine(0, 130, 0.2, 3, 200, { freqEnd: 60, glideMs: 140, ceremony: true }));
+      hapticPattern = [18, 40, 18];
+      break;
+    case "gateIntro":
+      // A new word: a bright rising chime.
+      voices.push(...[587.33, 880, 1174.66, 1318.5].map((freq, i) => sine(i * 0.06, freq, 0.08, 3, 380, { ceremony: true })), sparkle(0.18, 0.05, 320));
+      break;
+    case "paceUp":
+      // The trail quickens: a rising whoosh that lands on a ping.
+      voices.push(noise(0, { type: "bandpass", freq: 400, q: 1.4, freqEnd: 3200 }, 0.09, 120, 420, { glideMs: 480, ceremony: true }));
+      voices.push(sine(0, 330, 0.05, 60, 480, { freqEnd: 990, glideMs: 450, ceremony: true }), chip(1174.66, 0.42, 0.06, 200));
       break;
     case "dojoFail":
       voices.push(noise(0, { type: "bandpass", freq: 480, q: 4 }, 0.12, 2, 68), sine(0, 240, 0.05, 2, 60));

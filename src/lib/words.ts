@@ -301,4 +301,32 @@ export function meaningChoices(card: WordCard, random: () => number = Math.rando
   return chosen;
 }
 
+/** Written-word distractors for a heard reading, from the first pool that has enough:
+ *  words sharing a kanji, then words of the same length, then the rest. A word that can
+ *  be read the same way is never offered. The whole curriculum is the last resort. */
+export function wordChoices(card: WordCard, random: () => number = Math.random, count = 2, pools: readonly (readonly WordCard[])[] = []): string[] {
+  const characters = new Set([...card.vocab.w].filter(isKanji));
+  const length = lengthOf(card.vocab.w);
+  const byCloseness = (a: string, b: string) => Math.abs(lengthOf(a) - length) - Math.abs(lengthOf(b) - length);
+  const chosen: string[] = [];
+  for (const pool of [...pools, allVocab]) {
+    const tiers: string[][] = [[], [], []];
+    for (const other of pool) {
+      const word = other.vocab.w;
+      if (word === card.vocab.w || !hasKanji(word)) continue;
+      const related = [...word].some((character) => characters.has(character));
+      tiers[related ? 0 : lengthOf(word) === length ? 1 : 2]!.push(word);
+    }
+    for (const tier of tiers) {
+      for (const word of shuffle([...new Set(tier)], random).sort(byCloseness)) {
+        if (chosen.length >= count) return chosen;
+        // Checked only for words about to be offered; homophones are rare but must never pass.
+        if (chosen.includes(word) || correctReadings(word).has(card.kana)) continue;
+        chosen.push(word);
+      }
+    }
+  }
+  return chosen;
+}
+
 export { allVocab };

@@ -8,7 +8,7 @@ test("requires every word and both recall checks without grading preparation", a
   await page.setViewportSize({ width: 320, height: 568 });
   await page.clock.install();
   await page.addInitScript(() => { Math.random = () => 0.999; });
-  await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=1", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toBeVisible();
   const before = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
   await expect(page.getByRole("button", { name: "Check my recall" })).toBeDisabled();
@@ -56,9 +56,9 @@ test("requires every word and both recall checks without grading preparation", a
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
   await page.keyboard.press("ArrowUp");
   await page.clock.fastForward(20_000);
-  await expect(page.getByRole("heading", { name: "Run complete!", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Run again", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Ready for your checkpoint" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Checkpoint cleared!", exact: true })).toBeVisible();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "Learn before you run" })).toBeVisible();
 });
 
 test("reload and checkpoint links always enter preparation", async ({ page }) => {

@@ -6,6 +6,7 @@
 @import "./forest.css";
 @import "./river.css";
 @import "./dash.css";
+@import "./firefly.css";
 
 @custom-variant dark (&:is(.dark *));
 

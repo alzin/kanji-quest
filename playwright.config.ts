@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
-  testIgnore: "**/unit/**",
+  testIgnore: ["**/unit/**", "**/firefly.spec.ts"],
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
