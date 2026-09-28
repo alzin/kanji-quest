@@ -26,6 +26,7 @@ import {
   recordProduction,
 } from "../../src/lib/srs";
 import { emptyStack } from "../../src/lib/stack-progress";
+import { emptyRunner } from "../../src/lib/firefly-progress";
 
 test.describe.configure({ mode: "serial" });
 
@@ -44,6 +45,7 @@ function emptySave(): SaveData {
     clearedChapters: [],
     selectedLevel: "N5",
     stack: emptyStack(),
+    runner: emptyRunner(),
   };
 }
 

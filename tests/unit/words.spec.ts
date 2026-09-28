@@ -5,7 +5,7 @@ import type { Kanji, Vocab } from "../../src/data/n5/types";
 import {
   isHiragana, phoneticVariants, readingList, toHiragana, voicingVariants,
 } from "../../src/lib/kana";
-import { correctReadings, readingChoices, readingsOf, vocabKana, wordSegments } from "../../src/lib/words";
+import { allVocab, correctReadings, readingChoices, readingsOf, vocabKana, wordChoices, wordSegments } from "../../src/lib/words";
 import { buildQuestion } from "../../src/lib/srs";
 
 const HIRAGANA = /^[ぁ-ゖ]+$/;
@@ -221,4 +221,23 @@ test("every card shows a word rather than a bare kanji", () => {
       assert.ok(question.sub.trim(), `${kanji.c} ${type}`);
     }
   }
+});
+
+test("heard-word distractors are two real written words that can never be read as the answer", () => {
+  const seeded = (seed: number) => () => ((seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0) / 0x1_0000_0000);
+  const chapterOne = allVocab.filter((card) => card.kanji.ch === allKanji[0]!.ch);
+  for (const card of allVocab) {
+    if (!KANJI.test(card.vocab.w)) continue;
+    const choices = wordChoices(card, seeded(7), 2, [chapterOne]);
+    expect(choices, card.vocab.w).toHaveLength(2);
+    expect(new Set(choices).size).toBe(2);
+    expect(choices).not.toContain(card.vocab.w);
+    for (const choice of choices) {
+      expect(KANJI.test(choice)).toBe(true);
+      expect(correctReadings(choice).has(card.kana), `${choice} reads as ${card.kana}`).toBe(false);
+    }
+    expect(wordChoices(card, seeded(7), 2, [chapterOne])).toEqual(choices);
+  }
+  const three = allVocab.find((card) => card.vocab.w === "三つ")!;
+  expect(wordChoices(three, seeded(3), 2, [chapterOne]).some((word) => word.includes("三"))).toBe(true);
 });

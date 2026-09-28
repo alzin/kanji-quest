@@ -6,6 +6,8 @@ import {
 } from "./words";
 import { useSyncExternalStore } from "react";
 import { COSMETICS, copyStack, dayGap, emptyStack, ensureStackDay, normalizeStack, stackOf, type StackProgress } from "./stack-progress";
+import { copyRunner, emptyRunner, normalizeRunner, runnerOf, unlockedLanterns, type RunnerProgress } from "./firefly-progress";
+import { SPIRITS, type LanternId, type RunnerDifficulty, type SpiritId } from "./firefly-catalog";
 
 
 export type Mastery = 0 | 1 | 2 | 3; // unseen, learning, reviewing, mastered
@@ -33,6 +35,7 @@ export type SaveData = {
   clearedChapters: number[]; // exact seals earned (not the highest chapter)
   selectedLevel: JLPTLevel;
   stack?: StackProgress;
+  runner?: RunnerProgress;
 };
 
 const LEGACY_KEY = "kanji-dash-v1";
@@ -49,6 +52,7 @@ const emptySave = (): SaveData => ({
   clearedChapters: [],
   selectedLevel: "N5",
   stack: emptyStack(),
+  runner: emptyRunner(),
 });
 
 const DAY_MS = 86_400_000;
@@ -133,6 +137,7 @@ export function normalizeSave(value: unknown): SaveData {
     clearedChapters,
     selectedLevel: LEVELS.includes(raw["selectedLevel"] as JLPTLevel) ? raw["selectedLevel"] as JLPTLevel : "N5",
     stack: normalizeStack(raw["stack"], REGIONS.map((r) => r.id)),
+    runner: normalizeRunner(raw["runner"]),
   };
   retainChapterAccess(normalized);
   return normalized;
@@ -141,6 +146,7 @@ export function normalizeSave(value: unknown): SaveData {
 
 let state: SaveData = emptySave();
 let hydrated = false;
+let progressGeneration = 0;
 let persistAccount: ((save: SaveData) => void) | undefined;
 const listeners = new Set<() => void>();
 let timeUpdate: number | undefined;
@@ -201,9 +207,14 @@ export function setProgressPersistence(writer?: (save: SaveData) => void) {
 /** Loading a cloud snapshot is not a gameplay mutation and must not enqueue a write. */
 export function replaceSave(value: unknown) {
   load();
+  invalidateProgressSession();
   state = normalizeSave(value);
   notify();
 }
+
+/** In-flight learning sessions must never write into a newly selected account/save. */
+export function invalidateProgressSession() { progressGeneration += 1; }
+export function getProgressGeneration(): number { load(); return progressGeneration; }
 
 export function resetGuestSave() {
   persistAccount = undefined;
@@ -260,7 +271,7 @@ export function useSave(): SaveData {
 function mutate(fn: (s: SaveData) => void) {
   load();
   // useSyncExternalStore requires a new snapshot identity for every change.
-  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, stack: copyStack(state), clearedChapters: [...state.clearedChapters], unlockedChapters: [...state.unlockedChapters] };
+  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, stack: copyStack(state), runner: copyRunner(state), clearedChapters: [...state.clearedChapters], unlockedChapters: [...state.unlockedChapters] };
   retainChapterAccess(next);
   fn(next);
   retainChapterAccess(next);
@@ -612,6 +623,39 @@ export function finishRun(earned: number) {
     s.runsCompleted = Math.min(Number.MAX_SAFE_INTEGER, s.runsCompleted + 1);
     updateStreak(s, Date.now());
   });
+}
+
+export function equipRunnerLantern(id: LanternId): boolean {
+  if (!unlockedLanterns(getSnapshot()).some((lantern) => lantern.id === id)) return false;
+  mutate((s) => { s.runner!.equippedLantern = id; });
+  return true;
+}
+
+export function markRunnerTutorial() {
+  if (!runnerOf(getSnapshot()).tutorialSeen) mutate((s) => { s.runner!.tutorialSeen = true; });
+}
+
+/** The adventure ledger owns idempotency; all terminal rewards share one save write. */
+export function commitRunnerAdventure(result: { level: JLPTLevel; difficulty: RunnerDifficulty; score: number; rescued: SpiritId[]; delivered: boolean; scheduledCorrect: number }) {
+  let earned = 0, previousBest = 0, best = 0;
+  const newSpirits: SpiritId[] = [];
+  mutate((s) => {
+    const runner = s.runner!;
+    earned = Math.min(10, count(result.scheduledCorrect) * 2, Number.MAX_SAFE_INTEGER - s.coins);
+    previousBest = runner.best[result.level][result.difficulty];
+    best = Math.max(previousBest, count(result.score));
+    runner.best[result.level][result.difficulty] = best;
+    if (result.delivered) {
+      for (const spirit of SPIRITS) {
+        if (result.rescued.includes(spirit.id) && !runner.rescued.includes(spirit.id)) newSpirits.push(spirit.id);
+      }
+      runner.rescued = SPIRITS.filter((spirit) => runner.rescued.includes(spirit.id) || newSpirits.includes(spirit.id)).map((spirit) => spirit.id);
+    }
+    s.coins += earned;
+    s.runsCompleted = Math.min(Number.MAX_SAFE_INTEGER, s.runsCompleted + 1);
+    updateStreak(s, Date.now());
+  });
+  return { earned, newSpirits, best, previousBest };
 }
 
 export function clearGate(ch: number): number {

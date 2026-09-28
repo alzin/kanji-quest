@@ -58,7 +58,7 @@ test("does not display 100% before every kanji is mastered", async ({ page }) =>
   await expect(page.getByText("A small adventure is enough for today.", { exact: true })).toBeVisible();
 });
 
-test("offers a short checkpoint when all eligible kanji are waiting for their review date", async ({ page }) => {
+test("offers a replayable adventure when all eligible kanji are waiting for their review date", async ({ page }) => {
   const cards = Object.fromEntries(kanjiOfChapter(1).map((kanji) => [kanji.c, progress(1)]));
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -66,9 +66,9 @@ test("offers a short checkpoint when all eligible kanji are waiting for their re
   await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("A small adventure is enough for today.", { exact: true })).toBeVisible();
   await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Ready for your checkpoint", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Prepare checkpoint", exact: true })).toHaveAttribute("href", /gate=1/);
-  await expect(page.getByLabel("Kanji runner game")).toHaveCount(0);
+  await expect(page.getByRole("main", { name: "Firefly Rescue" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Light the lantern" })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "Ready for your checkpoint" })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -77,8 +77,8 @@ test("ignores checkpoint numbers outside the integer chapter range", async ({ pa
   page.on("pageerror", (error) => errors.push(error.message));
   for (const gate of ["1.5", "0", String(CHAPTER_COUNT + 1), "-1"]) {
     await page.goto(`run?mode=runner&gate=${gate}`, { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Learn before you run", exact: true })).toBeVisible();
-    await expect(page.getByText("Daily run · Dojo preparation", { exact: true })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Firefly Rescue" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Light the lantern" })).toBeEnabled();
   }
   expect(errors).toEqual([]);
 });

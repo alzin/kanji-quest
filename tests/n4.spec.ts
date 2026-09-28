@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { kanjiOfLevel, kanjiOfChapter, LEVEL_CHAPTERS } from "../src/data";
-import { completePreparation, studyWords } from "./helpers/preparation";
+import { completePreparation } from "./helpers/preparation";
 import { silenceSavePrompt } from "./helpers/savePrompt";
 
 test.beforeEach(({ page }) => silenceSavePrompt(page));
@@ -34,7 +34,7 @@ test("N4 previews explain the unlock and direct checkpoint links cannot bypass i
   expect(save.clearedChapters).toEqual([]);
 });
 
-test("the selected road persists across home, searchable collection, dojo, and daily preparation", async ({ page }) => {
+test("the selected road persists across home, searchable collection, dojo, and optional adventure study", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await unlockN4(page, true);
   await page.goto("camp", { waitUntil: "domcontentloaded" });
@@ -56,10 +56,11 @@ test("the selected road persists across home, searchable collection, dojo, and d
   await expect(page.getByLabel("Trace 本", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
-  const words = page.getByRole("region", { name: "Words in this run" });
-  await expect(words.getByRole("status")).toHaveText("1 / 6 words viewed");
+  await expect(page.getByRole("main", { name: "Firefly Rescue" })).toBeVisible();
+  await expect(page.getByText("About 2 minutes · N4 words", { exact: true })).toBeVisible();
   const before = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
-  await studyWords(page);
+  await page.getByRole("button", { name: /Meet the words first/ }).click();
+  await expect(page.getByRole("dialog", { name: "Words along the trail" })).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"))).toBe(before);
 });
 

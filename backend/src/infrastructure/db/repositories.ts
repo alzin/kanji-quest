@@ -70,7 +70,12 @@ export class PgProgressRepository implements ProgressRepository {
           RETURNING save_data, version`, [userId, JSON.stringify(save)])
       : await this.pool.query<ProgressRow>(`
           UPDATE user_progress
-          SET save_data = $2::jsonb, version = version + 1, updated_at = CURRENT_TIMESTAMP
+          SET save_data = CASE
+                WHEN NOT ($2::jsonb ? 'runner') AND save_data ? 'runner'
+                THEN $2::jsonb || jsonb_build_object('runner', save_data->'runner')
+                ELSE $2::jsonb
+              END,
+              version = version + 1, updated_at = CURRENT_TIMESTAMP
           WHERE user_id = $1 AND version = $3
           RETURNING save_data, version`, [userId, JSON.stringify(save), expectedVersion]);
     return result.rows[0] ? snapshot(result.rows[0]) : null;

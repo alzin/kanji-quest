@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { LanternRunnerGame as RunnerGame } from "@/components/game/forest/LanternRunnerGame";
 import { RunPreparation } from "@/components/RunPreparation";
+import { FireflyAdventure } from "@/components/game/firefly/FireflyAdventure";
 import { checkpointPassed, dailyRunReward, type RunnerStats } from "@/components/game/runner-math";
 import { play } from "@/lib/sfx";
 import {
@@ -46,6 +47,7 @@ function RunPage() {
     </div>
   );
   if (mode === "expedition" && gate === undefined) return <ForestAdventure />;
+  if (mode === "runner" && gate === undefined) return <FireflyAdventure />;
   return mode !== "runner" ? <StackSession key={`${gate ?? "daily"}-${practice}`} gate={gate} kind={practice ?? "daily"} /> : <RunSession key={gate ?? "daily"} gate={gate} />;
 }
 

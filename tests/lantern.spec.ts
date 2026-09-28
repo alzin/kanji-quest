@@ -15,7 +15,7 @@ test("Lantern Dash supports touch, keyboard, pause, rotation and reduced motion"
   page.on("pageerror", (e) => errors.push(e.message));
   await silenceSavePrompt(page);
   await page.clock.install();
-  await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
+  await page.goto("run?mode=runner&gate=1", { waitUntil: "domcontentloaded" });
   await completePreparation(page, { advanceClock: true, pauseClock: true });
   const canvas = page.locator(".dash-canvas canvas[data-ready]");
   await expect(canvas).toBeVisible();

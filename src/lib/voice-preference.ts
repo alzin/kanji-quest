@@ -4,7 +4,7 @@ const VOICE_PREF_KEY = "kanji-dash-voice";
 const listeners = new Set<() => void>();
 let enabled = true;
 
-function getVoiceEnabled(): boolean {
+export function getVoiceEnabled(): boolean {
   if (typeof window === "undefined") return true;
   try { enabled = window.localStorage.getItem(VOICE_PREF_KEY) !== "off"; }
   catch { /* Keep the in-memory preference when storage is unavailable. */ }

@@ -110,9 +110,10 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     // Let the next document hydrate; preparation pauses its clock again.
     await page.clock.resume();
     await page.goto(`${origin}/run?mode=runner`, { waitUntil: "domcontentloaded" });
-    await completePreparation(page, { advanceClock: true, pauseClock: true });
-    await expect(page.getByLabel("Kanji runner game")).toBeVisible();
-    await page.getByRole("button", { name: "Pause game", exact: true }).click();
+    await page.getByRole("button", { name: "Light the lantern" }).click();
+    await expect(page.locator(".ff-canvas canvas[data-ready]")).toBeVisible();
+    await page.getByRole("button", { name: "Pause adventure", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Adventure paused" })).toBeVisible();
     await page.clock.resume();
     await page.goto(`${origin}/camp`, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("stat-runs")).toHaveText("4");

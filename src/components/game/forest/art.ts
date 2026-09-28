@@ -2,13 +2,16 @@ import type Phaser from "phaser";
 import { onTrail, riverX, seeded, WORLD } from "./world";
 
 /** Original fixed-palette pixel art. All character frames share a 32×40 foot anchor. */
-export function makeForestArt(scene: Phaser.Scene) {
+export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
   function texture(
     key: string,
     w: number,
     h: number,
     draw: (c: CanvasRenderingContext2D) => void,
   ) {
+    // Runners reuse the characters and trees without generating the large
+    // expedition ground map and its landmark textures on every replay.
+    if (essentialsOnly && !["forest-player", "forest-fox", "forest-glow"].includes(key) && !key.startsWith("forest-tree-")) return;
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;

@@ -1,14 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { setVoiceEnabled, useVoiceEnabled } from "@/lib/voice-preference";
+import { getVoiceEnabled, setVoiceEnabled, useVoiceEnabled } from "@/lib/voice-preference";
 import { duckMusic, releaseMusicDuck } from "@/lib/music";
+
+/** Speaks a silent utterance inside a tap so later automatic speech is allowed on mobile browsers. */
+export function primeSpeech(): void {
+  if (!getVoiceEnabled() || !("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+  const silent = new SpeechSynthesisUtterance(" ");
+  silent.volume = 0;
+  try { window.speechSynthesis.speak(silent); }
+  catch { /* Speech remains available through the replay buttons. */ }
+}
+
+/** Queues one pronunciation without a replay control, e.g. the correction after a missed word. */
+export function speakReading(reading: string): void {
+  if (!reading || document.hidden || !getVoiceEnabled()) return;
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+  const speech = new SpeechSynthesisUtterance(reading);
+  speech.lang = "ja-JP";
+  speech.rate = 0.85;
+  const voice = window.speechSynthesis.getVoices().find((v) => /^ja(?:[-_]|$)/i.test(v.lang));
+  if (voice) speech.voice = voice;
+  speech.onend = speech.onerror = () => releaseMusicDuck(speech);
+  duckMusic(speech);
+  try { window.speechSynthesis.speak(speech); }
+  catch { releaseMusicDuck(speech); }
+}
 
 /** Speak kana so words with multiple kanji readings use the lesson's exact reading.
  *  "inline" is the labelled pair used on the study pages; "hud" is the 44 px round pair
  *  that sits in the run's bottom control row beside pause and mute. */
-export function WordAudio({ reading, wordKey, paused = false, variant = "inline", className = "" }: {
+export function WordAudio({ reading, wordKey, paused = false, autoPlay = true, variant = "inline", className = "" }: {
   reading: string;
   wordKey: unknown;
   paused?: boolean;
+  /** Disable automatic answer audio while retaining an explicit pronunciation button. */
+  autoPlay?: boolean;
   variant?: "inline" | "hud";
   className?: string;
 }) {
@@ -49,19 +75,19 @@ export function WordAudio({ reading, wordKey, paused = false, variant = "inline"
   }, [enabled, paused, reading, stop]);
 
   useEffect(() => {
-    speak();
+    if (autoPlay) speak();
     const hide = () => { if (document.hidden) stop(); };
     document.addEventListener("visibilitychange", hide);
     return () => {
       document.removeEventListener("visibilitychange", hide);
       stop();
     };
-  }, [speak, stop, wordKey]);
+  }, [autoPlay, speak, stop, wordKey]);
 
   const replayDisabled = !enabled || paused || !reading || status === "unavailable";
   const replayTitle = status === "blocked"
     ? "Tap to play. Japanese speech may need to be enabled on your device."
-    : "Automatically reads each word in Japanese. Use Voice to mute.";
+    : autoPlay ? "Automatically reads each word in Japanese. Use Voice to mute." : "Hear this word in Japanese. Use Voice to mute.";
 
   if (variant === "hud") {
     const hud = "flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-paper shadow backdrop-blur active:scale-90 disabled:opacity-40";
