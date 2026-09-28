@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("preparation speaks exact kana, replays, and respects saved mute", async ({ page }) => {
-  await page.goto("run?mode=runner");
+  await page.goto("run?mode=runner&gate=1");
   const reading = await page.getByTestId("study-reading").textContent();
   await expect.poll(() => page.evaluate(() => (window as any).__speechLog.at(-1))).toEqual({ text: reading, lang: "ja-JP", voice: "Japanese" });
   const count = await page.evaluate(() => (window as any).__speechLog.length);
@@ -52,9 +52,29 @@ test("preparation speaks exact kana, replays, and respects saved mute", async ({
   await expect(page.getByRole("button", { name: "Unmute sounds", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("Firefly optional word study speaks only on request and retains manual pronunciation", async ({ page }) => {
+  await page.goto("run?mode=runner");
+  await page.getByRole("button", { name: /Meet the words first/ }).click();
+  const study = page.getByRole("dialog", { name: "Words along the trail" });
+  await expect(study).toBeVisible();
+  const pronunciation = study.getByRole("button", { name: "Replay Japanese pronunciation" }).first();
+  await expect(pronunciation).toBeEnabled();
+  expect(await page.evaluate(() => (window as any).__speechLog.length)).toBe(0);
+  await pronunciation.click();
+  await expect.poll(() => page.evaluate(() => (window as any).__speechLog.length)).toBe(1);
+  expect(await page.evaluate(() => (window as any).__speechLog[0].lang)).toBe("ja-JP");
+  await study.getByRole("button", { name: "Mute Japanese voice", exact: true }).first().click();
+  await expect(pronunciation).toBeDisabled();
+  await study.getByRole("button", { name: "Unmute Japanese voice", exact: true }).first().click();
+  await expect(pronunciation).toBeEnabled();
+  expect(await page.evaluate(() => (window as any).__speechLog.length)).toBe(1);
+  await pronunciation.click();
+  await expect.poll(() => page.evaluate(() => (window as any).__speechLog.length)).toBe(2);
+});
+
 test("run speaks active gates and cancels speech on pause", async ({ page }) => {
   await page.clock.install();
-  await page.goto("run?mode=runner");
+  await page.goto("run?mode=runner&gate=1");
   // Freeze before the runner mounts so module loading and browser IPC do not
   // consume a gate's answer time.
   await completePreparation(page, { advanceClock: true, pauseClock: true });

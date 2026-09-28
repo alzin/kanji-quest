@@ -1,5 +1,5 @@
 import { AppError } from "../domain/errors.js";
-import type { CardProgress, SaveData } from "../domain/models.js";
+import { RUNNER_SPIRITS, type CardProgress, type RunnerProgress, type SaveData } from "../domain/models.js";
 import { CHAPTER_IDS, CURRICULUM_VERSION, KANJI_CHARACTERS } from "../domain/curriculum.js";
 
 const kanji = new Set([...KANJI_CHARACTERS]);
@@ -32,7 +32,7 @@ function chapterList(value: unknown, field: string): number[] {
 }
 
 export function parseSaveData(value: unknown): SaveData {
-  const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack"]);
+  const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack", "runner"]);
   if (raw.curriculumVersion !== CURRICULUM_VERSION) invalid("curriculumVersion");
   if (raw.selectedLevel !== "N5" && raw.selectedLevel !== "N4" && raw.selectedLevel !== "N3") invalid("selectedLevel");
   const unlockedChapters = chapterList(raw.unlockedChapters, "unlockedChapters");
@@ -78,7 +78,25 @@ export function parseSaveData(value: unknown): SaveData {
     clearedChapters,
     selectedLevel: raw.selectedLevel,
     ...(raw.stack !== undefined ? { stack: parseStack(raw.stack) } : {}),
+    ...(raw.runner !== undefined ? { runner: parseRunner(raw.runner) } : {}),
   };
+}
+
+function parseRunner(value: unknown): RunnerProgress {
+  const raw = object(value, ["best", "rescued", "equippedLantern", "tutorialSeen"], "runner");
+  const records = object(raw.best, ["N5", "N4", "N3"], "runner.best");
+  const best = {} as RunnerProgress["best"];
+  for (const level of ["N5", "N4", "N3"] as const) {
+    const score = object(records[level], ["standard", "relaxed"], `runner.best.${level}`);
+    best[level] = { standard: count(score.standard, `runner.best.${level}.standard`), relaxed: count(score.relaxed, `runner.best.${level}.relaxed`) };
+  }
+  if (!Array.isArray(raw.rescued) || raw.rescued.length > RUNNER_SPIRITS.length || new Set(raw.rescued).size !== raw.rescued.length || raw.rescued.some((id) => !RUNNER_SPIRITS.includes(id))) invalid("runner.rescued");
+  const rescued = RUNNER_SPIRITS.filter((id) => (raw.rescued as unknown[]).includes(id));
+  const lanterns = ["amber", "jade", "azure", "rose"] as const;
+  const lantern = lanterns.find((id) => id === raw.equippedLantern);
+  if (!lantern || lanterns.indexOf(lantern) * 3 > rescued.length) invalid("runner.equippedLantern");
+  if (typeof raw.tutorialSeen !== "boolean") invalid("runner.tutorialSeen");
+  return { best, rescued, equippedLantern: lantern, tutorialSeen: raw.tutorialSeen };
 }
 
 function day(value: unknown, field: string): string {

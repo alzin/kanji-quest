@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { GUEST_SAVE_KEY, getSnapshot, normalizeSave, readLegacySave, replaceSave, resetGuestSave, setProgressPersistence, subscribe, type SaveData } from "./srs";
+import { GUEST_SAVE_KEY, getSnapshot, invalidateProgressSession, normalizeSave, readLegacySave, replaceSave, resetGuestSave, setProgressPersistence, subscribe, type SaveData } from "./srs";
+import { hasRunnerProgress } from "./firefly-progress";
 
 export type AccountUser = { id: string; email: string; name: string; picture: string | null };
 type CloudSave = { save: SaveData | null; version: number };
@@ -40,6 +41,9 @@ let generation = 0;
 let timer: number | undefined;
 let conflict: Conflict | null = null;
 let seenAchievements = -1;
+let automaticPromptDeferrals = 0;
+let deferredPromptGeneration: number | null = null;
+let deferredPromptQueued = false;
 
 function update(patch: Partial<AccountState>) {
   snapshot = { ...snapshot, ...patch };
@@ -51,7 +55,7 @@ export function useAccount() {
 }
 
 function hasProgress(save: SaveData) {
-  return save.runsCompleted > 0 || save.coins > 0 || Object.keys(save.progress).length > 0 || save.clearedChapters.length > 0;
+  return save.runsCompleted > 0 || save.coins > 0 || Object.keys(save.progress).length > 0 || save.clearedChapters.length > 0 || hasRunnerProgress(save);
 }
 
 /** Finished runs and cleared checkpoints: the progress a guest would actually mind losing. */
@@ -79,7 +83,31 @@ function considerPrompt() {
   if (snapshot.user || snapshot.prompt || snapshot.phase !== "guest") return;
   // Nothing new happened, so nothing interrupts: the offer follows an achievement, not a visit.
   if (previous < 0 || earned <= previous || earned < readPromptThreshold()) return;
+  if (automaticPromptDeferrals > 0) { deferredPromptGeneration = generation; return; }
   update({ prompt: true });
+}
+
+/** Keep optional guest-save nudges out of an adventure and its immediate replays.
+ * Explicit account actions, save conflicts and session errors remain visible. */
+export function deferAutomaticSavePrompts(): () => void {
+  automaticPromptDeferrals += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    automaticPromptDeferrals -= 1;
+    if (automaticPromptDeferrals > 0 || deferredPromptGeneration === null || deferredPromptQueued) return;
+    deferredPromptQueued = true;
+    queueMicrotask(() => {
+      deferredPromptQueued = false;
+      // React may clean up and re-create a mounted effect in the same turn.
+      if (automaticPromptDeferrals > 0) return;
+      const pendingGeneration = deferredPromptGeneration;
+      deferredPromptGeneration = null;
+      if (pendingGeneration !== generation || snapshot.user || snapshot.prompt || snapshot.phase !== "guest") return;
+      if (achievements(getSnapshot()) >= readPromptThreshold()) update({ prompt: true });
+    });
+  };
 }
 
 /** A signed-in player is offered an earlier save once per tab, never on repeat. */
@@ -139,6 +167,24 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 function normalizeCloud(value: CloudSave): CloudSave {
   if (!value || !Number.isSafeInteger(value.version) || value.version < 0 || !("save" in value)) throw new Error("Invalid cloud save");
   return { version: value.version, save: value.save === null ? null : normalizeSave(value.save) };
+}
+
+/** PostgreSQL JSONB may return object keys in a different order from the device. */
+function sameSnapshot(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (left === null || right === null || typeof left !== "object" || typeof right !== "object") return false;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, i) => sameSnapshot(value, right[i]));
+  }
+  const a = left as Record<string, unknown>, b = right as Record<string, unknown>, keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && sameSnapshot(a[key], b[key]));
+}
+
+function adoptRefreshedSave(save: SaveData | null, sameAccount: boolean) {
+  const normalized = normalizeSave(save);
+  // An unchanged focus refresh is not a new progress snapshot. Keeping its
+  // identity lets a paused adventure resume without weakening account isolation.
+  if (!sameAccount || !sameSnapshot(getSnapshot(), normalized)) replaceSave(normalized);
 }
 
 function presentConflict(source: Conflict["source"], cloud: CloudSave) {
@@ -233,6 +279,7 @@ export async function refreshAccount() {
     if (!session.csrfToken) throw new Error("Missing session protection");
     const id = session.user.id;
     if (owner && owner !== id) becomeGuest();
+    if (snapshot.user?.id !== id) invalidateProgressSession();
     csrfToken = session.csrfToken;
     update({ user: session.user, phase: "loading", message: "Loading your cloud progress…" });
     const cloud = normalizeCloud(await request<CloudSave>("/progress", { headers: { "X-CSRF-Token": csrfToken } }));
@@ -240,6 +287,7 @@ export async function refreshAccount() {
     // still belongs to the identity just returned by /auth/session.
     if (snapshot.user?.id !== id) return;
     const guest = owner ? null : getSnapshot();
+    const sameAccount = owner === id;
     const local: Cache | null = owner === id ? { save: getSnapshot(), version, dirty } : readCache(id);
     owner = id;
     version = cloud.version;
@@ -249,7 +297,7 @@ export async function refreshAccount() {
     update({ conflict: null });
 
     if (local?.dirty) {
-      replaceSave(local.save);
+      adoptRefreshedSave(local.save, sameAccount);
       dirty = true;
       // Preserve the version the offline edit was based on until a conflict is resolved.
       version = local.version;
@@ -258,11 +306,11 @@ export async function refreshAccount() {
         dirty = false;
       } else if (local.confirmation || local.version !== cloud.version) presentConflict(local.confirmation || "device", cloud);
     } else if (guest && hasProgress(guest)) {
-      replaceSave(guest);
+      adoptRefreshedSave(guest, sameAccount);
       dirty = true;
       if (cloud.save && JSON.stringify(guest) !== JSON.stringify(cloud.save)) presentConflict("guest", cloud);
       else if (cloud.save) dirty = false;
-    } else replaceSave(cloud.save);
+    } else adoptRefreshedSave(cloud.save, sameAccount);
 
     if (guest && hasProgress(guest) && local?.dirty) update({ guestAvailable: true });
     else if (guest) { clearGuest(); update({ guestAvailable: false }); }

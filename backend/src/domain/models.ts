@@ -41,6 +41,16 @@ export type SaveData = {
   clearedChapters: number[];
   selectedLevel: "N5" | "N4" | "N3";
   stack?: StackProgress;
+  runner?: RunnerProgress;
+};
+
+export const RUNNER_SPIRITS = ["komorebi", "take", "kohaku", "mizu", "shizuku", "kawa", "hoshi", "tsuki", "akari"] as const;
+export type RunnerSpiritId = typeof RUNNER_SPIRITS[number];
+export type RunnerProgress = {
+  best: Record<"N5" | "N4" | "N3", { standard: number; relaxed: number }>;
+  rescued: RunnerSpiritId[];
+  equippedLantern: "amber" | "jade" | "azure" | "rose";
+  tutorialSeen: boolean;
 };
 
 /** Version zero means that the account has never uploaded a save. */

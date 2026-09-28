@@ -152,6 +152,19 @@ async function exerciseDatabase(pool: Pool) {
     progress: { "夫": { mastery: 2, ivl: 3, ease: 2.5, due: 1234, correct: 5, wrong: 1 } } };
   await progress.save(user.id, n3Save, updated.version);
   assert.deepEqual((await progress.get(user.id)).save, n3Save, "N3 selection, seals and card schedules survive a database round trip.");
+  const runnerSave: SaveData = { ...n3Save, runner: {
+    best: { N5: { standard: 2000, relaxed: 3000 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 } },
+    rescued: ["komorebi", "take", "kohaku"], equippedLantern: "jade", tutorialSeen: true,
+  } };
+  const runnerSnapshot = await progress.save(user.id, runnerSave, (await progress.get(user.id)).version);
+  const olderClient = await progress.save(user.id, { ...n3Save, coins: 77 }, runnerSnapshot.version);
+  assert.deepEqual(olderClient.save?.runner, runnerSave.runner, "An older client omitting runner cannot erase its records or collection.");
+  assert.equal(olderClient.save?.coins, 77, "Compatibility preservation retains whole-save updates for existing fields.");
+  await assert.rejects(progress.save(user.id, n3Save, runnerSnapshot.version), (error: unknown) => error instanceof AppError && error.code === "PROGRESS_CONFLICT");
+  assert.deepEqual(await progress.get(user.id), olderClient, "Old clients still obey the same optimistic version check.");
+  const replacement = { ...runnerSave, runner: { ...runnerSave.runner!, rescued: [] as [], equippedLantern: "amber" as const } };
+  const replaced = await progress.save(user.id, replacement, olderClient.version);
+  assert.deepEqual(replaced.save?.runner, replacement.runner, "An explicit current runner snapshot retains whole-save conflict semantics.");
   await assert.rejects(repository.save(randomUUID(), emptySave(), 0), "Foreign keys reject progress for missing accounts.");
 
   await pool.query("DELETE FROM users WHERE id = $1", [user.id]);

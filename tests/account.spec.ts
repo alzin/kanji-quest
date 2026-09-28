@@ -147,6 +147,69 @@ test("existing cloud and guest progress require a choice, including after reload
   expect(api.writes).toHaveLength(0);
 });
 
+const rescuedRunner = () => ({
+  best: { N5: { standard: 3200, relaxed: 0 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 } },
+  rescued: ["komorebi", "take", "kohaku"], equippedLantern: "jade", tutorialSeen: true,
+});
+
+test("runner-only guest progress transfers to an account and survives reload", async ({ page }) => {
+  const runner = rescuedRunner();
+  const api = await mockApi(page, userA);
+  const guestSave = { ...save(), runner };
+  await seedGuest(page, guestSave);
+  await page.goto("camp");
+  await expect(status(page, "Progress saved to your account.")).toBeVisible();
+  expect(api.writes).toHaveLength(1);
+  expect(api.cloud.save).toMatchObject({ runner });
+  expect(await page.evaluate((key) => sessionStorage.getItem(key), guestKey)).toBeNull();
+  await page.reload();
+  await expect(status(page, "Progress saved to your account.")).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-account-v1:user-a")!).save.runner)).toEqual(runner);
+});
+
+test("runner collections obey whole-save conflict selection without merging", async ({ page }) => {
+  const guestRunner = rescuedRunner();
+  const cloudRunner = { ...rescuedRunner(), rescued: ["mizu"], equippedLantern: "amber" };
+  const cloudSave = { ...save(), runner: cloudRunner };
+  const api = await mockApi(page, userA, { save: cloudSave, version: 7 });
+  const guestSave = { ...save(), runner: guestRunner };
+  await seedGuest(page, guestSave);
+  await page.goto("camp");
+  await expect(saveDialog(page).getByRole("button", { name: "Keep cloud progress" })).toBeVisible();
+  expect(api.writes).toHaveLength(0);
+  await saveDialog(page).getByRole("button", { name: "Keep cloud progress" }).click();
+  await page.reload();
+  await expect(status(page, "Progress saved to your account.")).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-account-v1:user-a")!).save.runner)).toEqual(cloudRunner);
+  expect(api.writes).toHaveLength(0);
+});
+
+test("signed-in Firefly resumes after unchanged focus refresh but invalidates a changed cloud save", async ({ page }) => {
+  const cloudSave = { ...save(), runner: rescuedRunner() };
+  const api = await mockApi(page, userA, { save: cloudSave, version: 7 });
+  await page.goto("run?mode=runner");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-account-v1:user-a") || "null")?.version)).toBe(7);
+  await page.getByRole("button", { name: "Light the lantern" }).click();
+  await expect(page.locator(".ff-canvas canvas")).toHaveAttribute("data-ready", "true");
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  const pause = page.getByRole("dialog", { name: "Adventure paused" });
+  await expect(pause).toBeVisible();
+  // A semantically identical newer response may reorder JSONB keys. It must
+  // update cloud version bookkeeping without replacing the active save.
+  const reorderedSave = { ...cloudSave, runner: { ...cloudSave.runner, best: { N3: cloudSave.runner.best.N3, N4: cloudSave.runner.best.N4, N5: cloudSave.runner.best.N5 } } };
+  api.cloud = { save: reorderedSave, version: 8 };
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("kanji-dash-account-v1:user-a") || "null")?.version)).toBe(8);
+  await expect(page.getByRole("dialog", { name: "Your progress changed" })).toHaveCount(0);
+  await expect(pause).toBeVisible();
+  await pause.getByRole("button", { name: "Back to the trail" }).click();
+  await expect(pause).toHaveCount(0);
+  await expect(page.locator(".ff-canvas canvas")).toHaveAttribute("data-phase", "running");
+  api.cloud = { save: { ...cloudSave, coins: 77 }, version: 9 };
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("dialog", { name: "Your progress changed" })).toBeVisible();
+});
+
 test("a concurrent cloud save cannot be overwritten until the user chooses a version", async ({ page }) => {
   const api = await mockApi(page, userA, { save: save(30, 3), version: 7 });
   await page.goto("camp");

@@ -78,7 +78,7 @@ async function prepare(page: Page) {
   await page.addInitScript(() => { Math.random = () => 0.999; });
 }
 
-async function startRun(page: Page, url = "run", pauseClock = false) {
+async function startRun(page: Page, url = "run?gate=1", pauseClock = false) {
   await page.goto(`${url}${url.includes("?") ? "&" : "?"}mode=runner`, { waitUntil: "domcontentloaded" });
   await completePreparation(page, { advanceClock: pauseClock, pauseClock });
   await expect(page.getByLabel("Kanji runner game")).toBeVisible();
@@ -93,16 +93,15 @@ test("correct answers climb the pentatonic ladder", async ({ page }) => {
   await startRun(page);
   await page.keyboard.press("ArrowUp"); // keydown is the activation that unlocks audio
   for (let gate = 0; gate < 5; gate++) await page.clock.fastForward(3_500);
-  await expect(page.getByRole("heading", { name: "Run complete!", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Checkpoint cleared!", exact: true })).toBeVisible();
   await expect(page.getByText("Score", { exact: true }).locator("..").getByText("1,500", { exact: true })).toBeVisible();
 
   const log = await readLog(page);
   expect(await ctxCount(page)).toBe(1);
   // Only the pluck fundamentals at the answer moment (combo >= 5 adds a second pluck at +0.06 s);
-  // the sixth triangle at offset 0 is the run-complete arpeggio's first note.
+  // The checkpoint arpeggio starts after the stamp, separate from the answer ladder.
   const triangles = log.filter((voice) => voice.type === "triangle" && voice.at < 0.001).map((voice) => voice.freq);
-  expect(triangles.length).toBeGreaterThanOrEqual(6);
-  expect(triangles[5]).toBeCloseTo(587.33, 2);
+  expect(triangles.length).toBeGreaterThanOrEqual(5);
   const ladder = triangles.slice(0, 5);
   for (const [index, expected] of [293.66, 329.63, 392, 440, 493.88].entries()) {
     expect(ladder[index]).toBeCloseTo(expected, 2);
@@ -114,7 +113,7 @@ test("a miss schedules the taiko and the paper fwip, the third miss adds the tem
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await prepare(page);
-  await startRun(page, "run", true);
+  await startRun(page, "run?gate=1", true);
   // No steering: a lane-neutral key is still a user activation that unlocks audio,
   // and the runner then misses every gate on its own.
   await page.keyboard.press("Shift");
@@ -122,11 +121,14 @@ test("a miss schedules the taiko and the paper fwip, the third miss adds the tem
 
   for (let miss = 1; miss <= 3; miss++) {
     await page.clock.fastForward(100_000);
+    // Phaser may skip the single RAF from fastForward when its FPS cap is
+    // active. Render normal frames before inspecting the resulting miss.
+    await page.clock.runFor(100);
     if (miss < 3) {
       await expect(page.getByRole("button", { name: "Keep running", exact: true })).toBeVisible();
       await expect(page.getByText(`${5 - miss} left`, { exact: true })).toBeVisible();
     } else {
-      await expect(page.getByRole("heading", { name: "Run ended", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Not yet — train and return", exact: true })).toBeVisible();
     }
     const log = await readLog(page);
     const taiko = log.filter((voice) => voice.type === "sine" && voice.freq === 150);
@@ -150,7 +152,7 @@ test("a miss schedules the taiko and the paper fwip, the third miss adds the tem
     expect(plucks).toHaveLength(plucksBefore + 1);
     expect(Math.abs(plucks[plucks.length - 1]!.at - 0.05)).toBeLessThan(0.001);
   }
-  await expect(page.getByRole("heading", { name: "Run ended", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Not yet — train and return", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
