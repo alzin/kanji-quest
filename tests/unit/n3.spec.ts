@@ -35,23 +35,14 @@ test("N3 adds complete, distinct cards in small regions with usable word reading
   }
 });
 
-test("N3 needs every foundation seal; a preview falls back to the highest unlocked road", () => {
+test("N3 starts without earlier seals while later regions still require progress", () => {
   const save = normalizeSave({ curriculumVersion: CURRICULUM_VERSION, selectedLevel: "N3" });
-  expect(save.selectedLevel).toBe("N3");
-  expect(learningLevel(save)).toBe("N5");
-  expect(isLevelUnlocked(save, "N3")).toBe(false);
-  save.clearedChapters = [...LEVEL_CHAPTERS.N5];
-  expect(learningLevel(save)).toBe("N4");
-  save.clearedChapters.push(...LEVEL_CHAPTERS.N4.slice(0, -1));
-  expect(isLevelUnlocked(save, "N3")).toBe(false);
-  expect(isChapterUnlocked(save, 56)).toBe(false);
-  save.clearedChapters.push(LEVEL_CHAPTERS.N4.at(-1)!);
-  expect(isLevelUnlocked(save, "N3")).toBe(true);
+  expect(save.clearedChapters).toEqual([]);
   expect(learningLevel(save)).toBe("N3");
+  expect(isLevelUnlocked(save, "N3")).toBe(true);
   expect(isChapterUnlocked(save, 56)).toBe(true);
   expect(isChapterUnlocked(save, 57)).toBe(false);
-  save.clearedChapters = [...LEVEL_CHAPTERS.N4];
-  expect(isLevelUnlocked(save, "N3")).toBe(false);
+  expect(newKanji(save).every((k) => k.ch === 56)).toBe(true);
 });
 
 test("N3 seals and mastery progress independently, with retained access and idempotent saves", () => {

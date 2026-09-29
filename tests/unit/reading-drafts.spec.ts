@@ -5,7 +5,7 @@ import { passageDrafts } from "../../content/drafts/passages";
 import { kanjiOfLevel } from "../../src/data";
 
 test("keywords are present and unique within each existing level", () => {
-  for (const level of ["N5", "N4", "N3"] as const) {
+  for (const level of ["N5", "N4", "N3", "N2"] as const) {
     const cards = kanjiOfLevel(level);
     expect(cards.every((k) => !!k.keyword?.trim())).toBe(true);
     expect(new Set(cards.map((k) => k.keyword!.toLowerCase())).size).toBe(cards.length);

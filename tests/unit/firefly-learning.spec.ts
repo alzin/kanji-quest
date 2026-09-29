@@ -162,7 +162,7 @@ test("terminal rewards commit once, atomically, with ten mon cap and immutable s
   });
   expect(writes).toHaveLength(1);
   expect(getSnapshot()).toMatchObject({ coins: 10, runsCompleted: 1, streak: { count: 1 } });
-  expect(runnerOf(getSnapshot()).best).toEqual({ N5: { standard: 4600, relaxed: 0 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 } });
+  expect(runnerOf(getSnapshot()).best).toEqual({ N5: { standard: 4600, relaxed: 0 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 }, N2: { standard: 0, relaxed: 0 } });
   expect(runnerOf(before)).toEqual(emptyRunner());
   expect(finishAdventure(ledger, { ...result, rescued: [...result.rescued] })).toBeNull();
   expect(writes).toHaveLength(1);

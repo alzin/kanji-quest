@@ -11,9 +11,9 @@ const freshSave = () => normalizeSave({ curriculumVersion: CURRICULUM_VERSION })
 test("all roads cover the curriculum in unique, complete sets of 4–6 kanji", () => {
   expect(LEVEL_CHAPTERS.N5).toHaveLength(19);
   expect(LEVEL_CHAPTERS.N4).toHaveLength(36);
-  expect(new Set(REGIONS.map((r) => r.id)).size).toBe(125);
-  expect(REGIONS.flatMap((r) => [...r.chars])).toHaveLength(626);
-  expect(new Set(REGIONS.flatMap((r) => [...r.chars])).size).toBe(626);
+  expect(new Set(REGIONS.map((r) => r.id)).size).toBe(196);
+  expect(REGIONS.flatMap((r) => [...r.chars])).toHaveLength(981);
+  expect(new Set(REGIONS.flatMap((r) => [...r.chars])).size).toBe(981);
   for (const region of REGIONS) {
     expect(region.chars.length).toBeGreaterThanOrEqual(4);
     expect(region.chars.length).toBeLessThanOrEqual(6);
@@ -29,7 +29,7 @@ test("all roads cover the curriculum in unique, complete sets of 4–6 kanji", (
 
 test("each seal immediately opens the next short region, including nonconsecutive IDs", () => {
   const save = freshSave();
-  for (const level of ["N5", "N4", "N3"] as const) {
+  for (const level of ["N5", "N4", "N3", "N2"] as const) {
     for (const [index, ch] of LEVEL_CHAPTERS[level].entries()) {
       expect(isChapterUnlocked(save, ch)).toBe(true);
       const next = nextChapter(ch);
@@ -43,10 +43,11 @@ test("each seal immediately opens the next short region, including nonconsecutiv
   expect(nextChapter(-1)).toBeUndefined();
 });
 
-test("new seals never expand as legacy seals on reload and N4 needs all 19", () => {
+test("new seals never expand as legacy seals on reload or grant completion", () => {
   const save = normalizeSave({ curriculumVersion: CURRICULUM_VERSION, clearedChapters: [1, 2, 3, 4, 5, 6] });
   expect(save.clearedChapters).toEqual([1, 2, 3, 4, 5, 6]);
-  expect(isLevelUnlocked(save, "N4")).toBe(false);
+  expect(isLevelUnlocked(save, "N4")).toBe(true);
+  expect(isLevelCleared(save, "N5")).toBe(false);
   expect(normalizeSave(JSON.parse(JSON.stringify(save)))).toEqual(save);
 });
 

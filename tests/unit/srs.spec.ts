@@ -403,8 +403,10 @@ test("guest grading, rewards, session persistence, and streak updates preserve e
     expect(isGateCleared(getSnapshot(), 4)).toBe(false);
     const beforeInvalidGate = structuredClone(getSnapshot());
     for (const ch of [-1, 0, 1.5, TOTAL_CHAPTERS + 1, NaN, Infinity]) expect(clearGate(ch)).toBe(0);
-    expect(clearGate(7)).toBe(0); // A real N4 gate cannot pay before N5 is cleared.
+    expect(clearGate(26)).toBe(0); // Later N4 regions still require progress within N4.
     expect(getSnapshot()).toEqual(beforeInvalidGate);
+    expect(clearGate(7)).toBe(50); // Starting N4 needs no N5 seals.
+    expect(clearGate(7)).toBe(0);
 
     process.env.TZ = "Asia/Tokyo";
     touchStreak(new Date(2027, 0, 1, 23, 59).getTime());

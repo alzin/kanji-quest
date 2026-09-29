@@ -34,7 +34,7 @@ function chapterList(value: unknown, field: string): number[] {
 export function parseSaveData(value: unknown): SaveData {
   const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack", "runner"]);
   if (raw.curriculumVersion !== CURRICULUM_VERSION) invalid("curriculumVersion");
-  if (raw.selectedLevel !== "N5" && raw.selectedLevel !== "N4" && raw.selectedLevel !== "N3") invalid("selectedLevel");
+  if (raw.selectedLevel !== "N5" && raw.selectedLevel !== "N4" && raw.selectedLevel !== "N3" && raw.selectedLevel !== "N2") invalid("selectedLevel");
   const unlockedChapters = chapterList(raw.unlockedChapters, "unlockedChapters");
   const clearedChapters = chapterList(raw.clearedChapters, "clearedChapters");
   if (raw.gatesCleared !== clearedChapters.length) invalid("gatesCleared");
@@ -84,9 +84,10 @@ export function parseSaveData(value: unknown): SaveData {
 
 function parseRunner(value: unknown): RunnerProgress {
   const raw = object(value, ["best", "rescued", "equippedLantern", "tutorialSeen"], "runner");
-  const records = object(raw.best, ["N5", "N4", "N3"], "runner.best");
-  const best = {} as RunnerProgress["best"];
-  for (const level of ["N5", "N4", "N3"] as const) {
+  const records = object(raw.best, ["N5", "N4", "N3"], "runner.best", ["N2"]);
+  const best: RunnerProgress["best"] = { N5: { standard: 0, relaxed: 0 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 }, N2: { standard: 0, relaxed: 0 } };
+  for (const level of ["N5", "N4", "N3", "N2"] as const) {
+    if (level === "N2" && !Object.hasOwn(records, level)) continue; // Older clients have no N2 record.
     const score = object(records[level], ["standard", "relaxed"], `runner.best.${level}`);
     best[level] = { standard: count(score.standard, `runner.best.${level}.standard`), relaxed: count(score.relaxed, `runner.best.${level}.relaxed`) };
   }

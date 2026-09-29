@@ -12,7 +12,7 @@ The existing N4 curriculum attribution remains in [its source notes](../src/data
 - Study-list reference: Jonathan Waller, [Tanos JLPT resources](https://www.tanos.co.uk/jlpt/). The author permits reuse of nonsold material under [Creative Commons BY with attribution](https://www.tanos.co.uk/jlpt/sharing/). These are study lists, not an official JLPT syllabus. Record the exact downloaded reference and date alongside each authored release.
 - Glosses, keywords, mnemonics and word meanings must be separately authored. The build refuses missing review attribution, repeated kanji, fewer than three word contexts, conflicting keywords, unconfirmed word readings, incomplete regions and IDs below 56.
 
-No external dictionary dump or N3–N1 card set has been imported or published in this change. Keep curriculum version 2 until an explicit migration is designed. Before exposing another level, integrate its reviewed cards and regions, widen the frontend/backend level validation together, regenerate the backend curriculum manifest, and verify save compatibility.
+The runtime N3 and N2 roads use the separate dictionary-backed importer; see [N3 sources](../src/data/n3/SOURCES.md) and [N2 sources](../src/data/n2/SOURCES.md) for provenance, licenses and review status. Full dictionary dumps are build inputs and are not included in the app. Keep curriculum version 2 until an explicit migration is designed. Before exposing another level, integrate its reviewed cards and regions, widen the frontend/backend level validation together, regenerate the backend curriculum manifest, and verify save compatibility.
 
 ## Native review checklist
 

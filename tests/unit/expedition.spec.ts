@@ -9,8 +9,8 @@ test("expeditions prioritize overdue words, cap at four, and respect curriculum 
   } });
   const words = expeditionWords(save, 100);
   expect(words).toHaveLength(4);
-  expect(words.slice(0, 2).map((q) => q.kanji.c)).toEqual(["二", "一"]);
-  expect(words.every((q) => LEVEL_CHAPTERS.N5.includes(q.kanji.ch))).toBe(true);
+  expect(words.slice(0, 3).map((q) => q.kanji.c)).toEqual(["私", "二", "一"]);
+  expect(words[3]!.kanji.ch).toBe(LEVEL_CHAPTERS.N4[0]);
   expect(new Set(words.map((q) => q.kanji.c)).size).toBe(4);
 });
 
