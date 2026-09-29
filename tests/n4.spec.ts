@@ -17,15 +17,14 @@ async function unlockN4(page: Page, reviews = false) {
   }, { reviews });
 }
 
-test("N4 previews explain the unlock and direct checkpoint links cannot bypass it", async ({ page }) => {
+test("N4 starts immediately while later checkpoints still require region progress", async ({ page }) => {
   await page.goto("map", { waitUntil: "domcontentloaded" });
   // Wait for hydration before clicking an SSR-rendered level button.
   await expect(page.getByRole("button", { name: "Save your progress" })).toBeEnabled();
   await page.getByRole("button", { name: /^N4 / }).click();
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Continue the N5 road" })).toBeVisible();
-  await page.goto("run?mode=runner&gate=7", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(1);
+  await page.goto("run?mode=runner&gate=26", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "This N4 checkpoint is locked" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Learn before you run" })).toHaveCount(0);
   const save = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
@@ -57,7 +56,7 @@ test("the selected road persists across home, searchable collection, dojo, and o
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("main", { name: "Firefly Rescue" })).toBeVisible();
-  await expect(page.getByText("About 2 minutes · N4 words", { exact: true })).toBeVisible();
+  await expect(page.getByText("22 word gates · about 2 minutes · N4", { exact: true })).toBeVisible();
   const before = await page.evaluate(() => sessionStorage.getItem("kanji-dash-guest-v1"));
   await page.getByRole("button", { name: /Meet the words first/ }).click();
   await expect(page.getByRole("dialog", { name: "Words along the trail" })).toBeVisible();

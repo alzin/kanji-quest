@@ -39,7 +39,7 @@ export type SaveData = {
   runsCompleted: number;
   gatesCleared: number;
   clearedChapters: number[];
-  selectedLevel: "N5" | "N4" | "N3";
+  selectedLevel: "N5" | "N4" | "N3" | "N2";
   stack?: StackProgress;
   runner?: RunnerProgress;
 };
@@ -47,7 +47,7 @@ export type SaveData = {
 export const RUNNER_SPIRITS = ["komorebi", "take", "kohaku", "mizu", "shizuku", "kawa", "hoshi", "tsuki", "akari"] as const;
 export type RunnerSpiritId = typeof RUNNER_SPIRITS[number];
 export type RunnerProgress = {
-  best: Record<"N5" | "N4" | "N3", { standard: number; relaxed: number }>;
+  best: Record<"N5" | "N4" | "N3" | "N2", { standard: number; relaxed: number }>;
   rescued: RunnerSpiritId[];
   equippedLantern: "amber" | "jade" | "azure" | "rose";
   tutorialSeen: boolean;

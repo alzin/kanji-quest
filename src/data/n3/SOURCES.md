@@ -15,7 +15,7 @@ The region names and mnemonics are original project writing. Mnemonics are imagi
 
 ## Progression and compatibility
 
-- All N5 and N4 checkpoint seals are required to unlock N3 lessons. All level tabs remain selectable. Map and collection previews and free dojo writing are available before the lesson road unlocks. Previewing a locked N3 road keeps lessons on the highest unlocked road.
+- N3 lessons are available immediately, without N5 or N4 checkpoint seals. Selecting N3 starts lessons and adventures on N3; later regions still require progress within this road.
 - N3 has its own mastery percentage and 70 completion seals. Daily lessons introduce at most five new cards from one unlocked region and retain eligible due reviews from earlier roads.
 - N3 uses additive permanent region IDs 56–125. IDs 1–55 and their content are unchanged. Curriculum version 2 remains valid: its region-seal format has not changed, and old theme-seal migrations never grant N3 seals.
 - Deploy the regenerated backend curriculum with this frontend so account saves accept the added IDs, characters and level. No database schema migration is needed.

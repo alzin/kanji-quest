@@ -7,7 +7,7 @@ import { RUNNER_SPIRITS, type SaveData } from "../src/domain/models.js";
 
 const legacy = (): SaveData => ({ curriculumVersion: CURRICULUM_VERSION, unlockedChapters: [], progress: {}, streak: { count: 0, last: "" }, coins: 0, runsCompleted: 0, gatesCleared: 0, clearedChapters: [], selectedLevel: "N5" });
 const current = (): SaveData => ({ ...legacy(), runner: {
-  best: { N5: { standard: 2400, relaxed: 7500 }, N4: { standard: 1100, relaxed: 0 }, N3: { standard: 0, relaxed: 0 } },
+  best: { N5: { standard: 2400, relaxed: 7500 }, N4: { standard: 1100, relaxed: 0 }, N3: { standard: 0, relaxed: 0 }, N2: { standard: 0, relaxed: 0 } },
   rescued: ["komorebi", "take", "kohaku"], equippedLantern: "jade", tutorialSeen: true,
 } });
 
@@ -36,4 +36,16 @@ test("the backend's stable spirit identities match the frontend catalog", async 
   const source = await readFile(new URL("../../src/lib/firefly-catalog.ts", import.meta.url), "utf8");
   const ids = [...source.matchAll(/id: "([a-z]+)", name: "[^"]+", title:/g)].map((match) => match[1]);
   assert.deepEqual(ids, [...RUNNER_SPIRITS]);
+});
+
+test("N2 selection, schedules, seals and scores validate independently of earlier levels", () => {
+  const save: SaveData = { ...current(), selectedLevel: "N2", clearedChapters: [126], gatesCleared: 1,
+    unlockedChapters: [127], progress: { 幼: { mastery: 2, ivl: 1, ease: 2.5, due: 100, correct: 2, wrong: 0 } } };
+  save.runner!.best.N2 = { standard: 1200, relaxed: 2400 };
+  assert.deepEqual(parseSaveData(JSON.parse(JSON.stringify(save))), save);
+  const { N2: _n2, ...oldBest } = save.runner!.best;
+  const parsed = parseSaveData({ ...save, runner: { ...save.runner, best: oldBest } });
+  assert.deepEqual(parsed.runner!.best.N2, { standard: 0, relaxed: 0 });
+  assert.deepEqual(parsed.runner!.best.N5, save.runner!.best.N5);
+  assert.throws(() => parseSaveData({ ...save, runner: { ...save.runner, best: { ...oldBest, N2: null } } }));
 });

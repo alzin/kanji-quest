@@ -12,9 +12,9 @@ export const Route = createFileRoute("/collection")({
   head: () => ({
     meta: [
       { title: "Kanji Collection — Kanji Dash" },
-      { name: "description", content: `${allKanji.length} kanji across the N5, N4 and N3 study roads, with readings, mnemonics, vocabulary, and mastery progress.` },
+      { name: "description", content: `${allKanji.length} kanji across the N5, N4, N3 and N2 study roads, with readings, mnemonics, vocabulary, and mastery progress.` },
       { property: "og:title", content: "Kanji Collection — Kanji Dash" },
-      { property: "og:description", content: "Explore N5, N4 and N3 kanji and track your mastery." },
+      { property: "og:description", content: "Explore N5, N4, N3 and N2 kanji and track your mastery." },
     ],
   }),
   component: CollectionPage,
@@ -330,8 +330,8 @@ function CollectionPage() {
           </div>
         )}
 
-        {level === "N3" && <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
-          N3 dictionary data uses <a className="underline" href="https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project">JMdict</a> and <a className="underline" href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project">KANJIDIC2</a>, copyright Jim Breen and the <a className="underline" href="https://www.edrdg.org/edrdg/licence.html">EDRDG</a>, under <a className="underline" href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Vocabulary is selected and formatted for this study road.
+        {(level === "N3" || level === "N2") && <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
+          {level} dictionary data uses <a className="underline" href="https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project">JMdict</a> and <a className="underline" href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project">KANJIDIC2</a>, copyright Jim Breen and the <a className="underline" href="https://www.edrdg.org/edrdg/licence.html">EDRDG</a>, under <a className="underline" href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Vocabulary is selected and formatted for this study road.
         </p>}
 
         {selected && (

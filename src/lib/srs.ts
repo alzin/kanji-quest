@@ -325,14 +325,13 @@ export function isLevelCleared(s: SaveData, level: JLPTLevel): boolean {
   return LEVEL_CHAPTERS[level].every((ch) => isGateCleared(s, ch));
 }
 
-export function isLevelUnlocked(s: SaveData, level: JLPTLevel): boolean {
-  return LEVELS.slice(0, LEVELS.indexOf(level)).every((previous) => isLevelCleared(s, previous));
+export function isLevelUnlocked(_s: SaveData, level: JLPTLevel): boolean {
+  return LEVELS.includes(level);
 }
 
-/** Browsing a locked road never changes the level of a daily lesson. */
+/** Learners can start any road without completing earlier levels. */
 export function learningLevel(s: SaveData): JLPTLevel {
-  return isLevelUnlocked(s, s.selectedLevel) ? s.selectedLevel
-    : [...LEVELS].reverse().find((level) => isLevelUnlocked(s, level)) ?? "N5";
+  return s.selectedLevel;
 }
 
 export function selectLevel(level: JLPTLevel) {

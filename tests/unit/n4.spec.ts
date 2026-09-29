@@ -12,9 +12,9 @@ test("N4 adds complete, unique cards while preserving every N5 identity", () => 
   expect(kanjiOfLevel("N5")).toBe(n5Kanji);
   expect(n5Kanji).toHaveLength(96);
   expect(kanjiOfLevel("N4")).toHaveLength(189);
-  expect(allKanji).toHaveLength(626);
-  expect(kanjiByChar.size).toBe(626);
-  expect(CHAPTER_COUNT).toBe(125);
+  expect(allKanji).toHaveLength(981);
+  expect(kanjiByChar.size).toBe(981);
+  expect(CHAPTER_COUNT).toBe(196);
   for (const ch of LEVEL_CHAPTERS.N4) {
     expect(levelOfChapter(ch)).toBe("N4");
     expect(CHAPTER_NAMES[ch]?.name).toBeTruthy();
@@ -53,16 +53,10 @@ test("legacy saves preserve totals and can never grant N4 seals implicitly", () 
   expect(current.clearedChapters).toEqual([...new Set([7, 12, ...LEVEL_CHAPTERS.N5])].sort((a, b) => a - b));
   expect(current.gatesCleared).toBe(21);
   expect(normalizeSave(current)).toEqual(current);
-  expect(normalizeSave({ selectedLevel: "N2" }).selectedLevel).toBe("N5");
+  expect(normalizeSave({ selectedLevel: "N1" }).selectedLevel).toBe("N5");
 });
 
-test("N4 opens only after every N5 seal, then uses road order and the unrounded threshold", () => {
-  const locked = normalizeSave({ selectedLevel: "N4", clearedChapters: [1, 2, 3, 4, 6, 7] });
-  for (const k of allKanji) locked.progress[k.c] = card(3);
-  expect(isLevelUnlocked(locked, "N4")).toBe(false);
-  expect(isChapterUnlocked(locked, 7)).toBe(false);
-  expect(isChapterUnlocked(locked, 8)).toBe(false);
-  expect(learningLevel(locked)).toBe("N5");
+test("N4 starts immediately, then uses road order and the unrounded threshold", () => {
   const save = unlocked();
   expect(isLevelCleared(save, "N5")).toBe(true);
   expect(isLevelCleared(save, "N4")).toBe(false);
@@ -112,8 +106,8 @@ test("N4 queues retain N5 reviews and select new cards only from the current unl
   expect(buildRunQueue(save, NOW).some((q) => q.kanji.c === "私")).toBe(true);
   save.selectedLevel = "N4";
   save.clearedChapters = [];
-  expect(newKanji(save).every((k) => k.ch === 1)).toBe(true);
-  expect(buildRunQueue(save, NOW).every((q) => levelOfChapter(q.kanji.ch) === "N5")).toBe(true);
+  expect(newKanji(save).every((k) => k.ch === 7)).toBe(true);
+  expect(buildRunQueue(save, NOW).some((q) => levelOfChapter(q.kanji.ch) === "N4")).toBe(true);
 });
 
 test("N4 homographs and irregular words retain accepted readings", () => {

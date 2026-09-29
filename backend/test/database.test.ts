@@ -153,7 +153,7 @@ async function exerciseDatabase(pool: Pool) {
   await progress.save(user.id, n3Save, updated.version);
   assert.deepEqual((await progress.get(user.id)).save, n3Save, "N3 selection, seals and card schedules survive a database round trip.");
   const runnerSave: SaveData = { ...n3Save, runner: {
-    best: { N5: { standard: 2000, relaxed: 3000 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 } },
+    best: { N5: { standard: 2000, relaxed: 3000 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 }, N2: { standard: 0, relaxed: 0 } },
     rescued: ["komorebi", "take", "kohaku"], equippedLantern: "jade", tutorialSeen: true,
   } };
   const runnerSnapshot = await progress.save(user.id, runnerSave, (await progress.get(user.id)).version);

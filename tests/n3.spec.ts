@@ -15,16 +15,14 @@ async function unlockN3(page: Page) {
   }, { version: CURRICULUM_VERSION, seals: [...LEVEL_CHAPTERS.N5, ...LEVEL_CHAPTERS.N4] });
 }
 
-test("N3 can be previewed but direct runner and stack checkpoint links stay locked", async ({ page }) => {
+test("N3 starts immediately while later runner and stack checkpoints stay locked", async ({ page }) => {
   await page.goto("map", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "Save your progress" })).toBeEnabled();
   await page.getByRole("button", { name: /^N3 / }).click();
   await expect(page.getByRole("heading", { name: "The N3 Road", exact: true })).toBeVisible();
-  await expect(page.getByText("Earn all 36 N4 checkpoint seals to unlock N3 lessons and runs.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue the N4 road" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(1);
   for (const mode of ["runner", "stack"]) {
-    await page.goto(`run?mode=${mode}&gate=56`, { waitUntil: "domcontentloaded" });
+    await page.goto(`run?mode=${mode}&gate=57`, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "This N3 checkpoint is locked" })).toBeVisible();
   }
   expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!).coins)).toBe(0);
