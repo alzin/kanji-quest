@@ -48,8 +48,9 @@ currency once. Assisted answers never become independent production credit.
 
 `RiverStackGame.tsx` connects the existing deterministic `stack-math.ts` simulation
 to the disposable Phaser `RiverStackScene.ts`. The same presentation is used by
-standalone Tsumiji checkpoints, daily sheets, fluency, and marathon. Their existing
-timers, checkpoint seals, rewards, and rules remain owned by `StackSession`.
+daily sheets, fluency, marathon and the stack step of region checkpoints. Daily, fluency
+and marathon timers, rewards and rules remain owned by `StackSession`; checkpoint steps
+and seals are owned by `CheckpointSession`.
 
 `CrossingEncounter.tsx` uses the lantern's words, separating homophones into
 unambiguous boards. Its `crossing.ts` adapter combines placement evidence into one

@@ -27,6 +27,7 @@ import {
 } from "../../src/lib/srs";
 import { emptyStack } from "../../src/lib/stack-progress";
 import { emptyRunner } from "../../src/lib/firefly-progress";
+import { emptyCheckpointSteps } from "../../src/lib/checkpoint-steps";
 
 test.describe.configure({ mode: "serial" });
 
@@ -46,6 +47,7 @@ function emptySave(): SaveData {
     selectedLevel: "N5",
     stack: emptyStack(),
     runner: emptyRunner(),
+    checkpointSteps: emptyCheckpointSteps(),
   };
 }
 

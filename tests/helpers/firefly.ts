@@ -12,18 +12,20 @@ export type FireflyInspection = Pick<FireflyState, "phase" | "stage" | "elapsed"
 export const inspectFirefly = (page: Page): Promise<FireflyInspection> => page.evaluate(() => (window as typeof window & { __fireflyInspect: () => FireflyInspection }).__fireflyInspect());
 export const savedFirefly = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
 
-export async function beginFirefly(page: Page, options: { known?: boolean; savePrompt?: boolean; gentle?: boolean } = {}) {
+/** `checkpoint` opens region one's checkpoint after its learn and stack steps, at Firefly Rescue. */
+export async function beginFirefly(page: Page, options: { known?: boolean; savePrompt?: boolean; gentle?: boolean; checkpoint?: boolean } = {}) {
   await page.clock.install();
   if (!options.savePrompt) await silenceSavePrompt(page);
   await page.route("**/api/auth/session", route => route.fulfill({ json: { user: null } }));
-  if (options.known) {
+  if (options.known || options.checkpoint) {
     // Chapter one is known but not yet due, and chapter two stays locked: every gate is practice.
     const progress = Object.fromEntries(kanjiOfChapter(1).map(k => [k.c, { mastery: 1, ivl: 1, ease: 2.5, due: Date.now() + 7 * 86400000, correct: 1, wrong: 0, rt: 0, prod: 0, fl: 0 }]));
-    await page.addInitScript((progress) => {
-      if (!sessionStorage.getItem("kanji-dash-guest-v1")) sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({ curriculumVersion: 2, unlockedChapters: [], progress, streak: { count: 0, last: "" }, coins: 0, runsCompleted: 0, gatesCleared: 0, clearedChapters: [], selectedLevel: "N5" }));
-    }, progress);
+    const steps = options.checkpoint ? { learned: [1], stacked: [1], rescued: [] } : undefined;
+    await page.addInitScript(({ progress, steps }) => {
+      if (!sessionStorage.getItem("kanji-dash-guest-v1")) sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify({ curriculumVersion: 2, unlockedChapters: [], progress, streak: { count: 0, last: "" }, coins: 0, runsCompleted: 0, gatesCleared: 0, clearedChapters: [], selectedLevel: "N5", ...(steps ? { checkpointSteps: steps } : {}) }));
+    }, { progress, steps });
   }
-  await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
+  await page.goto(options.checkpoint ? "run?gate=1" : "run?mode=runner", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "Light the lantern" })).toBeEnabled();
   await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
   if (options.gentle) await page.getByRole("button", { name: /Gentle journey/ }).click();

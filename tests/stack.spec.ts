@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { silenceSavePrompt } from "./helpers/savePrompt";
-import { allKanji, CURRICULUM_VERSION } from "../src/data";
+import { regionSteps, typeSeal } from "./helpers/seal";
+import { allKanji, CURRICULUM_VERSION, kanjiOfChapter } from "../src/data";
 import type { StackState } from "../src/components/game/stack-math";
 
 async function state(page: Page): Promise<StackState | null> {
@@ -13,8 +14,9 @@ export async function startSheet(page: Page, url = "run", saved?: unknown) {
   await page.addInitScript(() => { let seed = 7919; Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; });
   if (saved) await page.addInitScript((s) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify(s)), saved);
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Meet your new words" }).or(page.getByTestId("stack-start"))).toBeVisible();
-  if (await page.getByRole("heading", { name: "Meet your new words" }).isVisible()) {
+  const learn = page.getByRole("heading", { name: /^Meet (your new|this region’s) words$/ });
+  await expect(learn.or(page.getByTestId("stack-start"))).toBeVisible();
+  if (await learn.isVisible()) {
     const buttons = page.getByRole("region", { name: "Words in this run" }).getByRole("button");
     for (let i = 0; i < await buttons.count(); i++) await buttons.nth(i).click();
     await page.getByRole("button", { name: "Start stacking" }).click();
@@ -123,22 +125,60 @@ test("misses correct in place, retry grading is bounded, and holding is ungraded
   expect(saved.stack.quests.redeems).toBeGreaterThanOrEqual(1);
 });
 
-test("checkpoint requires typed production before awarding a seal", async ({ page }) => {
+const read = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
+
+test("a checkpoint learns and stacks every region word, saves each step, then continues into Firefly Rescue", async ({ page }) => {
   await startSheet(page, "run?gate=1");
+  expect((await read(page)).checkpointSteps).toEqual(regionSteps([1]));
   await clearSheet(page);
   while (await page.getByRole("button", { name: "Next sheet", exact: true }).isVisible()) { await page.getByRole("button", { name: "Next sheet", exact: true }).click(); await clearSheet(page); }
-  await expect(page.getByRole("heading", { name: "Typed Seal check" })).toBeVisible();
-  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!).gatesCleared)).toBe(0);
-  for (let i = 0; i < 3; i++) {
-    const written = await page.locator(".stack-page > p.font-serif").textContent();
-    const vocab = allKanji.flatMap((k) => k.vocab).find((v) => v.w === written)!;
-    await page.getByLabel("Type the reading").fill(vocab.f.map((f) => f.r || f.t).join(""));
-    await page.getByRole("button", { name: "Check reading", exact: true }).click();
-    await page.getByRole("button", { name: i === 2 ? "See my seal" : "Next reading", exact: true }).click();
-  }
+  await expect(page.getByRole("heading", { name: "Stack & recall complete" })).toBeVisible();
+  const words = kanjiOfChapter(1).reduce((n, k) => n + k.vocab.length, 0);
+  await expect(page.getByText(`${words} / ${words} words cleared`, { exact: true })).toBeVisible();
+  const stacked = await read(page);
+  expect(stacked.checkpointSteps).toEqual(regionSteps([1], [1]));
+  expect(stacked.gatesCleared).toBe(0);
+  expect(Object.keys(stacked.progress).sort()).toEqual(kanjiOfChapter(1).map((k) => k.c).sort());
+  await page.getByRole("button", { name: "Continue to Firefly Rescue" }).click();
+  const lobby = page.getByRole("main", { name: "Firefly Rescue" });
+  await expect(lobby.getByText("REGION 1 · STEP 3 OF 3")).toBeVisible();
+  await expect(lobby.getByRole("list", { name: "Checkpoint steps" }).locator("[aria-current=step]")).toContainText("3. Firefly Rescue");
+  await expect(lobby.getByRole("button", { name: "Light the lantern" })).toBeEnabled();
+  // Leaving keeps the place: the road and a fresh visit both resume at the rescue.
+  await page.clock.resume();
+  await page.goto("map", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("link", { name: "Continue · Firefly Rescue" })).toHaveAttribute("href", /gate=1/);
+  await expect(page.getByRole("link", { name: "Lantern Dash →" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Continue · Firefly Rescue" }).click();
+  await expect(page.getByRole("main", { name: "Firefly Rescue" }).getByText("REGION 1 · STEP 3 OF 3")).toBeVisible();
+});
+
+test("after the rescue, the typed seal stamps the region and clears its steps", async ({ page }) => {
+  await silenceSavePrompt(page);
+  await page.addInitScript((s) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify(s)), { curriculumVersion: CURRICULUM_VERSION, unlockedChapters: [], selectedLevel: "N5", clearedChapters: [], progress: {}, streak: { count: 0, last: "" }, checkpointSteps: regionSteps([1], [1], [1]) });
+  await page.goto("map", { waitUntil: "domcontentloaded" });
+  await page.getByRole("link", { name: "Earn your seal" }).click();
+  await typeSeal(page);
   await expect(page.getByRole("heading", { name: "Checkpoint cleared!", exact: true })).toBeVisible();
-  const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
+  await expect(page.getByRole("link", { name: "Prepare next region" })).toHaveAttribute("href", /gate=13/);
+  const saved = await read(page);
   expect(saved.coins).toBe(50); expect(saved.clearedChapters).toEqual([1]); expect(saved.stack.quests.typed).toBe(1);
+  expect(saved.checkpointSteps).toEqual(regionSteps([]));
+  await page.getByRole("link", { name: "Prepare next region" }).click();
+  await expect(page.getByRole("heading", { name: "Meet this region’s words" })).toBeVisible();
+});
+
+test("a failed typed seal reopens Firefly Rescue before the next attempt", async ({ page }) => {
+  await silenceSavePrompt(page);
+  await page.addInitScript((s) => sessionStorage.setItem("kanji-dash-guest-v1", JSON.stringify(s)), { curriculumVersion: CURRICULUM_VERSION, unlockedChapters: [], selectedLevel: "N5", clearedChapters: [], progress: {}, streak: { count: 0, last: "" }, checkpointSteps: regionSteps([1], [1], [1]) });
+  await page.goto("run?gate=1", { waitUntil: "domcontentloaded" });
+  await typeSeal(page, (i) => i === 0);
+  await expect(page.getByRole("heading", { name: "Keep practising your seal" })).toBeVisible();
+  const saved = await read(page);
+  expect(saved.clearedChapters).toEqual([]); expect(saved.coins).toBe(0);
+  expect(saved.checkpointSteps).toEqual(regionSteps([1], [1]));
+  await page.getByRole("button", { name: "Back to Firefly Rescue" }).click();
+  await expect(page.getByRole("main", { name: "Firefly Rescue" }).getByText("REGION 1 · STEP 3 OF 3")).toBeVisible();
 });
 
 test("fluency is optional and a miss cannot move a not-due review", async ({ page }) => {

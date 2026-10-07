@@ -165,6 +165,15 @@ async function exerciseDatabase(pool: Pool) {
   const replacement = { ...runnerSave, runner: { ...runnerSave.runner!, rescued: [] as [], equippedLantern: "amber" as const } };
   const replaced = await progress.save(user.id, replacement, olderClient.version);
   assert.deepEqual(replaced.save?.runner, replacement.runner, "An explicit current runner snapshot retains whole-save conflict semantics.");
+  const stepsSave: SaveData = { ...replacement, checkpointSteps: { learned: [1, 13], stacked: [1], rescued: [] } };
+  const stepsSnapshot = await progress.save(user.id, stepsSave, replaced.version);
+  const { checkpointSteps: _steps, runner: _runner, ...oldest } = stepsSave;
+  const olderSteps = await progress.save(user.id, { ...oldest, coins: 88 }, stepsSnapshot.version);
+  assert.deepEqual(olderSteps.save?.checkpointSteps, stepsSave.checkpointSteps, "An older client omitting checkpoint steps cannot erase a learner's place in a region.");
+  assert.deepEqual(olderSteps.save?.runner, stepsSave.runner, "Both newer fields survive one older write.");
+  assert.equal(olderSteps.save?.coins, 88);
+  const emptied = await progress.save(user.id, { ...stepsSave, checkpointSteps: { learned: [], stacked: [], rescued: [] } }, olderSteps.version);
+  assert.deepEqual(emptied.save?.checkpointSteps, { learned: [], stacked: [], rescued: [] }, "An explicit steps snapshot replaces the stored one.");
   await assert.rejects(repository.save(randomUUID(), emptySave(), 0), "Foreign keys reject progress for missing accounts.");
 
   await pool.query("DELETE FROM users WHERE id = $1", [user.id]);

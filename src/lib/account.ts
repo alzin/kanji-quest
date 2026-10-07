@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { GUEST_SAVE_KEY, getSnapshot, invalidateProgressSession, normalizeSave, readLegacySave, replaceSave, resetGuestSave, setProgressPersistence, subscribe, type SaveData } from "./srs";
 import { hasRunnerProgress } from "./firefly-progress";
+import { hasCheckpointSteps } from "./checkpoint-steps";
 
 export type AccountUser = { id: string; email: string; name: string; picture: string | null };
 type CloudSave = { save: SaveData | null; version: number };
@@ -55,7 +56,7 @@ export function useAccount() {
 }
 
 function hasProgress(save: SaveData) {
-  return save.runsCompleted > 0 || save.coins > 0 || Object.keys(save.progress).length > 0 || save.clearedChapters.length > 0 || hasRunnerProgress(save);
+  return save.runsCompleted > 0 || save.coins > 0 || Object.keys(save.progress).length > 0 || save.clearedChapters.length > 0 || hasRunnerProgress(save) || hasCheckpointSteps(save);
 }
 
 /** Finished runs and cleared checkpoints: the progress a guest would actually mind losing. */

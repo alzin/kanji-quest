@@ -1,6 +1,6 @@
 # Lantern Dash: Firefly Rescue
 
-Open `/run?mode=runner`. No preparation is required. Move between three lanes with Left/Right, A/D, 1–3, a horizontal swipe, or a lane tap. Space and the Burst button activate a lantern shield that frees cages on contact. Esc pauses; blur and hidden tabs pause automatically, and a frame longer than one second is discarded as a stall. Route choices stop every gameplay timer.
+Firefly Rescue is the third step of every region checkpoint (see [Region checkpoints](#region-checkpoints)). Camp also opens it at `/run?mode=runner` as a daily review run. No preparation is required. Move between three lanes with Left/Right, A/D, 1–3, a horizontal swipe, or a lane tap. Space and the Burst button activate a lantern shield that frees cages on contact. Esc pauses; blur and hidden tabs pause automatically, and a frame longer than one second is discarded as a stall. Route choices stop every gameplay timer.
 
 ## Words on the trail
 
@@ -45,7 +45,16 @@ Only the first eligible recall per kanji grades SRS: a due review's first ask, o
 
 **Meet the words first** previews the reviews and new words of the exact adventure it starts. Guest saves remain tab-local. Optional automatic save nudges wait until the player leaves Firefly Rescue; explicit account prompts and conflicts are never deferred. Use **Save progress** on the launch screen to sign in. Whole-save cloud/device conflict choices remain authoritative.
 
-**Release order:** deploy backend runner validation and older-client preservation before the frontend. Existing JSONB storage needs no migration. An older client omitting `runner` retains the stored runner object in the same optimistic-version update; an explicit runner object replaces it normally. Gate timing and deck rules are client-only. Formal chapter checkpoints and the expedition dash retain their existing implementation.
+**Release order:** deploy backend runner and checkpoint-step validation, with older-client preservation, before the frontend. A backend that predates `checkpointSteps` rejects saves carrying it. Existing JSONB storage needs no migration. An older client omitting `runner` or `checkpointSteps` retains the stored object in the same optimistic-version update; an explicit object replaces it normally. Gate timing and deck rules are client-only. The formal runner checkpoint (`/run?mode=runner&gate=…`) and the expedition dash retain their existing implementation.
+
+## Region checkpoints
+
+The map opens each region's checkpoint at `/run?gate=…` (`CheckpointSession`): **1. Learn & write** every word of the region, **2. Stack & recall** them on Tsumiji sheets, **3. Firefly Rescue**, then the typed seal at the shrine. The same rail of three steps and a seal appears on the map card, every step screen and the adventure's lobby, and the map's button continues at the next step.
+
+- The rescue's deck is exactly the region's kanji (`createCheckpointDeck`). Kanji that are due lead and grade their first ask as usual; a kanji never met is introduced on the trail; everything else is practice, so words stacked minutes earlier cannot fast-forward their schedules. Familiar kanji move to their next word after each right answer, so over 22 gates every word of the region comes round, on every road (the largest region needs 18 asks).
+- The step completes only when the lights reach the shrine, in the adventure's single terminal save write. A lost lantern keeps the step open and suggests the Gentle journey; misses still never cost hearts. Spirits, records and mon follow the usual adventure rules.
+- The seal asks for 2 of 3 typed readings. Passing stamps the region (50 mon on the first clearance) and clears its steps; failing reopens step 3, so the words go through Firefly Rescue once more before the next try. A perfect repeat needs a flawless stack, a flawless rescue and 3 of 3 typed in the same visit.
+- `checkpointSteps` holds one sorted region list per completed step (`learned`, `stacked`, `rescued`), each a subset of the one before it. Steps complete in order and only in open regions. A newly loaded account or save restarts an open checkpoint from the steps saved there.
 
 ## Architecture and verification
 
