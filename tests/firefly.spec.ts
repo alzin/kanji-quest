@@ -1,8 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { kanjiOfChapter } from "../src/data";
 import { GATES_PER_ADVENTURE } from "../src/lib/firefly-catalog";
 import { INTRO_SLOW, PACE } from "../src/components/game/firefly/simulation";
 import { allVocab, correctReadings } from "../src/lib/words";
 import { beginFirefly, clickToFireflyReady, inspectFirefly, savedFirefly, steerFirefly, travel, type FireflyInspection } from "./helpers/firefly";
+import { regionSteps, typeSeal } from "./helpers/seal";
 
 const stubSpeech = (page: Page) => page.addInitScript(() => {
   (window as any).__spokenFirefly = [];
@@ -235,4 +237,44 @@ test("gentle journey exposes five hearts and progresses at 80 percent speed", as
   const after = await inspectFirefly(page);
   expect(after.elapsed - before.elapsed).toBeGreaterThan(1.5);
   expect(after.elapsed - before.elapsed).toBeLessThan(1.7);
+});
+
+test("a region checkpoint's rescue steers by that region's words alone, then opens the typed seal at the shrine", async ({ page }, info) => {
+  const errors: string[] = [];
+  page.on("pageerror", e => errors.push(e.message));
+  await beginFirefly(page, { checkpoint: true });
+  const { state } = await steerFirefly(page);
+  expect(state.phase).toBe("delivery");
+  const region = kanjiOfChapter(1);
+  expect(state.recalls.every(r => region.some(k => k.c === r.kanji))).toBe(true);
+  expect(new Set(state.recalls.map(r => r.word))).toEqual(new Set(region.flatMap(k => k.vocab.map(v => v.w))));
+  expect(state.graded).toBe(0);
+  expect((await savedFirefly(page)).checkpointSteps).toEqual(regionSteps([1], [1], [1]));
+  await travel(page, 1900);
+  const results = page.getByRole("dialog", { name: "Adventure results" });
+  await expect(results.getByText("STEP 3 OF 3 · COMPLETE")).toBeVisible();
+  await page.screenshot({ path: info.outputPath("checkpoint-rescue-results.png") });
+  await results.getByRole("button", { name: /^Continue to the seal/ }).click();
+  await typeSeal(page);
+  await expect(page.getByRole("heading", { name: "Checkpoint cleared!", exact: true })).toBeVisible();
+  const saved = await savedFirefly(page);
+  expect(saved.clearedChapters).toEqual([1]);
+  expect(saved.coins).toBe(50);
+  expect(saved.checkpointSteps).toEqual(regionSteps([]));
+  expect(saved.runner.rescued.length).toBe(state.rescued.length);
+  expect(errors).toEqual([]);
+});
+
+test("a checkpoint rescue whose lantern goes out keeps the step open and invites another run", async ({ page }) => {
+  await beginFirefly(page, { checkpoint: true });
+  const { state } = await steerFirefly(page, { lose: true });
+  expect(state.phase).toBe("lost");
+  await travel(page, 800);
+  const results = page.getByRole("dialog", { name: "Adventure results" });
+  await expect(results.getByRole("heading", { name: "Rest your lantern." })).toBeVisible();
+  await expect(results.getByText(/Reach the shrine to finish this step/)).toBeVisible();
+  await expect(results.getByRole("button", { name: /^Continue to the seal/ })).toHaveCount(0);
+  expect((await savedFirefly(page)).checkpointSteps).toEqual(regionSteps([1], [1]));
+  expect(await clickToFireflyReady(page, results.getByRole("button", { name: /^Run again/ }))).toBeLessThan(3000);
+  expect((await inspectFirefly(page)).recalls).toEqual([]);
 });

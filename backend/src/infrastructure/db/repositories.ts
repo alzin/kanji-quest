@@ -61,7 +61,8 @@ export class PgProgressRepository implements ProgressRepository {
   }
 
   async save(userId: string, save: SaveData, expectedVersion: number): Promise<ProgressSnapshot | null> {
-    // Each branch is one atomic statement, including the first-save race.
+    // Each branch is one atomic statement, including the first-save race. An older client omits
+    // the runner and checkpoint steps it predates; its write keeps what newer clients stored.
     const result = expectedVersion === 0
       ? await this.pool.query<ProgressRow>(`
           INSERT INTO user_progress (user_id, save_data, version)
@@ -70,11 +71,11 @@ export class PgProgressRepository implements ProgressRepository {
           RETURNING save_data, version`, [userId, JSON.stringify(save)])
       : await this.pool.query<ProgressRow>(`
           UPDATE user_progress
-          SET save_data = CASE
-                WHEN NOT ($2::jsonb ? 'runner') AND save_data ? 'runner'
-                THEN $2::jsonb || jsonb_build_object('runner', save_data->'runner')
-                ELSE $2::jsonb
-              END,
+          SET save_data = $2::jsonb
+                || CASE WHEN NOT ($2::jsonb ? 'runner') AND save_data ? 'runner'
+                     THEN jsonb_build_object('runner', save_data->'runner') ELSE '{}'::jsonb END
+                || CASE WHEN NOT ($2::jsonb ? 'checkpointSteps') AND save_data ? 'checkpointSteps'
+                     THEN jsonb_build_object('checkpointSteps', save_data->'checkpointSteps') ELSE '{}'::jsonb END,
               version = version + 1, updated_at = CURRENT_TIMESTAMP
           WHERE user_id = $1 AND version = $3
           RETURNING save_data, version`, [userId, JSON.stringify(save), expectedVersion]);

@@ -718,3 +718,24 @@ dialog.sheet-up::backdrop { animation: fade-only 200ms ease-out; }
 .stack-page { display: flex; flex-direction: column; gap: 18px; width: min(100%, 460px); min-height: 100dvh; margin: 0 auto; padding: max(32px, env(safe-area-inset-top)) 24px max(32px, env(safe-area-inset-bottom)); justify-content: center; text-align: center; }
 @media (min-width: 640px) { .stack-game { max-width: 620px; } }
 @media (prefers-reduced-motion: reduce) { .stack-game *, .stack-page * { animation: none !important; transition: none !important; } }
+
+/* A region checkpoint's three steps, then its seal. Each theme supplies the four rail colors.
+   No margin or padding here: preflight already zeroes them, and this unlayered rule would beat a caller's mt-* utility. */
+.checkpoint-rail { --rail-on: var(--primary); --rail-off: var(--border); --rail-text: var(--muted-foreground); --rail-now: var(--primary); container-type: inline-size; display: flex; align-items: flex-start; gap: 8px; width: 100%; list-style: none; text-align: left; }
+.checkpoint-rail-short { display: none; }
+@container (max-width: 400px) {
+  .checkpoint-rail-full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .checkpoint-rail-short { display: inline; }
+  .checkpoint-rail-label { letter-spacing: .02em; }
+}
+@container (max-width: 250px) { .checkpoint-rail-number { display: none; } }
+.checkpoint-rail > li { min-width: 0; flex: 1; }
+.checkpoint-rail-bar { display: block; height: 6px; border-radius: 999px; background: var(--rail-off); }
+.checkpoint-rail > [data-state="done"] .checkpoint-rail-bar { background: var(--rail-on); }
+.checkpoint-rail > [data-state="current"] .checkpoint-rail-bar { background: color-mix(in srgb, var(--rail-on) 45%, var(--rail-off)); }
+.checkpoint-rail-label { display: block; margin-top: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--rail-text); }
+.checkpoint-rail > [aria-current="step"] .checkpoint-rail-label { color: var(--rail-now); }
+.checkpoint-rail > .checkpoint-rail-seal { flex: 0 0 auto; display: grid; place-items: center; width: 26px; height: 26px; margin-top: -10px; border: 1.5px dashed var(--rail-off); border-radius: 50%; font-family: var(--font-serif); font-size: 12px; font-weight: 700; color: var(--rail-text); }
+.checkpoint-rail > .checkpoint-rail-seal[aria-current="step"] { border-style: solid; border-color: var(--rail-now); color: var(--rail-now); }
+.river-session .checkpoint-rail { --rail-on: #ebca84; --rail-off: #97aa7655; --rail-text: #afc2a6; --rail-now: #ebca84; }
+.ff-shell .checkpoint-rail, .ff-dialog .checkpoint-rail { --rail-on: #efcb7e; --rail-off: #f5e9c826; --rail-text: #a9c2b8; --rail-now: #efcb7e; }

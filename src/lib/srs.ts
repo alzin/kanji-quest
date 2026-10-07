@@ -8,6 +8,7 @@ import { useSyncExternalStore } from "react";
 import { COSMETICS, copyStack, dayGap, emptyStack, ensureStackDay, normalizeStack, stackOf, type StackProgress } from "./stack-progress";
 import { copyRunner, emptyRunner, normalizeRunner, runnerOf, unlockedLanterns, type RunnerProgress } from "./firefly-progress";
 import { SPIRITS, type LanternId, type RunnerDifficulty, type SpiritId } from "./firefly-catalog";
+import { CHECKPOINT_STEPS, STEP_LIST, completedSteps, copyCheckpointSteps, emptyCheckpointSteps, normalizeCheckpointSteps, stepIndex, type CheckpointStep, type CheckpointSteps } from "./checkpoint-steps";
 
 
 export type Mastery = 0 | 1 | 2 | 3; // unseen, learning, reviewing, mastered
@@ -36,6 +37,7 @@ export type SaveData = {
   selectedLevel: JLPTLevel;
   stack?: StackProgress;
   runner?: RunnerProgress;
+  checkpointSteps?: CheckpointSteps;
 };
 
 const LEGACY_KEY = "kanji-dash-v1";
@@ -53,6 +55,7 @@ const emptySave = (): SaveData => ({
   selectedLevel: "N5",
   stack: emptyStack(),
   runner: emptyRunner(),
+  checkpointSteps: emptyCheckpointSteps(),
 });
 
 const DAY_MS = 86_400_000;
@@ -138,6 +141,7 @@ export function normalizeSave(value: unknown): SaveData {
     selectedLevel: LEVELS.includes(raw["selectedLevel"] as JLPTLevel) ? raw["selectedLevel"] as JLPTLevel : "N5",
     stack: normalizeStack(raw["stack"], REGIONS.map((r) => r.id)),
     runner: normalizeRunner(raw["runner"]),
+    checkpointSteps: normalizeCheckpointSteps(raw["checkpointSteps"], REGIONS.map((r) => r.id)),
   };
   retainChapterAccess(normalized);
   return normalized;
@@ -271,7 +275,7 @@ export function useSave(): SaveData {
 function mutate(fn: (s: SaveData) => void) {
   load();
   // useSyncExternalStore requires a new snapshot identity for every change.
-  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, stack: copyStack(state), runner: copyRunner(state), clearedChapters: [...state.clearedChapters], unlockedChapters: [...state.unlockedChapters] };
+  const next = { ...state, progress: { ...state.progress }, streak: { ...state.streak }, stack: copyStack(state), runner: copyRunner(state), checkpointSteps: copyCheckpointSteps(state), clearedChapters: [...state.clearedChapters], unlockedChapters: [...state.unlockedChapters] };
   retainChapterAccess(next);
   fn(next);
   retainChapterAccess(next);
@@ -634,11 +638,19 @@ export function markRunnerTutorial() {
   if (!runnerOf(getSnapshot()).tutorialSeen) mutate((s) => { s.runner!.tutorialSeen = true; });
 }
 
-/** The adventure ledger owns idempotency; all terminal rewards share one save write. */
-export function commitRunnerAdventure(result: { level: JLPTLevel; difficulty: RunnerDifficulty; score: number; rescued: SpiritId[]; delivered: boolean; scheduledCorrect: number }) {
-  let earned = 0, previousBest = 0, best = 0;
+/**
+ * The adventure ledger owns idempotency; all terminal rewards share one save write. A region
+ * checkpoint's rescue step completes in that same write, and only when the lights reach the shrine.
+ */
+export function commitRunnerAdventure(result: { level: JLPTLevel; difficulty: RunnerDifficulty; score: number; rescued: SpiritId[]; delivered: boolean; scheduledCorrect: number; checkpoint?: number }) {
+  let earned = 0, previousBest = 0, best = 0, stepCompleted = false;
   const newSpirits: SpiritId[] = [];
   mutate((s) => {
+    const ch = result.checkpoint;
+    if (ch !== undefined && result.delivered && isChapterUnlocked(s, ch) && completedSteps(s, ch) >= stepIndex("rescue")) {
+      addStep(s, ch, "rescue");
+      stepCompleted = true;
+    }
     const runner = s.runner!;
     earned = Math.min(10, count(result.scheduledCorrect) * 2, Number.MAX_SAFE_INTEGER - s.coins);
     previousBest = runner.best[result.level][result.difficulty];
@@ -654,7 +666,35 @@ export function commitRunnerAdventure(result: { level: JLPTLevel; difficulty: Ru
     s.runsCompleted = Math.min(Number.MAX_SAFE_INTEGER, s.runsCompleted + 1);
     updateStreak(s, Date.now());
   });
-  return { earned, newSpirits, best, previousBest };
+  return { earned, newSpirits, best, previousBest, stepCompleted };
+}
+
+function addStep(s: SaveData, ch: number, step: CheckpointStep) {
+  const steps = s.checkpointSteps ??= emptyCheckpointSteps(), list = STEP_LIST[step];
+  if (!steps[list].includes(ch)) steps[list] = [...steps[list], ch].sort((a, b) => a - b);
+}
+
+function dropSteps(s: SaveData, ch: number, from: CheckpointStep = "learn") {
+  const steps = s.checkpointSteps ??= emptyCheckpointSteps();
+  for (const step of CHECKPOINT_STEPS.slice(stepIndex(from))) steps[STEP_LIST[step.id]] = steps[STEP_LIST[step.id]].filter((id) => id !== ch);
+}
+
+/** Records one completed step of an open region's checkpoint. Steps complete in order. */
+export function completeCheckpointStep(ch: number, step: CheckpointStep): boolean {
+  const s = getSnapshot(), done = completedSteps(s, ch);
+  if (!isChapterUnlocked(s, ch) || done < stepIndex(step)) return false;
+  if (done === stepIndex(step)) mutate((next) => addStep(next, ch, step));
+  return true;
+}
+
+/** Opens a step again, with every step after it: a failed typed seal sends the learner back to the rescue. */
+export function reopenCheckpointStep(ch: number, step: CheckpointStep) {
+  if (completedSteps(getSnapshot(), ch) > stepIndex(step)) mutate((s) => dropSteps(s, ch, step));
+}
+
+/** A seal stamped on a repeat visit starts that region's steps afresh. */
+export function resetCheckpointSteps(ch: number) {
+  if (completedSteps(getSnapshot(), ch) > 0) mutate((s) => dropSteps(s, ch));
 }
 
 export function clearGate(ch: number): number {
@@ -666,6 +706,8 @@ export function clearGate(ch: number): number {
     s.clearedChapters = [...s.clearedChapters, ch].sort((a, b) => a - b);
     s.gatesCleared = s.clearedChapters.length;
     s.coins += earned;
+    // The seal replaces the steps that led to it.
+    dropSteps(s, ch);
     updateStreak(s, Date.now());
   });
   return earned;

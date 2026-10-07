@@ -42,7 +42,11 @@ export type SaveData = {
   selectedLevel: "N5" | "N4" | "N3" | "N2";
   stack?: StackProgress;
   runner?: RunnerProgress;
+  checkpointSteps?: CheckpointSteps;
 };
+
+/** Regions whose checkpoint steps are complete; each list is a subset of the one before it. */
+export type CheckpointSteps = { learned: number[]; stacked: number[]; rescued: number[] };
 
 export const RUNNER_SPIRITS = ["komorebi", "take", "kohaku", "mizu", "shizuku", "kawa", "hoshi", "tsuki", "akari"] as const;
 export type RunnerSpiritId = typeof RUNNER_SPIRITS[number];
