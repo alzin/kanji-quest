@@ -4,11 +4,11 @@ The working app uses stack mode as its daily default, as requested. This change 
 
 ## Playable now
 
-- `/run` and region checkpoints use Tsumiji. `/run?mode=runner` remains reachable as Classic run from the map.
+- `/run` uses Tsumiji. Region checkpoints (`/run?gate=…`) use it as their second step, after learning and before Firefly Rescue and the typed seal; see [Region checkpoints](firefly-rescue.md#region-checkpoints).
 - Deterministic 5×8 phone / 6×10 desktop simulation: K/R/M matches, board-safe decoys, Hold, tap/swipe/keyboard controls, lock delay, ink correction, retries, redemption, passive chains, rescue and top-out.
 - New words use Learn-only preparation. The daily queue draws up to 12 reviews and 4 new kanji, split into at most four disjoint sheets. Each sheet saves its rewards once. Retrying a top-out preserves that sheet's words.
 - Reading direction follows mastery, and response times, fluent streaks and production successes are saved. Extra stack play cannot reschedule not-due cards. Two production successes are required for new mastery-3 promotions; existing mastery-3 saves are retained.
-- Region checkpoints use both vocabulary contexts and a three-word typed Seal check. Hiragana, katakana, common romaji conventions, long vowels and the curriculum's displayed romanizations are accepted. Perfect repeats award 10 mon and a gold map rim.
+- Region checkpoints stack both vocabulary contexts of every kanji and end in a three-word typed Seal check. Hiragana, katakana, common romaji conventions, long vowels and the curriculum's displayed romanizations are accepted. Perfect repeats award 10 mon and a gold map rim.
 - Daily seals, personal bests, optional Fluency and Marathon, three daily quests, free streak freezes, a seven-day message and stamp/paper cosmetics inside Collection. The four-link navigation is preserved.
 - New save fields are optional at the backend boundary. Old saves remain valid, and normalization supplies deterministic defaults.
 

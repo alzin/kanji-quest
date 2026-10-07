@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { AppIcon } from "@/components/AppIcon";
 import { LevelSelector } from "@/components/LevelSelector";
+import { CheckpointRail } from "@/components/CheckpointRail";
 import { CHAPTER_NAMES, LEVEL_CHAPTERS, kanjiOfChapter, nextLevel } from "@/data";
 import { useSave, chapterMasteryPct, getCard, getSnapshot, isChapterUnlocked, isGateCleared, selectLevel } from "@/lib/srs";
+import { CHECKPOINT_STEPS, completedSteps } from "@/lib/checkpoint-steps";
 import { diffFx, readFx, rememberFx } from "@/lib/celebrations";
 import { isAudioRunning, play } from "@/lib/sfx";
 import { stackOf } from "@/lib/stack-progress";
@@ -66,10 +68,9 @@ function MapPage() {
         <h1 className="mt-2 font-serif text-3xl font-bold">The {level} Road</h1>
         <p className="mt-1 font-serif text-sm text-accent">{{ N5: "東海道 · Tōkaidō", N4: "中山道 · Nakasendō", N3: "甲州街道 · Kōshū Kaidō", N2: "日光街道 · Nikkō Kaidō" }[level]}</p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Small wins, 4–6 kanji at a time. Clear a checkpoint or reach 55% mastery progress to open the next region.
+          Small wins, 4–6 kanji at a time. Each checkpoint is three steps: learn &amp; write, stack &amp; recall, then carry the words through Firefly Rescue to a typed seal. Clear a checkpoint or reach 55% mastery progress to open the next region.
         </p>
         <LevelSelector level={level} />
-        <Link to="/run" search={{ mode: "runner" }} className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-muted-foreground">Lantern Dash →</Link>
 
         <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-e1" aria-label="Checkpoint progress">
           <div className="flex items-center justify-between gap-2">
@@ -98,12 +99,13 @@ function MapPage() {
         {/* The road itself: one continuous line behind every marker. Open regions get a
             full card; the locked run ahead collapses to one row each, and the reason they
             are locked is stated once at the head of that run rather than on all 18. */}
-        <ol className="relative mt-6">
+        <ol aria-label="Regions on this road" className="relative mt-6">
           <div aria-hidden="true" className="absolute bottom-8 left-[35px] top-8 w-0.5 rounded-full bg-[repeating-linear-gradient(to_bottom,var(--border)_0_10px,transparent_10px_18px)] sm:left-[43px]" />
           {chapters.map((ch, i) => {
             const unlocked = isChapterUnlocked(save, ch);
             const pct = chapterMasteryPct(save, ch);
             const cleared = isGateCleared(save, ch);
+            const steps = completedSteps(save, ch);
             const kanji = kanjiOfChapter(ch);
             const count = kanji.length;
             const mastered = kanji.filter((entry) => getCard(save, entry.c).mastery === 3).length;
@@ -162,6 +164,7 @@ function MapPage() {
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={`${CHAPTER_NAMES[ch]!.name} mastery`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                       <div className="ring-fill h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
                     </div>
+                    {!cleared && <CheckpointRail done={steps} current={steps < CHECKPOINT_STEPS.length ? steps : "seal"} className="mt-4" />}
                     <div className="mt-3 flex flex-col items-stretch gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-muted-foreground tabular-nums">{pct}% progress · {mastered}/{count} mastered</span>
                       {!cleared && (
@@ -171,7 +174,7 @@ function MapPage() {
                           data-sfx="tap"
                           className="pressable inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground shadow-e1 transition-transform"
                         >
-                          Prepare checkpoint
+                          {steps === 0 ? "Prepare checkpoint" : steps < CHECKPOINT_STEPS.length ? `Continue · ${CHECKPOINT_STEPS[steps]!.label}` : "Earn your seal"}
                           <AppIcon name="arrow" className="h-4 w-4" />
                         </Link>
                       )}

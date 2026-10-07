@@ -10,6 +10,7 @@ import { useSave, dueCount, learningLevel, levelMasteryPct, streakCount, isChapt
 import { CHAPTER_NAMES, LEVEL_CHAPTERS, LEVELS, kanjiOfLevel } from "@/data";
 import { explorerRank } from "@/lib/expedition";
 import { localDay, stackOf } from "@/lib/stack-progress";
+import { CHECKPOINT_STEPS, completedSteps } from "@/lib/checkpoint-steps";
 
 export const Route = createFileRoute("/camp")({
   head: () => ({ meta: [
@@ -71,8 +72,9 @@ function Home() {
             <Link to="/practice" className="trail-mode mode-dojo"><span className="mode-tag">SLOW + MINDFUL</span><div className="mode-art dojo-art" aria-hidden="true"><span>永</span><i /></div><h3>The Ink Dojo</h3><p>Follow each stroke.<br /> Make a lasting impression.</p><span className="mode-bottom">Pick up the brush <AppIcon name="arrow" /></span></Link>
           </div>
           <section className="trail-road" aria-label="Your next checkpoint"><div className="trail-road-top"><div><span className="trail-eyebrow">THE ROAD AHEAD</span><h2>A world, one word at a time.</h2></div><Link to="/map">Explore the map <AppIcon name="arrow" /></Link></div><div className="trail-road-stops">{road.slice(Math.max(0, road.indexOf(chapter) - 1), Math.max(0, road.indexOf(chapter) - 1) + 4).map((ch) => {
-            const unlocked = isChapterUnlocked(save, ch), cleared = isGateCleared(save, ch);
-            return <Link key={ch} to={unlocked ? "/run" : "/map"} search={unlocked ? { gate: ch } : {}} className={`trail-stop ${ch === chapter ? "current" : ""} ${cleared ? "cleared" : ""}`}><span className="trail-stop-mark">{cleared ? <AppIcon name="check" /> : unlocked ? <TrailEmblem kind="gate" /> : <AppIcon name="lock" />}</span><strong>{CHAPTER_NAMES[ch]!.name}</strong><small>{cleared ? "Seal earned" : ch === chapter ? "Your next seal" : unlocked ? "Open to explore" : "Still to discover"}</small></Link>;
+            const unlocked = isChapterUnlocked(save, ch), cleared = isGateCleared(save, ch), steps = completedSteps(save, ch);
+            const next = steps === 0 ? "Your next seal" : steps < CHECKPOINT_STEPS.length ? `Next: ${CHECKPOINT_STEPS[steps]!.label}` : "Ready for the seal";
+            return <Link key={ch} to={unlocked ? "/run" : "/map"} search={unlocked ? { gate: ch } : {}} className={`trail-stop ${ch === chapter ? "current" : ""} ${cleared ? "cleared" : ""}`}><span className="trail-stop-mark">{cleared ? <AppIcon name="check" /> : unlocked ? <TrailEmblem kind="gate" /> : <AppIcon name="lock" />}</span><strong>{CHAPTER_NAMES[ch]!.name}</strong><small>{cleared ? "Seal earned" : ch === chapter ? next : unlocked ? "Open to explore" : "Still to discover"}</small></Link>;
           })}</div></section>
         </div>
         <aside className="trail-sidebar">

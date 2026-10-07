@@ -34,7 +34,7 @@ test("keeps due reviews, partial mastery, and exact checkpoint seals consistent 
 
   await page.getByRole("link", { name: "Map", exact: true }).click();
   await expect(page.getByText("1 / 19 earned", { exact: true })).toBeVisible();
-  const regions = page.getByRole("main").locator("ol > li");
+  const regions = page.getByRole("list", { name: "Regions on this road" }).locator(":scope > li");
   await expect(regions.nth(0).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
   await expect(regions.nth(0).getByText("67% progress · 0/5 mastered", { exact: true })).toBeVisible();
   await expect(regions.nth(0).getByText("Seal stamped", { exact: true })).toHaveCount(0);

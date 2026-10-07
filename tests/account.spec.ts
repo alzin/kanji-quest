@@ -148,7 +148,7 @@ test("existing cloud and guest progress require a choice, including after reload
 });
 
 const rescuedRunner = () => ({
-  best: { N5: { standard: 3200, relaxed: 0 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 } },
+  best: { N5: { standard: 3200, relaxed: 0 }, N4: { standard: 0, relaxed: 0 }, N3: { standard: 0, relaxed: 0 }, N2: { standard: 0, relaxed: 0 } },
   rescued: ["komorebi", "take", "kohaku"], equippedLantern: "jade", tutorialSeen: true,
 });
 

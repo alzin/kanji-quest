@@ -1,5 +1,5 @@
 import { AppError } from "../domain/errors.js";
-import { RUNNER_SPIRITS, type CardProgress, type RunnerProgress, type SaveData } from "../domain/models.js";
+import { RUNNER_SPIRITS, type CardProgress, type CheckpointSteps, type RunnerProgress, type SaveData } from "../domain/models.js";
 import { CHAPTER_IDS, CURRICULUM_VERSION, KANJI_CHARACTERS } from "../domain/curriculum.js";
 
 const kanji = new Set([...KANJI_CHARACTERS]);
@@ -32,7 +32,7 @@ function chapterList(value: unknown, field: string): number[] {
 }
 
 export function parseSaveData(value: unknown): SaveData {
-  const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack", "runner"]);
+  const raw = object(value, ["curriculumVersion", "unlockedChapters", "progress", "streak", "coins", "runsCompleted", "gatesCleared", "clearedChapters", "selectedLevel"], "save", ["stack", "runner", "checkpointSteps"]);
   if (raw.curriculumVersion !== CURRICULUM_VERSION) invalid("curriculumVersion");
   if (raw.selectedLevel !== "N5" && raw.selectedLevel !== "N4" && raw.selectedLevel !== "N3" && raw.selectedLevel !== "N2") invalid("selectedLevel");
   const unlockedChapters = chapterList(raw.unlockedChapters, "unlockedChapters");
@@ -79,7 +79,19 @@ export function parseSaveData(value: unknown): SaveData {
     selectedLevel: raw.selectedLevel,
     ...(raw.stack !== undefined ? { stack: parseStack(raw.stack) } : {}),
     ...(raw.runner !== undefined ? { runner: parseRunner(raw.runner) } : {}),
+    ...(raw.checkpointSteps !== undefined ? { checkpointSteps: parseCheckpointSteps(raw.checkpointSteps) } : {}),
   };
+}
+
+/** Steps complete in order, so a region can only have stacked after learning, and rescued after stacking. */
+function parseCheckpointSteps(value: unknown): CheckpointSteps {
+  const raw = object(value, ["learned", "stacked", "rescued"], "checkpointSteps");
+  const learned = chapterList(raw.learned, "checkpointSteps.learned");
+  const stacked = chapterList(raw.stacked, "checkpointSteps.stacked");
+  const rescued = chapterList(raw.rescued, "checkpointSteps.rescued");
+  if (stacked.some((id) => !learned.includes(id))) invalid("checkpointSteps.stacked");
+  if (rescued.some((id) => !stacked.includes(id))) invalid("checkpointSteps.rescued");
+  return { learned, stacked, rescued };
 }
 
 function parseRunner(value: unknown): RunnerProgress {

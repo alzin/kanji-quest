@@ -1,25 +1,31 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Nav } from "./Nav";
 import { AppIcon } from "./AppIcon";
 import { WordRuby } from "./WordRuby";
 import { StrokePractice } from "./StrokePractice";
 import { WordAudio } from "./WordAudio";
 import { SoundToggle } from "./SoundToggle";
-import { buildQuestion, vocabKana, type Question } from "@/lib/srs";
+import { levelOfChapter } from "@/data";
+import { buildQuestion, selectLevel, vocabKana, type Question } from "@/lib/srs";
 
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none";
 /** Recall answers are the whole interaction on that stage, so they get body size and a full tap row. */
 const choice = "min-h-14 w-full rounded-xl border border-border bg-surface px-4 py-3 text-base font-bold shadow-e1 transition-colors hover:border-primary hover:bg-secondary disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-surface";
 const STEPS = ["Learn & write", "Recall", "Run"] as const;
 
-/** Preparation and the runner share one frozen queue, including the exact vocabulary. */
-export function RunPreparation({ questions, title, onStart, learnOnly = false }: {
+/**
+ * Preparation and the runner share one frozen queue, including the exact vocabulary. A region
+ * checkpoint uses the learning half as its first step, every word of the region, under its own rail.
+ */
+export function RunPreparation({ questions, title, onStart, learnOnly: learnOnlyProp = false, checkpoint }: {
   questions: Question[];
   title: string;
   onStart: () => void;
   learnOnly?: boolean;
+  checkpoint?: { chapter: number; rail: ReactNode };
 }) {
+  const learnOnly = learnOnlyProp || !!checkpoint;
   const [stage, setStage] = useState<"learn" | "recall">("learn");
   const [index, setIndex] = useState(0);
   const [seen, setSeen] = useState<Set<number>>(() => new Set([0]));
@@ -53,14 +59,14 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
       <Nav />
       <main className="mx-auto max-w-4xl px-4 pb-12">
         <div className="mt-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{title} · Dojo preparation</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{title} · {checkpoint ? "Step 1 of 3" : "Dojo preparation"}</p>
           <h1 ref={heading} tabIndex={-1} className="mt-1.5 font-serif text-[1.875rem] font-bold leading-tight outline-none sm:text-4xl">
-            {stage === "learn" ? learnOnly ? "Meet your new words" : "Learn before you run" : "Recall without the rush"}
+            {stage === "learn" ? checkpoint ? "Meet this region’s words" : learnOnly ? "Meet your new words" : "Learn before you run" : "Recall without the rush"}
           </h1>
         </div>
 
         {/* Three segments rather than three boxes: the rail never wraps on a phone. */}
-        <ol aria-label="Learning steps" className="mt-5 flex items-center gap-2">
+        {checkpoint ? <div className="mt-5">{checkpoint.rail}</div> : <ol aria-label="Learning steps" className="mt-5 flex items-center gap-2">
           {(learnOnly ? ["Learn & write", "Stack & recall"] : STEPS).map((label, i) => (
             <li key={label} aria-current={i === step ? "step" : undefined} className="min-w-0 flex-1">
               <span aria-hidden="true" className={`block h-1.5 rounded-full ${i <= step ? "bg-primary" : "bg-border"}`} />
@@ -69,7 +75,7 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
               </span>
             </li>
           ))}
-        </ol>
+        </ol>}
 
         {!learnOnly && <p className="mt-5 text-sm leading-relaxed text-muted-foreground"><strong className="text-primary">Lantern Dash.</strong> Carry light from the riverbank to the shrine. Learn these words, then tap a path or use ↑ ↓ / 1–3 to follow the correct reading or meaning. You have three hearts.</p>}
 
@@ -119,7 +125,7 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
             </section>
           </div>
           <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-e1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">{learnOnly ? allSeen ? "Your sheet is the recall practice. Each block has a word to remember." : `Open ${questions.length - seen.size} more new words.` : allSeen ? "Every word covered. Try recalling them with the readings hidden." : `Open ${questions.length - seen.size} more to unlock the recall check.`}</p>
+            <p className="text-sm text-muted-foreground">{checkpoint ? allSeen ? "Every word met. Next, stack them from memory, then carry them through Firefly Rescue." : `Open ${questions.length - seen.size} more ${questions.length - seen.size === 1 ? "word" : "words"} to finish this step.` : learnOnly ? allSeen ? "Your sheet is the recall practice. Each block has a word to remember." : `Open ${questions.length - seen.size} more new words.` : allSeen ? "Every word covered. Try recalling them with the readings hidden." : `Open ${questions.length - seen.size} more to unlock the recall check.`}</p>
             <button type="button" className={`${primary} shrink-0`} disabled={!allSeen} onClick={() => { if (learnOnly) onStart(); else { setRecallIndex(0); setFeedback(null); setStage("recall"); } }}>{learnOnly ? "Start stacking" : "Check my recall"}</button>
           </div>
         </>}
@@ -158,9 +164,13 @@ export function RunPreparation({ questions, title, onStart, learnOnly = false }:
         </section>}
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-          <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
-            <span aria-hidden="true">←</span> Leave preparation
-          </Link>
+          {checkpoint
+            ? <Link to="/map" onClick={() => selectLevel(levelOfChapter(checkpoint.chapter)!)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
+              <span aria-hidden="true">←</span> Back to the map
+            </Link>
+            : <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
+              <span aria-hidden="true">←</span> Leave preparation
+            </Link>}
           <SoundToggle variant="inline" />
         </div>
       </main>

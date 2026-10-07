@@ -1,4 +1,4 @@
-import { kanjiOfLevel, type JLPTLevel } from "@/data";
+import { kanjiOfChapter, kanjiOfLevel, levelOfChapter, type JLPTLevel } from "@/data";
 import type { Kanji, Vocab } from "@/data/n5/types";
 import { GATES_PER_ADVENTURE, type GateMode, type RunnerDifficulty, type SpiritId } from "./firefly-catalog";
 import { commitRunnerAdventure, getCard, getProgressGeneration, getSnapshot, grade, isChapterUnlocked, learningLevel, newKanji, type SaveData } from "./srs";
@@ -20,6 +20,8 @@ export type AdventureDeck = {
   seed: number; level: JLPTLevel; difficulty: RunnerDifficulty; cards: DeckCard[];
   /** Kanji of the player's unlocked chapters: the first source of look-alike words. */
   unlocked: Kanji[];
+  /** The region whose checkpoint this adventure is the rescue step of. */
+  checkpoint?: number;
 };
 export type PlannedGate = {
   index: number;
@@ -55,6 +57,8 @@ export type AdventureTerminalResult = {
   newSpirits: SpiritId[];
   best: number;
   previousBest: number;
+  /** A checkpoint adventure reached the shrine, completing its region's rescue step. */
+  stepCompleted: boolean;
 };
 type CardRun = {
   readonly kanji: Kanji;
@@ -140,6 +144,29 @@ export function createAdventureDeck(save: SaveData, difficulty: RunnerDifficulty
   // Every valid curriculum has a starting chapter; the fallback also handles partial saves.
   if (!cards.length) cards.push({ kanji: available[0] ?? kanjiOfLevel("N5")[0]!, origin: "practice", word: 0 });
   return { seed: seed >>> 0, level, difficulty, cards, unlocked: available };
+}
+
+/**
+ * A region checkpoint's rescue: every gate asks one of that region's kanji, in the words just
+ * learned and stacked. Due kanji grade their first ask as usual, an unmet kanji is introduced on
+ * the trail, and the rest is practice. Familiar kanji move to their next word after each right
+ * answer, so every word of the region comes round.
+ */
+export function createCheckpointDeck(save: SaveData, chapter: number, difficulty: RunnerDifficulty, seed: number, now = Date.now()): AdventureDeck {
+  const level = levelOfChapter(chapter) ?? "N5", random = randomFrom(seed);
+  const region = shuffle(kanjiOfChapter(chapter), random);
+  const isDue = (kanji: Kanji) => getCard(save, kanji.c).mastery > 0 && getCard(save, kanji.c).due <= now;
+  const rotation = (kanji: Kanji) => { const p = getCard(save, kanji.c); return (p.correct + p.wrong) % kanji.vocab.length; };
+  // Reviews lead the trail, oldest first, as on any adventure.
+  const due = region.filter(isDue).sort((a, b) => getCard(save, a.c).due - getCard(save, b.c).due);
+  const cards: DeckCard[] = [
+    ...due.map((kanji) => ({ kanji, origin: "due" as const, word: rotation(kanji) })),
+    ...region.filter((kanji) => !isDue(kanji)).map((kanji) => getCard(save, kanji.c).mastery === 0
+      ? { kanji, origin: "fresh" as const, word: Math.floor(random() * kanji.vocab.length) }
+      : { kanji, origin: "practice" as const, word: rotation(kanji) }),
+  ];
+  const unlocked = kanjiOfLevel(level).filter((kanji) => isChapterUnlocked(save, kanji.ch));
+  return { seed: seed >>> 0, level, difficulty, cards, unlocked: unlocked.length ? unlocked : kanjiOfChapter(chapter), checkpoint: chapter };
 }
 
 /** The words a player can meet before the adventure: its reviews and new words, else a few familiar ones. */
@@ -315,7 +342,10 @@ export function adventureSummary(ledger: AdventureLedger): WordSummary[] {
 export function finishAdventure(ledger: AdventureLedger, result: { score: number; rescued: SpiritId[]; delivered: boolean }): AdventureTerminalResult | null {
   if (ledger.closed || !isAdventureLedgerCurrent(ledger)) return null;
   ledger.closed = true;
-  const receipt = commitRunnerAdventure({ ...result, level: ledger.deck.level, difficulty: ledger.deck.difficulty, scheduledCorrect: ledger.scheduledCorrect });
+  const receipt = commitRunnerAdventure({
+    ...result, level: ledger.deck.level, difficulty: ledger.deck.difficulty, scheduledCorrect: ledger.scheduledCorrect,
+    ...(ledger.deck.checkpoint === undefined ? {} : { checkpoint: ledger.deck.checkpoint }),
+  });
   return {
     ...receipt, arcadeScore: result.score, delivered: result.delivered,
     deliveredSpiritIds: result.delivered ? [...new Set(result.rescued)] : [],
