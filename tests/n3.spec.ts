@@ -39,7 +39,7 @@ test("N4 completion opens N3 and its selection persists through collection, dojo
   await expect(page.getByRole("heading", { name: "The N3 Road", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  expect(await page.locator('.grid[aria-hidden="true"]').evaluate((grid) => {
+  expect(await page.locator(".journey-overview-bar").evaluate((grid) => {
     const bounds = grid.getBoundingClientRect();
     return [...grid.children].every((seal) => {
       const rect = seal.getBoundingClientRect();
@@ -47,7 +47,7 @@ test("N4 completion opens N3 and its selection persists through collection, dojo
     });
   })).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("n3-map.png") });
-  await page.getByRole("link", { name: "Kanji", exact: true }).click();
+  await page.goto("collection", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("status")).toHaveText("341 kanji · All regions");
   await page.getByRole("searchbox").fill("夫");
   await page.getByRole("button", { name: /^夫 —/ }).click();
@@ -56,7 +56,7 @@ test("N4 completion opens N3 and its selection persists through collection, dojo
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: /^N3 / })).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("link", { name: "Dojo", exact: true }).click();
+  await page.goto("practice", { waitUntil: "domcontentloaded" });
   await expect(page.getByLabel("Trace 夫", { exact: true })).toBeVisible();
   await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("mastery-summary")).toHaveText("0/341 mastered · 0% mastery progress");

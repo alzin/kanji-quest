@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Nav } from "@/components/Nav";
+import { GameScreen } from "@/components/GameScreen";
 import { StrokePractice } from "@/components/StrokePractice";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { kanjiOfLevel } from "@/data";
@@ -37,9 +37,8 @@ function PracticePage() {
   const kanji = candidates[currentIndex];
 
   return (
-    <div className="app-shell min-h-screen bg-paper">
-      <Nav />
-      <main className="mx-auto max-w-4xl px-4 pb-16">
+    <GameScreen>
+      <div className="mx-auto max-w-4xl px-4 pb-16">
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Writing practice</p>
         <h1 className="mt-1.5 font-serif text-3xl font-bold sm:text-4xl">Stroke Dojo</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
@@ -102,7 +101,7 @@ function PracticePage() {
           </div>
           {kanji && <KanjiDetail kanji={kanji} progress={getCard(save, kanji.c)} />}
         </div>
-      </main>
-    </div>
+      </div>
+    </GameScreen>
   );
 }

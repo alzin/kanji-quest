@@ -1,8 +1,94 @@
 import type Phaser from "phaser";
+import { KODAMA, type AreaDefinition, type Grade } from "./areas";
 import { onTrail, riverX, seeded, WORLD } from "./world";
 
+const CHARACTERS = ["forest-player", "forest-fox"];
+// Light keeps its warmth in every season; only the land and its buildings are graded.
+const UNGRADED = [...CHARACTERS, "forest-glow", "forest-spark", "forest-rain"];
+
+function hsl(r: number, g: number, b: number): [number, number, number] {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+
+function rgb(h: number, s: number, l: number): [number, number, number] {
+  if (!s) return [l, l, l];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const channel = (t: number) => {
+    t = (t + 1) % 1;
+    return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p;
+  };
+  return [channel(h + 1 / 3), channel(h), channel(h - 1 / 3)];
+}
+
+const graders = new Map<string, (color: string) => string>();
+/** Recolours a #rrggbb[aa] colour by an area's grade. The identity grade returns it untouched. */
+export function grader(grade: Grade): (color: string) => string {
+  if (grade.hue === 0 && grade.sat === 1 && grade.light === 1) return (color) => color;
+  const id = `${grade.hue}/${grade.sat}/${grade.light}`;
+  const cached = graders.get(id);
+  if (cached) return cached;
+  const seen = new Map<string, string>();
+  const shift = (color: string) => {
+    const known = seen.get(color);
+    if (known) return known;
+    const m = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(color);
+    if (!m) return color;
+    const n = parseInt(m[1]!, 16);
+    const [h, s, l] = hsl((n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+    const out = rgb((h + grade.hue / 360 + 1) % 1, Math.min(1, s * grade.sat), Math.min(1, l * grade.light))
+      .map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
+    const shifted = `#${out}${m[2] ?? ""}`;
+    seen.set(color, shifted);
+    return shifted;
+  };
+  graders.set(id, shift);
+  return shift;
+}
+
+const isFoliage = (h: number) => h > 70 / 360 && h < 200 / 360;
+
+/**
+ * Copies a canvas texture with its colours moved by a grade: one season from another.
+ * Hue shifts touch only foliage greens, so bark and stone keep their colour; light and
+ * saturation apply to everything (frost and snow pale the whole tree).
+ */
+export function regradeTexture(scene: Phaser.Scene, source: string, target: string, grade: Grade) {
+  if (scene.textures.exists(target)) return;
+  const image = scene.textures.get(source).getSourceImage() as HTMLCanvasElement;
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const c = canvas.getContext("2d")!;
+  c.drawImage(image, 0, 0);
+  const data = c.getImageData(0, 0, canvas.width, canvas.height);
+  const seen = new Map<number, number>();
+  for (let i = 0; i < data.data.length; i += 4) {
+    if (!data.data[i + 3]) continue;
+    const key = (data.data[i]! << 16) | (data.data[i + 1]! << 8) | data.data[i + 2]!;
+    let out = seen.get(key);
+    if (out === undefined) {
+      const [h, s, l] = hsl(data.data[i]! / 255, data.data[i + 1]! / 255, data.data[i + 2]! / 255);
+      const shift = isFoliage(h) ? grade.hue / 360 : 0;
+      const [r, g, b] = rgb((h + shift + 1) % 1, Math.min(1, s * grade.sat), Math.min(1, l * grade.light));
+      out = (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255);
+      seen.set(key, out);
+    }
+    data.data[i] = out >> 16;
+    data.data[i + 1] = (out >> 8) & 255;
+    data.data[i + 2] = out & 255;
+  }
+  c.putImageData(data, 0, 0);
+  scene.textures.addCanvas(target, canvas);
+}
+
 /** Original fixed-palette pixel art. All character frames share a 32×40 foot anchor. */
-export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
+export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false, area: AreaDefinition = KODAMA) {
+  const grade = grader(area.grade);
+  let tone = grade;
   function texture(
     key: string,
     w: number,
@@ -17,6 +103,7 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
     canvas.height = h;
     const c = canvas.getContext("2d")!;
     c.imageSmoothingEnabled = false;
+    tone = UNGRADED.includes(key) ? (color: string) => color : grade;
     draw(c);
     scene.textures.addCanvas(key, canvas);
   }
@@ -28,7 +115,7 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
     w: number,
     h: number,
   ) => {
-    c.fillStyle = color;
+    c.fillStyle = tone(color);
     c.fillRect(Math.round(x), Math.round(y), w, h);
   };
   const poly = (
@@ -36,38 +123,46 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
     color: string,
     points: number[][],
   ) => {
-    c.fillStyle = color;
+    c.fillStyle = tone(color);
     c.beginPath();
     points.forEach(([x, y], i) => (i ? c.lineTo(x!, y!) : c.moveTo(x!, y!)));
     c.closePath();
     c.fill();
   };
+  const stone = area.ground.trail === "stone";
   texture("forest-ground", WORLD.width / 2, WORLD.height / 2, (c) => {
     const random = seeded(16);
     rect(c, "#27483d", 0, 0, 768, 480);
     for (let y = 0; y < 480; y += 4)
       for (let x = 0; x < 768; x += 4) {
         const p = { x: x * 2, y: y * 2 },
-          trail = onTrail(p, 58),
-          edge = !trail && onTrail(p, 70);
+          trail = onTrail(p, 58, area),
+          edge = !trail && onTrail(p, 70, area);
         const colors = trail
-          ? ["#7c8157", "#84885a", "#8d8e61", "#929363"]
+          ? stone
+            ? ["#7a7f76", "#83877d", "#8b8e83", "#74796f"]
+            : ["#7c8157", "#84885a", "#8d8e61", "#929363"]
           : edge
             ? ["#516647", "#5a704c", "#687c50"]
             : ["#31543f", "#345943", "#385b43", "#3a5e45", "#3e6247"];
         rect(c, colors[Math.floor(random() * colors.length)]!, x, y, 4, 4);
+        // Ishidatami: offset paving courses with dark grout between the stones.
+        if (trail && stone) {
+          if (y % 12 === 0) rect(c, "#555a52", x, y, 4, 1);
+          if ((x + (Math.floor(y / 12) % 2) * 8) % 16 === 0) rect(c, "#555a52", x, y, 1, 4);
+        }
       }
     for (let i = 0; i < 10500; i++) {
       const x = Math.floor(random() * 768),
         y = Math.floor(random() * 480),
-        trail = onTrail({ x: x * 2, y: y * 2 }, 53);
+        trail = onTrail({ x: x * 2, y: y * 2 }, 53, area);
       const shade = random();
       rect(
         c,
         trail
           ? shade > 0.5
-            ? "#a2a271"
-            : "#707a52"
+            ? stone ? "#9a9d92" : "#a2a271"
+            : stone ? "#62675f" : "#707a52"
           : shade > 0.75
             ? "#68834d"
             : shade > 0.4
@@ -85,7 +180,7 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
       }
     }
     for (let y = 0; y < 480; y++) {
-      const x = Math.round(riverX(y * 2) / 2);
+      const x = Math.round(riverX(y * 2, area) / 2);
       rect(c, "#203e37", x - 44, y, 88, 1);
       rect(c, "#668476", x - 38, y, 76, 1);
       rect(c, "#326d70", x - 34, y, 68, 1);
@@ -103,8 +198,12 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
         rect(c, "#4c9290", x - 13 + random() * 20, y + 3, 12, 1);
       }
     }
-    for (let y = 132; y < 173; y += 10)
-      for (let x = 506; x < 599; x += 15) {
+    // The shrine's paved courtyard and its ring of flowers, in art pixels.
+    const sx = area.shrine.x / 2,
+      sy = area.shrine.y / 2,
+      [bloom, blossom] = area.ground.flowers;
+    for (let y = Math.round(sy - 10.5); y < Math.round(sy + 30.5); y += 10)
+      for (let x = sx - 49; x < sx + 44; x += 15) {
         rect(c, "#647770", x, y, 14, 9);
         rect(c, "#84938a", x + 1, y, 12, 2);
         if (random() > 0.65) rect(c, "#4d7350", x, y + 6, 4, 3);
@@ -112,10 +211,21 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
     for (let i = 0; i < 95; i++) {
       const t = random() * Math.PI * 2,
         radius = 70 + random() * 32;
-      const x = 555 + Math.cos(t) * radius,
-        y = 148 + Math.sin(t) * radius * 0.6;
+      const x = sx + Math.cos(t) * radius,
+        y = sy + 5.5 + Math.sin(t) * radius * 0.6;
       rect(c, "#799759", x, y, 1, 4);
-      rect(c, random() > 0.5 ? "#e6ce91" : "#b7b4cc", x - 1, y, 3, 2);
+      rect(c, random() > 0.5 ? bloom : blossom, x - 1, y, 3, 2);
+    }
+    // Hydrangea-style clumps along the trail's edge where an area grows them.
+    for (let placed = 0, tries = 0; placed < area.ground.trailFlowers && tries < area.ground.trailFlowers * 40; tries++) {
+      const x = Math.floor(random() * 768),
+        y = Math.floor(random() * 480),
+        p = { x: x * 2, y: y * 2 };
+      if (onTrail(p, 58, area) || !onTrail(p, 88, area) || Math.abs(p.x - riverX(p.y, area)) < 100) continue;
+      placed++;
+      rect(c, "#3d6648", x - 3, y + 2, 8, 3);
+      for (let k = 0; k < 5; k++)
+        rect(c, k % 2 ? bloom : blossom, x - 3 + ((k * 3) % 7), y - 2 + ((k * 2) % 4), 3, 2);
     }
   });
   for (let v = 0; v < 3; v++)
@@ -126,7 +236,7 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
           ["#173e35", "#20543d", "#326946", "#477d4f", "#699350"],
           ["#153b36", "#1b4b3e", "#2b6045", "#3d7450", "#59834e"],
         ][v]!;
-      c.fillStyle = "#112c2a66";
+      c.fillStyle = tone("#112c2a66");
       c.beginPath();
       c.ellipse(50, 114, 40, 9, -0.15, 0, 7);
       c.fill();
@@ -216,6 +326,61 @@ export function makeForestArt(scene: Phaser.Scene, essentialsOnly = false) {
       rect(c, "#9fa776", 33, 25, 6, 2);
       rect(c, "#819458", 30, 29, 4, 2);
     });
+  // Kiso cypress (hinoki): a tall tiered conifer on the same 100×126 foot anchor.
+  texture("forest-tree-3", 100, 126, (c) => {
+    const random = seeded(103),
+      colors = ["#123630", "#18463a", "#225843", "#33704d", "#4f8456"];
+    c.fillStyle = tone("#112c2a66");
+    c.beginPath();
+    c.ellipse(50, 114, 30, 7, -0.15, 0, 7);
+    c.fill();
+    rect(c, "#3b3226", 45, 88, 10, 26);
+    rect(c, "#5d4c34", 47, 90, 4, 22);
+    for (let tier = 0; tier < 5; tier++) {
+      const top = 4 + tier * 18,
+        bottom = top + 34,
+        half = 13 + tier * 8;
+      poly(c, colors[0]!, [[50, top], [50 + half + 2, bottom + 2], [50 - half - 2, bottom + 2]]);
+      poly(c, colors[1]!, [[50, top + 2], [50 + half, bottom], [50 - half, bottom]]);
+      poly(c, colors[2]!, [[49, top + 5], [50 + half * 0.35, bottom - 4], [50 - half + 3, bottom - 3]]);
+      poly(c, colors[3]!, [[48, top + 9], [50 - half * 0.1, bottom - 8], [50 - half + 7, bottom - 6]]);
+    }
+    for (let i = 0; i < 60; i++) {
+      const y = 10 + random() * 96,
+        spread = (y / 110) * 44;
+      rect(c, colors[Math.floor(random() * 3) + 2]!, 50 - spread + random() * spread * 1.6, y, 2 + Math.floor(random() * 4), 1);
+    }
+  });
+  // A two-storey post-town inn (hatago), drawn on a bottom-centre anchor.
+  texture("forest-inn", 160, 124, (c) => {
+    rect(c, "#2c302c", 4, 114, 152, 8);
+    rect(c, "#44312a", 10, 62, 140, 54);
+    for (let x = 14; x < 148; x += 9) rect(c, "#56402f", x, 64, 2, 50);
+    rect(c, "#2a2420", 10, 62, 140, 3);
+    for (const x of [20, 104]) {
+      rect(c, "#d9b46c", x, 74, 34, 24);
+      for (let k = x + 3; k < x + 34; k += 5) rect(c, "#5a4130", k, 74, 1, 24);
+      rect(c, "#5a4130", x, 85, 34, 1);
+    }
+    rect(c, "#26414f", 64, 66, 30, 22);
+    for (let x = 71; x < 94; x += 8) rect(c, "#1b2f39", x, 66, 1, 22);
+    rect(c, "#2c2420", 64, 88, 30, 26);
+    rect(c, "#4a3529", 16, 30, 128, 30);
+    rect(c, "#d1aa66", 28, 38, 104, 14);
+    for (let x = 30; x < 132; x += 4) rect(c, "#5a4130", x, 38, 1, 14);
+    poly(c, "#3a4146", [[0, 64], [160, 64], [148, 52], [12, 52]]);
+    poly(c, "#525c62", [[4, 60], [156, 60], [146, 54], [14, 54]]);
+    poly(c, "#363d42", [[8, 34], [152, 34], [128, 8], [32, 8]]);
+    poly(c, "#4d575d", [[14, 31], [146, 31], [126, 11], [34, 11]]);
+    for (let y = 14; y < 31; y += 4) rect(c, "#3e474c", 28 - (y - 14) * 0.9, y, 104 + (y - 14) * 1.8, 1);
+    rect(c, "#2b3135", 30, 6, 100, 4);
+    rect(c, "#c9b48a", 56, 42, 48, 8);
+    rect(c, "#3a2c23", 60, 44, 40, 1);
+  });
+  texture("forest-rain", 2, 14, (c) => {
+    rect(c, "#d8ecf2", 0, 0, 1, 14);
+    rect(c, "#9fc2cf", 1, 4, 1, 8);
+  });
   texture("forest-rock", 30, 23, (c) => {
     poly(c, "#284c3e", [
       [2, 16],

@@ -50,7 +50,7 @@ export function ForestCanvas({ bridge }: { bridge: ForestBridge }) {
               Please reload to try again. Your saved learning progress is safe.
             </p>
             <button onClick={() => location.reload()}>Reload the forest</button>
-            <a href={`${import.meta.env.BASE_URL}camp`}>Return to camp</a>
+            <a href={import.meta.env.BASE_URL}>Return to the map</a>
           </div>,
           document.body,
         )}

@@ -90,7 +90,7 @@ export function WordAudio({ reading, wordKey, paused = false, autoPlay = true, v
     : autoPlay ? "Automatically reads each word in Japanese. Use Voice to mute." : "Hear this word in Japanese. Use Voice to mute.";
 
   if (variant === "hud") {
-    const hud = "flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-paper shadow backdrop-blur active:scale-90 disabled:opacity-40";
+    const hud = "game-round-button";
     return <div className={`inline-flex items-center gap-1.5 ${className}`}>
       <button type="button" onClick={() => setVoiceEnabled(!enabled)}
         aria-label={enabled ? "Mute Japanese voice" : "Unmute Japanese voice"}

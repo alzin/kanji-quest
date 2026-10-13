@@ -225,7 +225,7 @@ test("failure keeps the score but not undelivered spirits, lists only met words,
   expect((await inspectFirefly(page)).rescued).toEqual([]);
   await page.getByRole("button", { name: "Pause adventure" }).click();
   await page.getByRole("button", { name: "Leave this adventure" }).click();
-  await page.getByRole("link", { name: "← Camp", exact: true }).click();
+  await page.getByRole("link", { name: "← Map", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep your progress" })).toBeVisible();
 });
 
