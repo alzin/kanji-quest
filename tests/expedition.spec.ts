@@ -286,7 +286,12 @@ test("a full walk restores all landmarks and saves exactly one reward and four g
   ).toBeVisible();
   await expect(page.locator("canvas[data-ready]")).toBeVisible();
   await page.screenshot({ path: info.outputPath("title.png") });
-  await page.getByRole("link", { name: "Enter the forest" }).click();
+  // The title card sits over the world map; starting sets the traveller down at the trailhead.
+  await page.getByRole("button", { name: "Start your journey" }).click();
+  const trailhead = page.getByRole("region", { name: "The First Five checkpoint" });
+  await expect(trailhead.getByText("YOU ARE HERE · N5 · REGION 1 OF 19")).toBeVisible();
+  await page.screenshot({ path: info.outputPath("map.png") });
+  await trailhead.getByRole("link", { name: "Walk today’s trail" }).click();
   await expect(page.getByTestId("forest-adventure")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Follow the trail" }),
@@ -310,10 +315,14 @@ test("a full walk restores all landmarks and saves exactly one reward and four g
   save = await saved(page);
   expect(save.coins).toBe(42);
   expect(save.runsCompleted).toBe(1);
-  await page.getByRole("link", { name: "Return to camp", exact: true }).click();
-  await expect(page.getByTestId("stat-mon")).toHaveText("42");
+  await page.getByRole("link", { name: "Back to the map", exact: true }).click();
+  await expect(page.getByTestId("world-map")).toBeVisible();
+  await expect(page.getByLabel("42 mon coins", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByTestId("stat-mon")).toHaveText("42");
+  // A traveller with a walk behind them goes straight to the map, never the title.
+  await expect(page.locator("canvas[data-ready]")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "A little Japanese. A whole new world." })).toHaveCount(0);
+  await expect(page.getByLabel("42 mon coins", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

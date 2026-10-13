@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Nav } from "./Nav";
+import { GameScreen } from "./GameScreen";
 import { AppIcon } from "./AppIcon";
 import { WordRuby } from "./WordRuby";
 import { StrokePractice } from "./StrokePractice";
 import { WordAudio } from "./WordAudio";
-import { SoundToggle } from "./SoundToggle";
 import { levelOfChapter } from "@/data";
 import { buildQuestion, selectLevel, vocabKana, type Question } from "@/lib/srs";
 
@@ -55,9 +54,8 @@ export function RunPreparation({ questions, title, onStart, learnOnly: learnOnly
   };
 
   return (
-    <div className="app-shell min-h-screen bg-paper">
-      <Nav />
-      <main className="mx-auto max-w-4xl px-4 pb-12">
+    <GameScreen back={checkpoint ? { stop: checkpoint.chapter } : {}}>
+      <div className="mx-auto max-w-4xl px-4 pb-12">
         <div className="mt-5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{title} · {checkpoint ? "Step 1 of 3" : "Dojo preparation"}</p>
           <h1 ref={heading} tabIndex={-1} className="mt-1.5 font-serif text-[1.875rem] font-bold leading-tight outline-none sm:text-4xl">
@@ -165,15 +163,14 @@ export function RunPreparation({ questions, title, onStart, learnOnly: learnOnly
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
           {checkpoint
-            ? <Link to="/map" onClick={() => selectLevel(levelOfChapter(checkpoint.chapter)!)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
+            ? <Link to="/" search={{ stop: checkpoint.chapter }} onClick={() => selectLevel(levelOfChapter(checkpoint.chapter)!)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
               <span aria-hidden="true">←</span> Back to the map
             </Link>
             : <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground">
-              <span aria-hidden="true">←</span> Leave preparation
+              <span aria-hidden="true">←</span> Back to the map
             </Link>}
-          <SoundToggle variant="inline" />
         </div>
-      </main>
-    </div>
+      </div>
+    </GameScreen>
   );
 }

@@ -19,6 +19,7 @@ import { FireflyAdventure } from "./game/firefly/FireflyAdventure";
 import { CheckpointRail } from "./CheckpointRail";
 import { RunPreparation } from "./RunPreparation";
 import { WordAudio } from "./WordAudio";
+import { GameHud } from "./GameScreen";
 
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground shadow-e1";
 const secondary = "min-h-12 rounded-xl border border-border px-5 py-3 text-center font-bold hover:bg-secondary";
@@ -60,10 +61,11 @@ function CheckpointJourney({ gate }: { gate: number }) {
   const resume = () => setView(nextCheckpointStep(getSnapshot(), gate));
   const toMap = () => selectLevel(level);
 
-  if (frozen.blocked) return <div className="river-session"><div className="stack-page">
+  const hud = <GameHud back={{ stop: gate }} minimal />;
+  if (frozen.blocked) return <div className="river-session">{hud}<div className="stack-page">
     <h1 className="font-serif text-3xl font-bold">This {level} checkpoint is locked</h1>
     <p>Clear the previous checkpoint or reach 55% mastery progress in that region to continue.</p>
-    <Link to="/map" onClick={toMap} className={primary}>View the {level} road</Link>
+    <Link to="/" search={{ stop: gate }} onClick={toMap} className={primary}>Back to the map</Link>
   </div></div>;
 
   if (view === "learn") return <RunPreparation questions={frozen.questions} title={`${region.name} · Checkpoint`}
@@ -79,7 +81,7 @@ function CheckpointJourney({ gate }: { gate: number }) {
     onSeal: (receipt: AdventureTerminalResult) => { flawless.current.rescue = receipt.learning.recallCorrect === receipt.learning.recallTotal; resume(); },
   }} />;
 
-  if (view === "seal") return <div className="river-session"><SealCheck questions={frozen.questions} done={done} onComplete={(typed) => {
+  if (view === "seal") return <div className="river-session">{hud}<SealCheck questions={frozen.questions} done={done} onComplete={(typed) => {
     recordTypedSeal();
     if (typed >= 2) {
       const reward = clearGate(gate);
@@ -98,7 +100,7 @@ function CheckpointJourney({ gate }: { gate: number }) {
 
   const next = outcome?.passed ? nextChapter(gate) : undefined;
   const nextOpen = next !== undefined && isChapterUnlocked(save, next);
-  return <div className="river-session"><div className="stack-page" data-testid="checkpoint-results">
+  return <div className="river-session">{hud}<div className="stack-page" data-testid="checkpoint-results">
     <span className="stamp-in font-serif text-5xl text-primary">{outcome?.passed ? "合格" : "再挑戦"}</span>
     <h1 className="font-serif text-3xl font-bold">{outcome?.passed ? "Checkpoint cleared!" : "Keep practising your seal"}</h1>
     <p>{region.name} · {outcome?.typed ?? 0}/3 typed{outcome?.earned ? ` · +${outcome.earned} mon` : ""}</p>
@@ -109,7 +111,7 @@ function CheckpointJourney({ gate }: { gate: number }) {
     {outcome?.passed
       ? nextOpen && <Link to="/run" search={{ gate: next }} className={primary}>Prepare next region</Link>
       : <button className={primary} onClick={resume}>Back to Firefly Rescue</button>}
-    <Link to="/map" onClick={toMap} className={outcome?.passed && !nextOpen ? primary : secondary}>Back to map</Link>
+    <Link to="/" search={{ stop: gate }} onClick={toMap} className={outcome?.passed && !nextOpen ? primary : secondary}>Back to the map</Link>
   </div></div>;
 }
 
@@ -137,9 +139,10 @@ function StackStep({ gate, words, done, onPassed, onContinue, onReview }: {
   const begin = () => { finished.current = false; missed.current.clear(); setStage("play"); };
   // A filled sheet or a short total retries that sheet, never a whole new queue.
   const retry = () => { setTotals(beforeSheet.current); setLatest(null); setAttempt((v) => v + 1); begin(); };
-  const toMap = <Link to="/map" onClick={() => selectLevel(levelOfChapter(gate)!)} className={quiet}>Back to the map</Link>;
+  const toMap = <Link to="/" search={{ stop: gate }} onClick={() => selectLevel(levelOfChapter(gate)!)} className={quiet}>Back to the map</Link>;
+  const hud = <GameHud back={{ stop: gate }} minimal />;
 
-  if (stage === "intro") return <div className="stack-page">
+  if (stage === "intro") return <>{hud}<div className="stack-page">
     <CheckpointRail done={done} current={1} />
     <span className="font-serif text-6xl text-primary">積み字</span>
     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Step 2 of 3 · Stack &amp; recall</p>
@@ -148,9 +151,9 @@ function StackStep({ gate, words, done, onPassed, onContinue, onReview }: {
     <button className={primary} data-testid="stack-start" onClick={begin}>Start sheet</button>
     <button className={quiet} onClick={onReview}>Review the words</button>
     {toMap}
-  </div>;
+  </div></>;
 
-  if (stage === "play") return <StackGame key={`${sheet}-${attempt}`} words={sheets[sheet]!} title={`Checkpoint · sheet ${sheet + 1} / ${sheets.length}`} seed={7919 + sheet * 104729 + attempt * 65537}
+  if (stage === "play") return <StackGame key={`${sheet}-${attempt}`} exitStop={gate} words={sheets[sheet]!} title={`Checkpoint · sheet ${sheet + 1} / ${sheets.length}`} seed={7919 + sheet * 104729 + attempt * 65537}
     onPlacement={(e) => {
       if (!e.correct && missed.current.has(e.word.q.kanji.c)) return;
       if (e.grade) grade(e.word.q.kanji.c, e.correct, Date.now(), { rt: e.rt, fallTime: e.fallTime, hinted: e.hinted });
@@ -174,11 +177,11 @@ function StackStep({ gate, words, done, onPassed, onContinue, onReview }: {
       setStage("result");
     }} />;
 
-  if (stage === "between") return <div className="stack-page"><span className="stamp-in font-serif text-6xl text-primary">一枚</span><h1 className="font-serif text-3xl font-bold">Sheet cleared</h1><p>{latest?.correct} matches · {latest?.score.toLocaleString()} points</p><p className="text-sm text-muted-foreground">{rest > 0 ? `Take a breath · ${rest}s` : "Ready when you are."}</p>
-    <button className={primary} onClick={() => { setSheet((v) => v + 1); begin(); }}>Next sheet</button>{toMap}</div>;
+  if (stage === "between") return <>{hud}<div className="stack-page"><span className="stamp-in font-serif text-6xl text-primary">一枚</span><h1 className="font-serif text-3xl font-bold">Sheet cleared</h1><p>{latest?.correct} matches · {latest?.score.toLocaleString()} points</p><p className="text-sm text-muted-foreground">{rest > 0 ? `Take a breath · ${rest}s` : "Ready when you are."}</p>
+    <button className={primary} onClick={() => { setSheet((v) => v + 1); begin(); }}>Next sheet</button>{toMap}</div></>;
 
   const passed = result === "passed";
-  return <div className="stack-page" data-testid="stack-results">
+  return <>{hud}<div className="stack-page" data-testid="stack-results">
     <CheckpointRail done={done} current={passed ? 2 : 1} />
     <span className="stamp-in font-serif text-5xl text-primary">{passed ? "積" : "満"}</span>
     <h1 className="font-serif text-3xl font-bold">{passed ? "Stack & recall complete" : result === "filled" ? "Sheet filled" : "Not yet · keep stacking"}</h1>
@@ -188,7 +191,7 @@ function StackStep({ gate, words, done, onPassed, onContinue, onReview }: {
     {passed ? <button className={primary} onClick={onContinue}>Continue to Firefly Rescue</button> : <button className={primary} onClick={retry}>Retry sheet</button>}
     {!passed && <button className={secondary} onClick={onReview}>Review the words</button>}
     {toMap}
-  </div>;
+  </div></>;
 }
 
 function SealCheck({ questions, done, onComplete }: { questions: Question[]; done: number; onComplete: (correct: number) => void }) {

@@ -30,6 +30,8 @@ type Props = {
   forest?: boolean;
   paused?: boolean;
   onPause?: () => void;
+  /** The map stop to return to when the learner leaves the dash. */
+  exitStop?: number | undefined;
 };
 type HUD = {
   hearts: number;
@@ -50,6 +52,7 @@ export function LanternRunnerGame({
   forest = false,
   paused: externalPause = false,
   onPause,
+  exitStop,
 }: Props) {
   const account = useAccount();
   const host = useRef<HTMLDivElement>(null),
@@ -480,8 +483,8 @@ export function LanternRunnerGame({
           >
             Resume the dash
           </button>
-          <Link to="/camp" className="forest-text-button">
-            Return to camp
+          <Link to="/" search={exitStop === undefined ? {} : { stop: exitStop }} className="forest-text-button">
+            Return to the map
           </Link>
         </dialog>
       )}

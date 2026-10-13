@@ -1,0 +1,211 @@
+/* ==========================================================================
+ * The journey map: five roads, one trail of small checkpoints from N5 to N1.
+ * Each stop is one row; its node sits in a narrow column and the trail meanders
+ * through that column. A stop draws its own way on: a straight run beside any
+ * open detail card, then a curve (fixed row size) down to the next node.
+ * ========================================================================== */
+
+.journey {
+  --col: 64px;
+  --row: 64px;
+  --node: 38px;
+  --trail-walked: var(--primary);
+  --trail-ahead: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+}
+@media (min-width: 640px) {
+  .journey { --col: 76px; --row: 68px; --node: 44px; }
+}
+
+.road-tint {
+  --road: oklch(0.52 0.08 var(--road-h, 230));
+  --road-soft: color-mix(in oklch, var(--road) 13%, var(--card));
+}
+.dark .road-tint { --road: oklch(0.76 0.075 var(--road-h, 230)); }
+
+/* Straight stretches of trail: solid once walked, a dotted footpath ahead. */
+.journey-line { position: absolute; z-index: 0; width: 3px; pointer-events: none; }
+.journey-line[data-trail="walked"] { border-radius: 3px; background: var(--trail-walked); }
+.journey-line[data-trail="ahead"] { background: radial-gradient(circle, var(--trail-ahead) 1.4px, transparent 1.7px) 50% 0 / 3px 7px repeat-y; }
+
+/* --- Stations: where each road begins ----------------------------------- */
+.journey-road { position: relative; }
+.journey-station {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--col) minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  padding: 36px 0 18px;
+}
+.journey-road:first-child .journey-station { padding-top: 20px; }
+.journey-station-in { left: calc(var(--col) / 2 - 1.5px); top: 0; height: 50%; }
+.journey-station-out { left: calc(var(--col) / 2 - 1.5px); top: 50%; bottom: calc(var(--row) / -2); }
+.journey-station-mark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-self: center;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--road);
+  border-radius: 50%;
+  background: var(--road-soft);
+  box-shadow: var(--elevation-1);
+  color: var(--road);
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 800;
+  rotate: -6deg;
+}
+.journey-road[data-uncharted] .journey-station-mark { border-style: dashed; background: var(--paper); box-shadow: none; }
+.journey-road-fill { background: var(--road); }
+.journey-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--road) 14%, transparent);
+  color: var(--road);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* --- Stops ---------------------------------------------------------------- */
+.journey-trail { margin: 0; padding: 0; list-style: none; }
+.journey-stop { position: relative; scroll-margin-top: 22vh; }
+.journey-stop-run { left: calc(var(--x) * var(--col) / 100 - 1.5px); top: calc(var(--row) / 2); bottom: calc(var(--row) / 2); }
+.journey-segment {
+  position: absolute;
+  z-index: 0;
+  bottom: calc(var(--row) / -2);
+  left: 0;
+  width: var(--col);
+  height: var(--row);
+  overflow: visible;
+  fill: none;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+/* A road's last stop curves back to the centre within its own row, where the next stretch begins. */
+.journey-stop[data-last] .journey-segment { bottom: 0; height: calc(var(--row) / 2); }
+.journey-segment[data-trail="walked"] { stroke: var(--trail-walked); }
+.journey-segment[data-trail="ahead"] { stroke: var(--trail-ahead); stroke-dasharray: 0 11; }
+
+.journey-stop-heading { position: relative; z-index: 1; margin: 0; font: inherit; }
+.journey-stop-toggle {
+  display: grid;
+  grid-template-columns: var(--col) minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  height: var(--row);
+  border-radius: 16px;
+  text-align: left;
+}
+.journey-stop-toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.journey-stop-toggle:hover .journey-stop-title,
+.journey-stop-toggle[aria-expanded="true"] .journey-stop-title { color: var(--primary); }
+
+.journey-node {
+  position: relative;
+  display: grid;
+  justify-self: start;
+  place-items: center;
+  width: var(--node);
+  height: var(--node);
+  margin-left: calc(var(--x) * var(--col) / 100 - var(--node) / 2);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--accent);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.journey-node-label { position: relative; }
+.journey-node-ring { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke-width: 3; rotate: -90deg; }
+.journey-node-ring-track { stroke: color-mix(in oklch, var(--accent) 30%, var(--border)); }
+.journey-node-ring-done { stroke: var(--primary); }
+.journey-stop[data-state="locked"] .journey-node { border: 2px dashed var(--border); color: var(--muted-foreground); font-size: 13px; }
+.journey-stop[data-state="sealed"] .journey-node {
+  border: 2.5px solid var(--primary);
+  background: color-mix(in oklch, var(--primary) 11%, var(--paper));
+  color: var(--primary);
+  font-size: 17px;
+  rotate: -6deg;
+}
+.journey-stop[data-perfect] .journey-node { border-color: var(--gold); background: color-mix(in oklch, var(--gold) 16%, var(--paper)); }
+@keyframes journey-here {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 0%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in oklch, var(--primary) 16%, transparent); }
+}
+.journey-stop[data-here] .journey-node { background: var(--card); color: var(--primary); animation: journey-here 2.4s ease-in-out infinite; }
+
+.journey-stop-text { display: grid; min-width: 0; gap: 3px; }
+.journey-stop-title { overflow: hidden; font-family: var(--font-serif); font-size: 15px; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; transition: color 160ms ease; }
+.journey-stop-kanji { overflow: hidden; color: var(--muted-foreground); font-family: var(--font-serif); font-size: 14px; letter-spacing: .18em; line-height: 1.3; white-space: nowrap; }
+.journey-stop[data-state="locked"] .journey-stop-title { color: var(--muted-foreground); }
+.journey-stop[data-state="locked"] .journey-stop-kanji { opacity: .6; }
+@media (min-width: 640px) {
+  .journey-stop-title { font-size: 16px; }
+  .journey-stop-kanji { font-size: 15px; }
+}
+
+.journey-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.journey-chip[data-kind="here"] { background: var(--primary); color: var(--primary-foreground); }
+.journey-chip[data-kind="progress"] { background: color-mix(in oklch, var(--primary) 12%, transparent); color: var(--primary); }
+.journey-chip[data-kind="sealed"] { padding-inline: 0; background: none; color: var(--primary); }
+.journey-chip[data-kind="locked"] { padding-inline: 2px; background: none; color: var(--muted-foreground); }
+
+.journey-detail { position: relative; z-index: 1; margin: 2px 0 14px calc(var(--col) + 4px); }
+.journey-note { position: relative; margin: 0 0 12px calc(var(--col) + 8px); color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+
+/* --- Road's end ------------------------------------------------------------ */
+.journey-milestone { position: relative; padding: 14px 0 6px calc(var(--col) + 4px); scroll-margin-top: 22vh; }
+.journey-milestone-line { left: calc(var(--col) / 2 - 1.5px); top: 0; bottom: 0; }
+
+/* --- The uncharted road and the journey's end ------------------------------ */
+.journey-ghost-row { display: grid; grid-template-columns: var(--col) minmax(0, 1fr); column-gap: 8px; align-items: center; height: var(--row); }
+/* Fade the strokes, not the rows: an opaque node still hides the way in behind it. */
+.journey-ghost .journey-line, .journey-ghost .journey-segment, .journey-ghost-bar { opacity: var(--fade, 1); }
+.journey-ghost .journey-node { border: 2px dashed color-mix(in oklch, var(--border) calc(var(--fade, 1) * 100%), transparent); }
+.journey-ghost-bar { height: 10px; border-radius: 999px; background: repeating-linear-gradient(90deg, var(--border) 0 10px, transparent 10px 16px); }
+.journey-destination { position: relative; display: grid; grid-template-columns: var(--col) minmax(0, 1fr); column-gap: 8px; align-items: center; padding: 18px 0 8px; }
+.journey-destination .journey-station-in { height: 50%; }
+.journey-destination .journey-station-mark { border-color: var(--gold); background: color-mix(in oklch, var(--gold) 12%, var(--paper)); color: var(--foreground); rotate: 0deg; }
+
+/* --- Overview bar ------------------------------------------------------------ */
+.journey-overview-bar { display: flex; gap: 3px; height: 10px; }
+.journey-overview-road { position: relative; min-width: 14px; border-radius: 999px; background: color-mix(in oklch, var(--road) 18%, var(--secondary)); }
+.journey-overview-road[data-charted="false"] { background: repeating-linear-gradient(90deg, var(--border) 0 5px, transparent 5px 9px); }
+.journey-overview-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--road); }
+.journey-overview-here {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--primary);
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--elevation-1);
+  translate: -50% -50%;
+}

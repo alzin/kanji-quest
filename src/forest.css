@@ -742,18 +742,6 @@
   left: 5%;
   right: 5%;
 }
-.forest-camp-link {
-  font-size: 12px;
-  color: #ebe1bf;
-  text-decoration: none;
-  border: 1px solid #d6c38b66;
-  padding: 11px 17px;
-  border-radius: 5px;
-  background: #1f40306b;
-}
-.forest-camp-link span {
-  margin-left: 20px;
-}
 .forest-title-copy {
   position: absolute;
   left: 8.5%;
@@ -810,24 +798,6 @@
   width: 2px;
   background: #c7bd8c;
   border-radius: 50%;
-}
-.forest-title-modes {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-top: 36px;
-  font-size: 11px;
-  color: #c6cbaa;
-}
-.forest-title-modes a {
-  border-bottom: 1px solid #bbc49e44;
-  padding-bottom: 3px;
-}
-.forest-title-modes a:hover {
-  color: #f2d9a4;
-}
-.forest-title-modes > span {
-  color: #7f987f;
 }
 .forest-title-caption {
   position: absolute;

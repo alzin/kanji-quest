@@ -1,0 +1,110 @@
+/* ==========================================================================
+ * The Kanji Journey world map (/world): the forest HUD language over a
+ * Phaser overworld. Position card top-left, roads on the right, the chosen
+ * checkpoint in a panel (bottom sheet on phones, side card on desktop).
+ * ========================================================================== */
+
+.forest-game a.forest-icon-button { color: var(--f-cream); text-decoration: none; font-size: 18px; }
+/* In the forest: where this trail sits on the whole journey. */
+.forest-position {
+  display: inline-block;
+  margin-top: 10px;
+  color: #e9c580;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-decoration: none;
+  border-bottom: 1px solid #e9c58040;
+  padding: 3px 0;
+}
+.forest-position + .forest-track { display: block; }
+.world-position { max-width: min(380px, calc(100vw - 110px)); pointer-events: none; }
+.world-position a, .world-position button { pointer-events: auto; }
+.world-position-line { margin: 0 0 4px; color: #d7dcc4; font-size: 13px; line-height: 1.5; }
+.world-position-line b { color: var(--f-gold); font-size: 15px; }
+.world-actions { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.world-actions .forest-track { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: #f1dfb0; text-decoration: none; }
+.world-actions .forest-track:disabled { opacity: .5; cursor: default; }
+
+.world-roads {
+  position: absolute;
+  top: 50%;
+  right: max(18px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  translate: 0 -50%;
+}
+.world-roads button {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 64px;
+  padding: 7px 6px;
+  border: 1px solid #e6d49c33;
+  border-radius: 10px;
+  background: #183b32c8;
+  color: #c9d2bb;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.world-roads button b { font-size: 14px; letter-spacing: .06em; }
+.world-roads button span { font-family: "Shippori Mincho B1", serif; font-size: 11px; }
+.world-roads button small { font-size: 10px; color: #a9b79f; font-variant-numeric: tabular-nums; }
+.world-roads button[aria-pressed="true"] { border-color: #eccb8a; background: #2a4a3ee8; color: #f7e3b4; }
+.world-roads button:disabled { cursor: default; opacity: .6; }
+
+.world-panel {
+  position: absolute;
+  right: max(100px, calc(env(safe-area-inset-right) + 100px));
+  bottom: max(26px, env(safe-area-inset-bottom));
+  width: min(380px, calc(100vw - 48px));
+  max-height: min(70svh, 560px);
+  overflow: auto;
+  padding: 18px 20px 16px;
+  border: 1px solid #d7c59460;
+  border-radius: 14px;
+  background: linear-gradient(150deg, #29483df2, #1a342cf2);
+  box-shadow: 0 24px 80px #0a1f1a80;
+  color: var(--f-cream);
+  backdrop-filter: blur(10px);
+  scrollbar-width: thin;
+}
+.world-panel h2 { margin: 8px 0 6px; font: 600 24px/1.3 "Shippori Mincho B1", serif; letter-spacing: -0.03em; }
+.world-panel h2 small { display: block; color: #bcc6ae; font-size: 14px; font-weight: 500; }
+.world-panel p { color: #c3cdb7; font-size: 13px; line-height: 1.7; margin: 8px 0 12px; }
+.world-panel .world-kanji { margin: 6px 0 10px; color: #f6ead0; font-family: "Shippori Mincho B1", serif; font-size: 26px; letter-spacing: .22em; }
+.world-panel .world-fine { margin: 6px 0 8px; font-size: 12px; color: #aebba4; }
+.world-meter { height: 6px; overflow: hidden; border-radius: 999px; background: #0f2722; }
+.world-meter span { display: block; height: 100%; border-radius: inherit; background: #eccb8a; }
+.world-panel .checkpoint-rail { --rail-on: #efcb7e; --rail-off: #f5e9c826; --rail-text: #a9c2b8; --rail-now: #efcb7e; margin-bottom: 14px; }
+.world-panel .forest-primary { width: 100%; text-decoration: none; }
+.world-sealed { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: #f0d79f !important; font-weight: 700; }
+.world-sealed .forest-text-button { margin: 0; }
+.world-steps { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.world-steps button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #e6d49c33;
+  border-radius: 8px;
+  background: #f2dfb20d;
+  color: #d9dcc4;
+  font-size: 12px;
+  cursor: pointer;
+}
+.world-steps button:disabled { opacity: .35; cursor: default; }
+
+@media (max-width: 700px) {
+  .world-position { top: 84px; max-width: calc(100vw - 96px); }
+  .world-position h1 { font-size: 19px; margin: 4px 0 4px; }
+  .world-position-line { font-size: 12px; }
+  /* The road strip already shows each road's seals. */
+  .world-position-line + .world-position-line { display: none; }
+  .world-actions .forest-track { min-height: 32px; margin-top: 4px; }
+  .world-roads { top: auto; bottom: auto; top: 200px; translate: none; right: 10px; gap: 4px; }
+  .world-roads button { min-width: 52px; padding: 5px 4px; }
+  .world-roads button span { display: none; }
+  .world-panel { left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width: auto; max-height: 48svh; padding: 14px 16px 12px; }
+  .world-panel h2 { font-size: 20px; }
+  .world-panel .world-kanji { font-size: 22px; }
+}

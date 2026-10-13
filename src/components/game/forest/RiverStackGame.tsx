@@ -32,6 +32,8 @@ type Props = {
   forest?: boolean;
   paused?: boolean;
   onPause?: () => void;
+  /** The map stop to return to when the learner leaves the sheet. */
+  exitStop?: number | undefined;
 };
 type Snapshot = {
   current: StackTask | null;
@@ -78,6 +80,7 @@ export function RiverStackGame({
   forest = false,
   paused: externalPause = false,
   onPause,
+  exitStop,
 }: Props) {
   const account = useAccount();
   const host = useRef<HTMLDivElement>(null),
@@ -650,8 +653,8 @@ export function RiverStackGame({
           <MusicToggle compact />
           <SoundToggle variant="inline" />
         </div>
-        <Link to="/camp" className="forest-text-button">
-          Leave sheet
+        <Link to="/" search={exitStop === undefined ? {} : { stop: exitStop }} className="forest-text-button">
+          Leave sheet · back to the map
         </Link>
       </dialog>
       {help && (

@@ -116,12 +116,12 @@ export function RunResults({ gate, questions, results, pendingCheckpoint, restar
               <button
                 onClick={() => {
                   if (gate) selectLevel(levelOfChapter(gate)!);
-                  void navigate({ to: gate ? "/map" : "/" });
+                  void navigate({ to: "/", search: gate ? { stop: gate } : {} });
                 }}
                 data-sfx="tap"
                 className="min-h-12 rounded-xl py-3 font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
-                {gate ? "Back to map" : "Back home"}
+                Back to the map
               </button>
             </div>
           </div>

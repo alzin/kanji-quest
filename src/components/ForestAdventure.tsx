@@ -1,8 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ForestCanvas } from "./game/forest/ForestCanvas";
 import type { ForestBridge } from "./game/forest/ForestScene";
-import { SITES } from "./game/forest/world";
+import { areaForLevel } from "./game/forest/areas";
+import { journeyHere } from "@/lib/journey";
 import {
   answerTrail,
   createTrail,
@@ -23,6 +24,7 @@ import { acceptsReading } from "@/lib/production";
 import { play, unlock } from "@/lib/sfx";
 import { useGameMusic } from "@/lib/music";
 import { useAccount } from "@/lib/account";
+import { AppIcon } from "./AppIcon";
 import { MusicToggle } from "./MusicToggle";
 import { SoundToggle } from "./SoundToggle";
 import { WordAudio } from "./WordAudio";
@@ -66,6 +68,20 @@ export function ForestAdventure() {
   const account = useAccount();
   const [words] = useState(() => expeditionWords(getSnapshot()));
   const [level] = useState(() => learningLevel(getSnapshot()));
+  // Each JLPT level walks its own stretch of the road; the area is fixed for the session.
+  const [area] = useState(() => areaForLevel(level));
+  // Where this trail sits on the whole journey, shown with a way onto the world map.
+  const [{ position, hereCh }] = useState(() => {
+    const here = journeyHere(getSnapshot());
+    return {
+      hereCh: here.ch,
+      position: here.ch === undefined
+        ? `${here.road.id} road sealed`
+        : `${here.road.id} · Region ${here.road.regions.indexOf(here.ch) + 1} of ${here.road.regions.length}`,
+    };
+  });
+  const navigate = useNavigate();
+  const mapSearch = hereCh === undefined ? {} : { stop: hereCh };
   const [trail, setTrail] = useState(() => createTrail(words, "river"));
   const [restored, setRestored] = useState(0);
   const [delivered, setDelivered] = useState(false);
@@ -75,7 +91,8 @@ export function ForestAdventure() {
     [journal, setJournal] = useState(false),
     [paused, setPaused] = useState(false);
   const [introduced, setIntroduced] = useState(false),
-    [results, setResults] = useState(false);
+    [results, setResults] = useState(false),
+    [leaving, setLeaving] = useState(false);
   const [studyWord, setStudyWord] = useState(0);
   const [motes, setMotes] = useState(0),
     [hinted, setHinted] = useState(false),
@@ -97,6 +114,7 @@ export function ForestAdventure() {
     restored: 0,
     preview: false,
     reducedMotion: false,
+    area,
     onReady: () => setReady(true),
     onNear: setNear,
     onInteract: () => action.current(),
@@ -112,7 +130,7 @@ export function ForestAdventure() {
   const dash = restored === 2 && !delivered;
   const current = trail.queue[trail.index],
     q = current?.question;
-  const site = SITES[Math.min(restored, 2)]!;
+  const site = area.sites[Math.min(restored, 2)]!;
   const summary = trailSummary(trail);
   useGameMusic(
     dash && encounter
@@ -227,7 +245,7 @@ export function ForestAdventure() {
       setRestored(nextRestored);
       setEncounter(false);
       setNear(null);
-      setToast(SITES[nextRestored - 1]!.reward);
+      setToast(area.sites[nextRestored - 1]!.reward);
       play("sealEarned");
     }
     if (complete && !saved.current) {
@@ -248,15 +266,24 @@ export function ForestAdventure() {
       awardDailySeal(now);
       play("runComplete", { earned: result.earned });
       // Let the player see the restored shrine before opening the report.
-      setToast("The forest remembers. Your discoveries have been recorded.");
+      setToast(`${area.remembered} Your discoveries have been recorded.`);
     }
-  }, [feedback, paused, account.prompt, words.length, restored]);
+  }, [feedback, paused, account.prompt, words.length, restored, area]);
   useEffect(() => {
     if (!feedback?.correct || paused || account.prompt || !encounter || journal)
       return;
     const timer = setTimeout(advance, 1000);
     return () => clearTimeout(timer);
   }, [feedback, paused, account.prompt, encounter, journal, advance]);
+  // Back to the map. A finished trail is already saved; an unfinished one asks first.
+  const leaveToMap = () => {
+    if (saved.current) {
+      void navigate({ to: "/", search: mapSearch });
+      return;
+    }
+    setLeaving(true);
+    setPaused(true);
+  };
   const closeJournal = () => {
     const first = !introduced;
     setJournal(false);
@@ -280,28 +307,40 @@ export function ForestAdventure() {
         </div>
       )}
       <header className="forest-hud">
-        <Link
-          to="/"
+        <button
+          type="button"
           className="forest-wordmark"
-          aria-label="Kanji Dash title screen"
+          onClick={leaveToMap}
+          aria-label="Kanji Dash: back to the map"
         >
           <span className="forest-seal">森</span>
           <span>
             KANJI DASH<small>THE SPIRIT TRAIL</small>
           </span>
-        </Link>
+        </button>
         <div className="forest-hud-right">
+          <button
+            type="button"
+            className="forest-icon-button forest-hud-label"
+            onClick={leaveToMap}
+            aria-describedby="forest-position"
+            title={`Back to the map · you are at ${position}`}
+          >
+            <AppIcon name="map" />
+            <span>Map</span>
+          </button>
           <span className="forest-motes" title="Optional fireflies found">
             ✦ <b>{motes}</b>
             <small>/ 5</small>
           </span>
           <button
-            className="forest-icon-button"
+            className="forest-icon-button forest-hud-label"
             onClick={() => setJournal(true)}
             aria-label="Open field notes"
-            title="Field notes"
+            title="Field notes: today’s words"
           >
-            ▤
+            <span aria-hidden="true" className="forest-hud-glyph">字</span>
+            <span>Words</span>
           </button>
           <button
             className="forest-icon-button"
@@ -315,13 +354,13 @@ export function ForestAdventure() {
       </header>
       <div className="forest-objective">
         <span className="forest-eyebrow">
-          CHAPTER 01 <span>•</span> {level} WOODLANDS
+          CHAPTER {String(area.chapter).padStart(2, "0")} <span>•</span> {level} {area.terrain}
         </span>
         <h1>
           {restored === 3
-            ? "The forest remembers."
+            ? area.remembered
             : dash
-              ? "Carry light through the mist"
+              ? area.dash.objective
               : site.objective}
         </h1>
         <div
@@ -338,6 +377,11 @@ export function ForestAdventure() {
             </span>
           ))}
         </div>
+        <p className="forest-position" id="forest-position">
+          <span aria-hidden="true">◆ </span>
+          <span className="sr-only">You are at </span>
+          {position}
+        </p>
         {restored < 3 && (
           <button
             className="forest-track"
@@ -352,8 +396,8 @@ export function ForestAdventure() {
         )}
       </div>
       <div className="forest-location" aria-hidden="true">
-        <span>木霊の森</span>
-        <small>KODAMA WOODS</small>
+        <span>{area.name.jp}</span>
+        <small>{area.name.en}</small>
         <i />
       </div>
       <div className="forest-bottom">
@@ -367,9 +411,9 @@ export function ForestAdventure() {
                 AKI <small>YOUR TRAIL COMPANION</small>
               </span>
               <p>
-                The forest has forgotten its words.
+                {area.welcome[0]}
                 <br />
-                Come on. Let’s find its first light.
+                {area.welcome[1]}
               </p>
             </div>
             <button
@@ -398,7 +442,7 @@ export function ForestAdventure() {
             onClick={() => action.current()}
           >
             <kbd>E</kbd>
-            {dash ? "Run the mist trail" : site.verb}
+            {dash ? area.dash.verb : site.verb}
             <span aria-hidden="true">→</span>
           </button>
         ) : (
@@ -486,7 +530,7 @@ export function ForestAdventure() {
               setRestored(2);
               setEncounter(false);
               setNear(null);
-              setToast(SITES[1].reward);
+              setToast(area.sites[1].reward);
               play("sealEarned");
             }}
           />
@@ -508,7 +552,7 @@ export function ForestAdventure() {
               );
               setDelivered(true);
               setEncounter(false);
-              setToast("The mist lifts. Your lantern has lit the shrine path.");
+              setToast(area.dash.done);
               play("sealEarned");
             }}
           />
@@ -552,7 +596,7 @@ export function ForestAdventure() {
               ? "Every word holds a little light."
               : current.kind === "reading"
                 ? "Give the river its voice."
-                : "What does the forest remember?"}
+                : area.recallPrompt}
           </h2>
           <p>
             {current.kind === "recall"
@@ -694,12 +738,12 @@ export function ForestAdventure() {
           className="forest-results"
         >
           <span className="forest-result-seal">森</span>
-          <span className="forest-eyebrow">KODAMA WOODS · RESTORED</span>
-          <h2>The forest remembers.</h2>
+          <span className="forest-eyebrow">{area.name.en} · RESTORED</span>
+          <h2>{area.remembered}</h2>
           <p>
-            A lantern glows. A river can be crossed.
+            {area.results[0]}
             <br />
-            And a few more words feel like old friends.
+            {area.results[1]}
           </p>
           <div className="forest-result-stats">
             <div>
@@ -727,7 +771,7 @@ export function ForestAdventure() {
               `${summary.recovered} missed ${summary.recovered === 1 ? "word" : "words"} recovered.`}{" "}
             {account.user
               ? "Your discoveries are recorded in your progress."
-              : "Your discoveries are saved in this tab. Visit camp to sign in and keep them across devices."}
+              : "Your discoveries are saved in this tab. Open camp on the map to sign in and keep them across devices."}
           </p>
           <div className="forest-discoveries">
             {words.map((word) => (
@@ -737,45 +781,57 @@ export function ForestAdventure() {
               </span>
             ))}
           </div>
-          <Link to="/camp" className="forest-primary">
-            Return to camp <span aria-hidden="true">→</span>
+          <Link to="/" search={mapSearch} className="forest-primary">
+            Back to the map <span aria-hidden="true">→</span>
           </Link>
-          <button
-            className="forest-text-button"
-            onClick={() => setResults(false)}
-          >
-            Stay a little longer
-          </button>
+          <div className="forest-result-links">
+            <Link to="/" search={{ panel: "camp" }} className="forest-text-button">
+              Open camp
+            </Link>
+            <button
+              className="forest-text-button"
+              onClick={() => setResults(false)}
+            >
+              Stay a little longer
+            </button>
+          </div>
         </ForestDialog>
       )}
 
       {paused && (
         <ForestDialog
-          label="Adventure paused"
-          close={() => setPaused(false)}
+          label={leaving ? "Leave the trail?" : "Adventure paused"}
+          close={() => {
+            setPaused(false);
+            setLeaving(false);
+          }}
           className="forest-pause"
         >
-          <span className="forest-eyebrow">A QUIET MOMENT</span>
-          <h2>The forest can wait.</h2>
+          <span className="forest-eyebrow">{leaving ? "BACK TO THE MAP" : "A QUIET MOMENT"}</span>
+          <h2>{leaving ? "Leave the trail?" : "The forest can wait."}</h2>
           <p>
-            Finish the three landmarks to save your discoveries. There’s no
-            hurry.
+            {leaving
+              ? "Landmarks restored on this walk won’t be saved until all three are awake."
+              : "Finish the three landmarks to save your discoveries. There’s no hurry."}
           </p>
           <button
             className="forest-primary"
             onClick={() => {
               setPaused(false);
+              setLeaving(false);
               unlock();
             }}
           >
             Back to the trail <span aria-hidden="true">→</span>
           </button>
-          <div className="forest-audio">
-            <SoundToggle variant="inline" />
-            <MusicToggle compact />
-          </div>
-          <Link to="/" className="forest-text-button">
-            {saved.current ? "Return to title" : "Leave unfinished adventure"}
+          {!leaving && (
+            <div className="forest-audio">
+              <SoundToggle variant="inline" />
+              <MusicToggle compact />
+            </div>
+          )}
+          <Link to="/" search={mapSearch} className={leaving ? "forest-leave" : "forest-text-button"}>
+            {saved.current ? "Return to the map" : "Leave unfinished adventure"}
           </Link>
         </ForestDialog>
       )}

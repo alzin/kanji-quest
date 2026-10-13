@@ -66,7 +66,7 @@ export function SaveProgressDialog() {
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }}
-      className="save-dialog outline-none m-auto w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-border bg-paper p-0 text-foreground shadow-2xl backdrop:bg-ink/50 backdrop:backdrop-blur-sm"
+      className="save-dialog outline-none m-auto w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-border bg-paper p-0 text-foreground shadow-2xl backdrop:bg-scrim/70 backdrop:backdrop-blur-sm"
     >
       <div className="p-5">
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden="true">

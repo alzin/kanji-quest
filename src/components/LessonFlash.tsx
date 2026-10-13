@@ -5,10 +5,10 @@ import { play } from "@/lib/sfx";
 import { vocabKana, type Question } from "@/lib/srs";
 export function LessonFlash({ lesson, onDismiss }: { lesson: Question; onDismiss: () => void }) {
   return (
-        <div className="lesson-backdrop absolute inset-0 z-20 flex items-center justify-center bg-ink/60 px-3 py-4 backdrop-blur-sm sm:p-4">
+        <div className="lesson-backdrop absolute inset-0 z-20 flex items-center justify-center bg-scrim/80 px-3 py-4 backdrop-blur-sm sm:p-4">
           <div className="lesson-card flex max-h-full w-full max-w-lg flex-col">
             <div className="min-h-0 overflow-y-auto overscroll-contain">
-              <div className="mb-2 text-center font-serif text-lg font-bold text-paper sm:mb-3 sm:text-xl">Lesson flash — 復習</div>
+              <div className="mb-2 text-center font-serif text-lg font-bold text-foreground sm:mb-3 sm:text-xl">Lesson flash — 復習</div>
               <div className="lesson-word mb-2 rounded-xl border border-border bg-card p-3 text-center sm:mb-3">
                 <WordRuby vocab={lesson.vocab} focus={lesson.kanji.c} className="text-3xl font-bold sm:text-4xl" />
                 <div className="mt-2 text-sm text-muted-foreground">
