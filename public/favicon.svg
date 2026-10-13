@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <path d="M5 1h54a4 4 0 0 1 4 4v38a20 20 0 0 1-20 20H5a4 4 0 0 1-4-4V5a4 4 0 0 1 4-4z" fill="#1c3830" stroke="#d9be81" stroke-width="2"/>
+  <text x="32" y="45" text-anchor="middle" font-family="'Noto Serif JP','Yu Mincho','Hiragino Mincho ProN',serif" font-size="40" fill="#edd5a7">森</text>
+</svg>
