@@ -73,7 +73,7 @@ export function FireflyAdventure({ checkpoint }: { checkpoint?: FireflyCheckpoin
   return <main className={`ff-shell ff-lobby${checkpoint ? " ff-lobby-checkpoint" : ""}`} aria-label="Firefly Rescue">
     <div className="ff-landscape" aria-hidden="true" />
     {checkpoint && region ? <>
-      <nav className="ff-nav"><Link to="/map" onClick={() => selectLevel(level)}>← Map</Link><span>REGION CHECKPOINT</span>{navActions}</nav>
+      <nav className="ff-nav"><Link to="/" search={{ stop: checkpoint.chapter }} onClick={() => selectLevel(level)}>← Map</Link><span>REGION CHECKPOINT</span>{navActions}</nav>
       <div className="ff-lobby-content">
         <div className="ff-eyebrow"><span /> REGION {LEVEL_CHAPTERS[level].indexOf(checkpoint.chapter) + 1} · STEP 3 OF 3</div>
         <div className="ff-checkpoint-rail">{checkpoint.rail}</div>
@@ -87,7 +87,7 @@ export function FireflyAdventure({ checkpoint }: { checkpoint?: FireflyCheckpoin
       <div className="ff-lobby-spirit" aria-hidden="true"><SpiritMark id="komorebi" /><span>Your words light the way.</span></div>
       <footer className="ff-lobby-footer"><span><b>01</b> Steer by the words</span><span><b>02</b> Reach the shrine</span><span><b>03</b> Earn the seal</span></footer>
     </> : <>
-      <nav className="ff-nav"><Link to="/camp">← Camp</Link><span>LANTERN DASH</span>{navActions}</nav>
+      <nav className="ff-nav"><Link to="/">← Map</Link><span>LANTERN DASH</span>{navActions}</nav>
       <div className="ff-lobby-content">
         <div className="ff-eyebrow"><span /> A LITTLE LIGHT. A BIG ADVENTURE.</div>
         <h1>Firefly<br /><em>Rescue</em><span lang="ja">灯を、ともに。</span></h1>

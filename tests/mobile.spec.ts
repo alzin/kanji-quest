@@ -1,5 +1,6 @@
 import { completePreparation } from "./helpers/preparation";
 import { expect, test, type Page } from "@playwright/test";
+import { skipTitle } from "./helpers/hub";
 
 async function expectNoHorizontalOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
@@ -9,54 +10,70 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport + 1);
 }
 
-test("keeps thumb navigation available and every screen clear at 320px", async ({ page }) => {
+test("every screen keeps a clear, thumb-sized way back to the map at 320px", async ({ page }) => {
+  await skipTitle(page);
   await page.setViewportSize({ width: 320, height: 640 });
-  await page.goto("camp", { waitUntil: "domcontentloaded" });
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(navigation).toBeVisible();
-  await expect(navigation.getByRole("link")).toHaveCount(4);
+  await page.goto("./", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("canvas[data-ready]")).toBeVisible();
+  for (const name of ["Camp", "Journey log"]) {
+    const box = await page.getByRole("button", { name, exact: true }).boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+  }
+  await expectNoHorizontalOverflow(page);
 
-  for (const [name, heading] of [
-    ["Camp", "A little adventure. A little wiser."],
-    ["Map", "The N5 Road"],
-    ["Dojo", "Stroke Dojo"],
-    ["Kanji", "Kanji Collection"],
-  ] as const) {
-    const link = navigation.getByRole("link", { name, exact: true });
-    await link.click();
+  await page.getByRole("button", { name: "Camp", exact: true }).click();
+  const camp = page.getByRole("dialog", { name: "Your camp" });
+  await expect(camp.getByRole("heading", { name: "Your camp" })).toBeVisible();
+  const close = await camp.getByRole("button", { name: "Close your camp" }).boundingBox();
+  expect(close!.width).toBeGreaterThanOrEqual(44);
+  await expectNoHorizontalOverflow(page);
+  await page.keyboard.press("Escape");
+  await expect(camp).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Journey log", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "The N5 Road", exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.goBack();
+  await expect(page.getByRole("dialog", { name: "Journey log" })).toHaveCount(0);
+
+  for (const [path, heading] of [["practice", "Stroke Dojo"], ["collection", "Kanji Collection"]] as const) {
+    await page.goto(path, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-    await expect(link).toHaveAttribute("aria-current", "page");
-    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
-    const target = await link.boundingBox();
-    expect(target!.width).toBeGreaterThanOrEqual(44);
-    expect(target!.height).toBeGreaterThanOrEqual(44);
+    await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
+    const map = page.getByRole("link", { name: "Map", exact: true });
+    const box = await map.boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
     await expectNoHorizontalOverflow(page);
-
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    await expect.poll(async () => page.getByRole("main").evaluate((main) => {
-      const navigation = document.querySelector('nav[aria-label="Main navigation"]')!;
-      return main.lastElementChild!.getBoundingClientRect().bottom - navigation.getBoundingClientRect().top;
-    })).toBeLessThanOrEqual(0);
-    const bar = await navigation.boundingBox();
-    const viewportHeight = await page.evaluate(() => window.innerHeight);
-    expect(Math.abs(bar!.y + bar!.height - viewportHeight)).toBeLessThanOrEqual(1);
-    await expect(navigation).toHaveCSS("position", "fixed");
+    await map.click();
+    await expect(page.getByTestId("world-map")).toBeVisible();
   }
 });
 
-test("moves navigation to the top when the viewport becomes wide", async ({ page }) => {
-  await page.goto("map", { waitUntil: "domcontentloaded" });
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(navigation).toHaveCSS("position", "fixed");
-
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(navigation).not.toHaveCSS("position", "fixed");
-  const bar = await navigation.boundingBox();
-  const heading = await page.getByRole("heading", { name: "The N5 Road", exact: true }).boundingBox();
-  expect(bar!.y + bar!.height).toBeLessThanOrEqual(heading!.y);
-  await expect(navigation.getByRole("link", { name: "Map", exact: true })).toHaveAttribute("aria-current", "page");
-  await expectNoHorizontalOverflow(page);
-});
+for (const [width, height] of [[375, 667], [375, 812], [1280, 800]] as const) {
+  test(`the map HUD, position card, road strip and checkpoint panel never overlap at ${width}×${height}`, async ({ page }) => {
+    await skipTitle(page);
+    await page.setViewportSize({ width, height });
+    await page.goto("./", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("region", { name: "The First Five checkpoint" })).toBeVisible();
+    const boxes = await page.evaluate(() => [".hub-hud", ".world-position", ".world-roads", ".world-panel"].flatMap((selector) => {
+      const element = document.querySelector(selector);
+      if (!element || getComputedStyle(element).display === "none") return [];
+      const r = element.getBoundingClientRect();
+      // The HUD row spans the width; only its controls take space.
+      const parts = selector === ".hub-hud" ? [...element.children].map((child) => child.getBoundingClientRect()) : [r];
+      return parts.map((b) => ({ selector, left: b.left, top: b.top, right: b.right, bottom: b.bottom }));
+    }));
+    for (const a of boxes) for (const b of boxes) {
+      if (a.selector === b.selector) continue;
+      const overlap = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      expect(overlap, `${a.selector} overlaps ${b.selector}`).toBe(false);
+    }
+    await expectNoHorizontalOverflow(page);
+  });
+}
 
 test("leaves the run canvas and pause control unobstructed on a small phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
@@ -66,7 +83,6 @@ test("leaves the run canvas and pause control unobstructed on a small phone", as
   await expect(game).toBeVisible();
   await page.getByRole("button", { name: "Pause game", exact: true }).click();
   await expect(page.getByRole("button", { name: "Resume game", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
   const canvas = await game.boundingBox();
   expect(canvas!.x).toBeGreaterThanOrEqual(0);
   expect(canvas!.y).toBeGreaterThanOrEqual(0);

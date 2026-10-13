@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { SaveProgressDialog } from "@/components/SaveProgressDialog";
 import { InstallAppProvider } from "@/components/InstallApp";
+import { GameScreen } from "@/components/GameScreen";
 import { boot } from "@/lib/sfx";
 import { initializeAccount } from "@/lib/account";
 
@@ -18,7 +19,8 @@ import appCss from "../styles.css?url";
 
 function Fallback({ mark, title, body, children }: { mark: string; title: string; body: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-paper px-4 py-12">
+    <GameScreen hud="none">
+      <div className="flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-md text-center">
         <div
           aria-hidden="true"
@@ -30,7 +32,8 @@ function Fallback({ mark, title, body, children }: { mark: string; title: string
         <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">{body}</p>
         <div className="mt-8 flex flex-col gap-2.5">{children}</div>
       </div>
-    </div>
+      </div>
+    </GameScreen>
   );
 }
 
@@ -42,10 +45,10 @@ function NotFoundComponent() {
     <Fallback
       mark="迷"
       title="This road does not exist"
-      body="The page you were looking for has moved or was never here. Your progress is untouched — pick the road back up from home."
+      body="This path leads nowhere on the map. Your progress is untouched — pick the road back up where you left it."
     >
-      <Link to="/" className={fallbackPrimary}>Back to home</Link>
-      <Link to="/map" className={fallbackQuiet}>Open the world map</Link>
+      <Link to="/" className={fallbackPrimary}>Back to the map</Link>
+      <Link to="/" search={{ panel: "journey" }} className={fallbackQuiet}>Open the journey log</Link>
     </Fallback>
   );
 }
@@ -69,7 +72,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       >
         Try again
       </button>
-      <a href={import.meta.env.BASE_URL} className={fallbackQuiet}>Back to home</a>
+      <a href={import.meta.env.BASE_URL} className={fallbackQuiet}>Back to the map</a>
     </Fallback>
   );
 }
@@ -79,11 +82,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#f6f2e6" },
+      { name: "theme-color", content: "#183b32" },
+      { name: "color-scheme", content: "dark" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Kanji Dash" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
       { title: "Kanji Dash — Master JLPT Kanji by Running" },
       {
         name: "description",
@@ -123,7 +127,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>

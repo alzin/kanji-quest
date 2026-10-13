@@ -5,7 +5,8 @@ import type { AddressInfo } from "node:net";
 
 async function prepareOfflineCopy(page: Page, origin = "./") {
   await page.goto(origin, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /A little adventure. A little wiser.|A little Japanese. A whole new world./ })).toBeVisible();
+  // A first visit opens on the world map under the title card.
+  await expect(page.getByRole("heading", { name: "A little Japanese. A whole new world." })).toBeVisible();
   // Wait for activation to claim this page before a reload can interrupt setup.
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   // Exercise a document served by the installed worker as well as the first SSR load.
@@ -143,7 +144,8 @@ test("opens every game screen offline after visiting only home", async ({ page, 
     await expect(page.getByRole("heading", { name: "A quiet pause" })).toBeVisible();
     const trailResponse = await page.goto(`${origin}/run?mode=expedition`, { waitUntil: "domcontentloaded" });
     expect(trailResponse?.fromServiceWorker()).toBe(true);
-    await expect(page.getByRole("heading", { name: "Find the sleeping lantern" })).toBeVisible();
+    // This learner travels the N4 road, so the trail opens in Kiso Post Town.
+    await expect(page.getByRole("heading", { name: "Light the inn’s paper lantern" })).toBeVisible();
     await expect(page.locator("canvas[data-player-x]")).toBeVisible();
     await page.getByRole("button", { name: "Open field notes" }).click();
     await expect(page.getByRole("dialog", { name: "Field notes" })).toBeVisible();
@@ -194,7 +196,8 @@ test("opens a checkpoint directly before any service worker is installed", async
 test("keeps a pending install prompt across game navigation", async ({ page }) => {
   await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "Install app", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Map", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Journey log", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The N5 Road", exact: true })).toBeVisible();
   await page.evaluate(() => {
     const event = new Event("beforeinstallprompt", { cancelable: true });
@@ -206,7 +209,8 @@ test("keeps a pending install prompt across game navigation", async ({ page }) =
     });
     window.dispatchEvent(event);
   });
-  await page.getByRole("link", { name: "Camp", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Camp", exact: true }).click();
   await page.getByRole("button", { name: "Install app", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Keep Kanji Dash one tap away" })).toHaveCount(0);
   expect(await page.evaluate(() => (window as Window & { __installPromptCalls?: number }).__installPromptCalls)).toBe(1);
@@ -230,6 +234,6 @@ test("hides installation help when launched as an installed app", async ({ page 
     Object.defineProperty(navigator, "standalone", { get: () => true });
   });
   await page.goto("camp", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /A little adventure. A little wiser.|A little Japanese. A whole new world./ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your camp", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Keep Kanji Dash one tap away" })).toHaveCount(0);
 });

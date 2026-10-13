@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
-import { Nav } from "@/components/Nav";
+import { GameScreen } from "@/components/GameScreen";
 import { KanjiDetail } from "@/components/KanjiDetail";
 import { LevelSelector } from "@/components/LevelSelector";
 import { allKanji, kanjiOfLevel, CHAPTER_NAMES, LEVEL_CHAPTERS } from "@/data";
@@ -101,7 +101,7 @@ function KanjiDialog({ kanji, progress, returnFocusTo, onDismiss }: { kanji: Kan
           first?.focus();
         }
       }}
-      className={`sheet-up fixed bottom-0 left-[env(safe-area-inset-left,0px)] right-[env(safe-area-inset-right,0px)] top-auto m-0 w-auto max-w-none overflow-hidden rounded-t-3xl border border-border bg-paper p-0 text-foreground shadow-2xl backdrop:bg-ink/60 backdrop:backdrop-blur-sm sm:bottom-[env(safe-area-inset-bottom,0px)] sm:top-[env(safe-area-inset-top,0px)] sm:m-auto sm:max-w-lg sm:rounded-2xl ${DIALOG_HEIGHT}`}
+      className={`sheet-up fixed bottom-0 left-[env(safe-area-inset-left,0px)] right-[env(safe-area-inset-right,0px)] top-auto m-0 w-auto max-w-none overflow-hidden rounded-t-3xl border border-border bg-paper p-0 text-foreground shadow-2xl backdrop:bg-scrim/70 backdrop:backdrop-blur-sm sm:bottom-[env(safe-area-inset-bottom,0px)] sm:top-[env(safe-area-inset-top,0px)] sm:m-auto sm:max-w-lg sm:rounded-2xl ${DIALOG_HEIGHT}`}
     >
       <div className={`flex flex-col ${DIALOG_HEIGHT}`}>
         <div aria-hidden="true" className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border sm:hidden" />
@@ -206,9 +206,8 @@ function CollectionPage() {
   });
 
   return (
-    <div className="app-shell min-h-screen bg-paper">
-      <Nav />
-      <main className="mx-auto max-w-4xl px-4 pb-16">
+    <GameScreen>
+      <div className="mx-auto max-w-4xl px-4 pb-16">
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary sm:mt-8">Your library</p>
         <h1 className="mt-1.5 font-serif text-3xl font-bold sm:text-4xl">Kanji Collection</h1>
         <p className="mt-2 text-sm text-muted-foreground">Every kanji on your road. Tap one to see its readings, mnemonic and words.</p>
@@ -337,7 +336,7 @@ function CollectionPage() {
         {selected && (
           <KanjiDialog kanji={selected} progress={getCard(save, selected.c)} returnFocusTo={openerRef.current} onDismiss={dismissDetail} />
         )}
-      </main>
-    </div>
+      </div>
+    </GameScreen>
   );
 }

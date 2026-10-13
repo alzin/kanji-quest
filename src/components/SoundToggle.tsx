@@ -8,7 +8,7 @@ export function SoundToggle({ variant, className }: { variant: "hud" | "inline";
   const enabled = useSoundEnabled();
   const muted = !enabled;
   const base = variant === "hud"
-    ? "flex h-11 w-11 items-center justify-center rounded-full border border-paper/30 bg-ink/80 text-paper shadow backdrop-blur active:scale-90"
+    ? "game-round-button"
     : "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-muted-foreground transition-colors hover:bg-secondary";
 
   const onClick = () => {

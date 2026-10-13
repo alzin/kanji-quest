@@ -3,13 +3,15 @@ import { silenceSavePrompt } from "./helpers/savePrompt";
 
 test.beforeEach(({ page }) => silenceSavePrompt(page));
 
+// camp and map are the Camp and Journey log panels on the world map; the old paths open them.
 for (const route of ["camp", "map", "collection", "practice"] as const) {
   test(`a new learner can switch N4/N3/N2 on ${route} and keep the selection after reload`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(route, { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("button", { name: "Save your progress" })).toBeEnabled();
+    if (route === "camp" || route === "map") await expect(page.getByRole("dialog", { name: route === "camp" ? "Your camp" : "Journey log" })).toBeVisible();
+    else await expect(page.getByRole("button", { name: "Save your progress" })).toBeEnabled();
     for (const [level, count, first] of [["N4", 189, "本"], ["N3", 341, "夫"], ["N2", 355, "幼"]] as const) {
       const tab = page.getByRole("button", { name: new RegExp(`^${level} `) });
       await expect(tab).toBeEnabled();
@@ -37,7 +39,7 @@ for (const route of ["camp", "map", "collection", "practice"] as const) {
     expect(save.selectedLevel).toBe("N2");
     expect(save.clearedChapters).toEqual([]);
     expect(save.coins).toBe(0);
-    await page.getByRole("link", { name: "Dojo", exact: true }).click();
+    await page.goto("practice", { waitUntil: "domcontentloaded" });
     await expect(page.getByLabel("Trace 幼", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });

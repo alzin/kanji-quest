@@ -1,0 +1,397 @@
+/* ==========================================================================
+ * One game, one frame. The overworld map at / is the hub; every other screen
+ * (dojo, collection, checkpoints, legal) wears the same HUD over the same
+ * night-forest ground, so nothing ever feels like leaving the game.
+ * ========================================================================== */
+
+/* ---------- Shared game frame (GameScreen / GameHud) ---------- */
+.game-screen {
+  position: relative;
+  min-height: 100dvh;
+  color: var(--foreground);
+  background: #183831;
+  isolation: isolate;
+}
+/* The night-forest sky stays put while the screen scrolls (a fixed layer, not a fixed background). */
+.game-screen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 22%, #f4e8cc0c 0 1px, transparent 2px) 0 0 / 180px 180px,
+    radial-gradient(circle at 40% 82%, #e9c58012 0 1.5px, transparent 2.5px) 0 0 / 320px 320px,
+    radial-gradient(ellipse at 50% -10%, #3b5e4a66, transparent 60%),
+    radial-gradient(ellipse at 85% 110%, #e9c58014, transparent 55%),
+    linear-gradient(160deg, #142f29, #1d4034 48%, #132b26);
+}
+.game-screen-main { position: relative; }
+
+.game-hud {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 64px;
+  padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  border-bottom: 1px solid #e6d49c26;
+  background: #15302ae6;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #f4e8cc;
+}
+.game-hud-left, .game-hud-right { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.game-hud-right { gap: 6px; }
+.game-hud-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 11px;
+  border: 1px solid #e6d49c40;
+  border-radius: 9px;
+  background: #1f4236cc;
+  color: #f4e8cc;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.game-hud-button svg { width: 19px; height: 19px; color: #e9c580; }
+.game-hud-button:hover { background: #2c5243; border-color: #e9c58080; }
+.game-hud-title { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: #e9c580; }
+.game-hud-title > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-hud-title .forest-seal { width: 34px; height: 38px; font-size: 20px; }
+.game-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #e6d49c2e;
+  border-radius: 999px;
+  background: #0f27218c;
+  color: #f4e8cc;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.game-chip svg { width: 16px; height: 16px; color: #e9c580; }
+.game-chip b { font-weight: 800; }
+.game-round-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e6d49c40;
+  border-radius: 999px;
+  background: #15302ad9;
+  color: #f4e8cc;
+  box-shadow: 0 4px 14px #0a1f1a55;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.game-round-button:hover { background: #2c5243; }
+.game-round-button:disabled { opacity: 0.4; }
+.game-hud .game-round-button { box-shadow: none; }
+.game-hud a:focus-visible, .game-hud button:focus-visible { outline: 2px solid #ffe1a1; outline-offset: 3px; }
+
+/* The writing surface stays washi paper: the stroke guide and red ink are drawn for it. */
+.ink-sheet { background: #f4ecd8; }
+
+@media (max-width: 520px) {
+  .game-hud { gap: 8px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  .game-hud-title .forest-seal { display: none; }
+  .game-hud-title { font-size: 10px; letter-spacing: 0.12em; }
+  .game-chip { min-height: 32px; padding: 0 8px; font-size: 12px; }
+}
+@media (max-width: 400px) {
+  .game-hud-title { display: none; }
+}
+@media (max-width: 359px) {
+  .game-chip-mon { display: none; }
+}
+
+/* ---------- The overworld hub (/) ---------- */
+.hub-splash .forest-loading h1 { margin: 0; font: 600 22px/1.3 "Shippori Mincho B1", serif; color: #f4e8cc; text-align: center; }
+.hub-splash-links { display: flex; gap: 18px; font-size: 12px; color: #c6ceaf; }
+.hub-splash-links a { text-decoration: underline; text-underline-offset: 3px; }
+
+.hub-wordmark { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.hub-chips { display: flex; align-items: center; gap: 6px; margin-right: 4px; }
+.hub-chips .game-chip { background: #183b32c8; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.hub-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 12px;
+  border: 1px solid #e6d49c40;
+  border-radius: 9px;
+  background: #183b32d0;
+  color: #f4e8cc;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.hub-button svg { width: 19px; height: 19px; color: #e9c580; }
+.hub-button:hover, .hub-button[aria-expanded="true"] { background: #2c5243; border-color: #e9c58080; }
+
+.hub-toast {
+  position: absolute;
+  left: 50%;
+  top: max(84px, calc(env(safe-area-inset-top) + 72px));
+  translate: -50% 0;
+  z-index: 5;
+  font-weight: 700;
+  animation: hub-toast-in 420ms cubic-bezier(.2, .9, .3, 1.2) both;
+}
+@keyframes hub-toast-in { from { opacity: 0; translate: -50% -12px; } }
+
+/* The checkpoint panel: today's trail for a brand-new traveller, then the checkpoint as secondary. */
+.world-trail { display: grid; gap: 10px; margin: 6px 0 14px; padding: 12px 14px; border: 1px solid #e9c58040; border-radius: 10px; background: #f2dfb20d; }
+.world-panel .world-trail p { margin: 2px 0 0; color: #f4e8cc; font-size: 13px; }
+.world-trail p b { font-family: "Shippori Mincho B1", serif; color: #f2d9a4; margin-right: 4px; }
+.world-trail .forest-primary { width: 100%; }
+.world-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid #e9c58066;
+  border-radius: 7px;
+  color: #f4e8cc;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.world-secondary:hover { background: #f2dfb214; }
+
+/* ---------- Drawers over the map (Camp, Journey log) ---------- */
+.game-drawer {
+  inset-block: 0;
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  width: min(460px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border-width: 0 1px 0 0;
+  border-radius: 0 16px 16px 0;
+  overflow: hidden;
+  animation: drawer-in 320ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.game-drawer::backdrop { background: #0b242c66; backdrop-filter: blur(2px); }
+@keyframes drawer-in { from { translate: -40px 0; opacity: 0; } }
+.game-drawer-inner {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 24px max(24px, env(safe-area-inset-bottom));
+  scrollbar-width: thin;
+  scrollbar-color: #7c8962 transparent;
+}
+.game-drawer-top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -24px;
+  padding: max(16px, env(safe-area-inset-top)) 24px 8px;
+  background: linear-gradient(#25443af7 75%, #25443a00);
+}
+.game-drawer .game-drawer-title { margin: 2px 0 12px; }
+.game-drawer .game-drawer-lead { color: #c3cdb7; font-size: 13px; line-height: 1.7; margin: 0 0 4px; }
+.game-drawer .forest-close { font-size: 26px; min-width: 44px; height: 44px; }
+.journey-drawer { width: min(640px, 100vw); }
+/* The journey log is drawn with the app tokens; inside the drawer it sits on the forest card. */
+.journey-drawer .journey { --paper: #213f35; }
+
+/* Camp */
+.camp-rank { padding: 16px; border: 1px solid #e6d49c33; border-radius: 12px; background: #0f27214d; }
+.camp-rank-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.camp-rank-mark { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #e9c58066; border-radius: 50%; color: #f2d9a4; font: 22px "Shippori Mincho B1", serif; background: #e9c58014; }
+.camp-rank small { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.18em; color: #e9c580; }
+.camp-rank strong { font: 600 20px/1.3 "Shippori Mincho B1", serif; color: #f4e8cc; }
+.camp-xp { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 11px; color: #b6c6a7; }
+.camp-xp b { color: #f4e8cc; font-variant-numeric: tabular-nums; }
+.camp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 0; }
+.camp-stats div { padding: 8px 6px; border-radius: 8px; background: #f2dfb20a; text-align: center; }
+.camp-stats dt { font-size: 10px; letter-spacing: 0.08em; color: #b6c6a7; }
+.camp-stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 800; color: #f4e8cc; font-variant-numeric: tabular-nums; }
+.camp-section { margin-top: 22px; }
+.camp-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.camp-section-head h3 { font: 600 17px "Shippori Mincho B1", serif; color: #f4e8cc; }
+.camp-section-head b { color: #e9c580; font-size: 13px; }
+.camp-quests, .camp-modes { display: grid; gap: 8px; }
+.camp-quest, .camp-mode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid #e6d49c26;
+  border-radius: 10px;
+  background: #f2dfb20a;
+  color: #f4e8cc;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.camp-quest:hover, .camp-mode:hover { background: #f2dfb216; border-color: #e9c58066; }
+.camp-quest > span:nth-child(2), .camp-mode > span:last-child { flex: 1; min-width: 0; }
+.camp-quest strong, .camp-mode strong { display: block; font-size: 14px; }
+.camp-quest small, .camp-mode small { display: block; margin-top: 2px; font-size: 12px; color: #b6c6a7; }
+.camp-quest > span:last-child { color: #e9c580; font-size: 18px; }
+.camp-quest-check { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border: 1.5px solid #e9c58080; border-radius: 50%; color: #243e32; font-size: 13px; font-weight: 900; }
+.camp-quest[data-done] .camp-quest-check { background: #e9c580; border-color: #e9c580; }
+.camp-quest[data-done] strong { text-decoration: line-through; text-decoration-color: #e9c58099; }
+.camp-modes { grid-template-columns: 1fr 1fr; }
+.camp-mode { align-items: flex-start; }
+.camp-mode-glyph { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border-radius: 8px; background: #e9c5801f; color: #f2d9a4; font: 20px "Shippori Mincho B1", serif; }
+.camp-levels { display: flex; gap: 4px; padding: 4px; border: 1px solid #e6d49c26; border-radius: 10px; background: #0f27214d; }
+.camp-levels button { flex: 1; min-height: 44px; border-radius: 7px; color: #b6c6a7; font-weight: 800; font-size: 14px; }
+.camp-levels button[aria-pressed="true"] { background: #e9c580; color: #243e32; }
+.camp-levels button:not([aria-pressed="true"]):hover { background: #f2dfb214; color: #f4e8cc; }
+.game-drawer .camp-fine { display: block; margin: 10px 0 8px; color: #b6c6a7; font-size: 12px; line-height: 1.6; }
+.game-drawer .camp-count { margin: 0 0 6px; color: #f4e8cc; font-size: 13px; }
+.camp-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; }
+.camp-settings .music-toggle { color: #f4e8cc; }
+.game-drawer .camp-title-link { display: inline-flex; align-items: center; gap: 6px; margin: 14px 0 0; min-height: 44px; }
+.camp-drawer footer { margin: 18px -24px 0; border-color: #e6d49c26; }
+
+/* ---------- Title card over the map ---------- */
+.hub-title {
+  --f-cream: #f4e8cc;
+  --f-gold: #e9c580;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: auto;
+  color: var(--f-cream);
+  background:
+    linear-gradient(90deg, #142f2ef2 0%, #183a30d9 34%, #17382b55 72%, #17382b22),
+    linear-gradient(180deg, #102d2c99, transparent 30%, transparent 75%, #0b272dcc);
+  font-family: "Zen Kaku Gothic New", sans-serif;
+  animation: title-in 600ms ease both;
+}
+.hub-title::backdrop { background: transparent; }
+/* Under the title only the world itself shows: no HUD competing with the headline. */
+.world-game[data-overlay="title"] :is(.hub-hud, .world-position, .world-roads, .forest-bottom) { visibility: hidden; }
+@keyframes title-in { from { opacity: 0; } }
+.hub-title-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100%;
+  max-width: 680px;
+  padding: max(28px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom)) 8.5vw;
+}
+.hub-title-brand { margin-bottom: auto; padding-bottom: 32px; }
+.hub-title-eyebrow { display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: 0.27em; }
+.hub-title-eyebrow i { width: 17px; height: 1px; background: #dfc28a; }
+.hub-title h1 { font: 500 clamp(38px, 4.6vw, 68px) / 1.2 "Shippori Mincho B1", serif; letter-spacing: -0.065em; margin: 22px 0; }
+.hub-title h1 em { font-style: normal; color: #e6c891; }
+.hub-title-inner > p { max-width: 460px; margin: 0 0 30px; color: #c9d0b7; font-size: 15px; line-height: 1.9; }
+.hub-title-start { min-width: min(300px, 100%); padding: 16px 23px; font-size: 15px; }
+.hub-title .forest-title-note { margin-top: 18px; }
+.hub-title-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 26px; margin-top: auto; padding-top: 36px; font-size: 12px; color: #b2c0a3; }
+.hub-title-footer button { min-height: 44px; padding: 0 14px; border: 1px solid #d1c39566; border-radius: 6px; background: #18362d99; color: #ead9ae; font-weight: 700; }
+.hub-title-footer span { display: flex; gap: 18px; }
+.hub-title-footer a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
+.hub-title-caption { position: absolute; right: 8%; bottom: 16%; text-align: center; pointer-events: none; text-shadow: 0 2px 14px #15352a; }
+.hub-title-caption span { display: block; font: 26px "Shippori Mincho B1", serif; letter-spacing: 0.3em; color: #e8d7ac; }
+.hub-title-caption small { display: block; margin-top: 12px; font-size: 10px; letter-spacing: 0.08em; color: #c0cdac; }
+.hub-title button:focus-visible, .hub-title a:focus-visible, .game-drawer button:focus-visible, .game-drawer a:focus-visible { outline: 2px solid #ffe1a1; outline-offset: 3px; }
+
+/* ---------- Forest HUD additions ---------- */
+.forest-icon-button.forest-hud-label { display: inline-flex; align-items: center; gap: 7px; width: auto; padding: 0 13px 0 10px; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; }
+.forest-hud-label svg { width: 19px; height: 19px; color: #e9c580; }
+.forest-hud .forest-wordmark { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.forest-result-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 22px; }
+.forest-result-links .forest-text-button { margin: 16px 0 0; }
+.forest-position { pointer-events: none; }
+
+.hub-account { display: inline-flex; align-items: center; min-height: 36px; padding: 0 4px; border: 1px solid #e6d49c2e; border-radius: 999px; background: #183b32c8; color: #f4e8cc; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.hub-account:empty { display: none; }
+@media (max-width: 700px) {
+  .hub-wordmark > span:last-child { display: none; }
+  .hub-chips { gap: 4px; margin-right: 0; }
+  .hub-chips .game-chip { min-height: 32px; padding: 0 7px; font-size: 12px; }
+  .hub-account { min-height: 32px; }
+  .hub-button { flex-direction: column; justify-content: center; gap: 2px; min-width: 56px; min-height: 48px; padding: 4px 8px; font-size: 10px; letter-spacing: 0.02em; }
+  .hub-button svg { width: 18px; height: 18px; }
+  .hub-toast { top: 252px; width: max-content; max-width: calc(100vw - 32px); }
+  .game-drawer, .journey-drawer {
+    inset: auto 0 0 0;
+    width: 100vw;
+    height: auto;
+    max-height: 90dvh;
+    border-width: 1px 0 0;
+    border-radius: 18px 18px 0 0;
+    animation-name: sheet-in;
+  }
+  .journey-drawer { height: 92dvh; max-height: 92dvh; }
+  .game-drawer-inner { max-height: 90dvh; padding-left: 18px; padding-right: 18px; }
+  .journey-drawer .game-drawer-inner { max-height: 92dvh; }
+  .game-drawer-top { margin: 0 -18px; padding: 14px 18px 8px; }
+  .camp-drawer footer { margin-left: -18px; margin-right: -18px; }
+  .hub-title { background: linear-gradient(180deg, #102d2c88, #183a30cc 38%, #142f2ef5 70%); }
+  .hub-title-inner { justify-content: flex-end; padding-left: 24px; }
+  .hub-title-brand { position: absolute; top: max(18px, env(safe-area-inset-top)); left: 18px; margin: 0; padding: 0; }
+  .hub-title h1 { font-size: clamp(34px, 10vw, 44px); margin: 16px 0; }
+  .hub-title-inner > p { font-size: 14px; margin-bottom: 24px; }
+  .hub-title-start { width: 100%; }
+  .hub-title-footer { padding-top: 24px; margin-top: 0; }
+  .hub-title-caption { display: none; }
+  .forest-icon-button.forest-hud-label { padding: 0 10px 0 8px; font-size: 12px; }
+}
+/* Phones: the five roads run as one row under the position card, clear of the checkpoint sheet. */
+@media (max-width: 700px) {
+  .world-game .world-roads {
+    top: 196px;
+    left: max(16px, env(safe-area-inset-left));
+    right: max(16px, env(safe-area-inset-right));
+    flex-direction: row;
+    gap: 4px;
+    translate: none;
+  }
+  .world-game .world-roads button { flex: 1; min-width: 0; min-height: 44px; padding: 4px 2px; }
+  .world-game .world-roads button b { font-size: 13px; }
+  .world-game .world-position { max-width: calc(100vw - 32px); }
+  .world-game .world-position .world-actions .forest-track { min-height: 36px; margin-top: 2px; }
+}
+@media (max-width: 420px) {
+  .forest-hud .forest-wordmark > span:last-child { display: none; }
+  .camp-modes { grid-template-columns: 1fr; }
+}
+@keyframes sheet-in { from { translate: 0 40px; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .game-drawer, .hub-title, .hub-toast { animation: none; }
+}
+.forest-hud-glyph { font: 600 17px "Shippori Mincho B1", serif; color: #e9c580; }
+.forest-leave { display: flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 12px; border: 1px solid #e9c58066; border-radius: 7px; color: #f4e8cc; font-size: 13px; font-weight: 700; text-decoration: none; }
+.forest-leave:hover { background: #f2dfb214; }
+@media (max-width: 480px) {
+  .forest-hud .forest-hud-label > span:last-child { display: none; }
+  .forest-hud .forest-hud-label:first-child > span:last-child { display: inline; }
+}

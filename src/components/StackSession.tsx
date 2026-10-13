@@ -9,6 +9,7 @@ import { RiverStackGame as StackGame } from "./game/forest/RiverStackGame";
 import { composeSheets, type StackWord } from "./game/stack-seed";
 import type { StackStats } from "./game/stack-math";
 import { RunPreparation } from "./RunPreparation";
+import { GameHud } from "./GameScreen";
 
 export type StackMode = "daily" | "fluency" | "marathon";
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground shadow-e1";
@@ -54,14 +55,15 @@ function StackSessionContent({ kind }: { kind: StackMode }) {
     return () => window.clearInterval(id);
   }, [stage]);
 
-  if (!frozen.words.length) return <div className="stack-page"><span className="font-serif text-6xl text-primary">完</span><h1 className="font-serif text-3xl font-bold">{kind === "daily" ? "Your sheets are up to date" : "Fluency comes with practice"}</h1><p className="text-muted-foreground">{kind === "daily" ? "No new words or reviews are due. Your next checkpoint is waiting on the map." : "These extra sheets unlock when you have reviewing or mastered words that are not due."}</p><Link to="/map" className={primary}>View the road</Link><Link to="/" className={secondary}>Back home</Link></div>;
+  const hud = <GameHud minimal title="Tsumiji" />;
+  if (!frozen.words.length) return <>{hud}<div className="stack-page"><span className="font-serif text-6xl text-primary">完</span><h1 className="font-serif text-3xl font-bold">{kind === "daily" ? "Your sheets are up to date" : "Fluency comes with practice"}</h1><p className="text-muted-foreground">{kind === "daily" ? "No new words or reviews are due. Your next checkpoint is waiting on the map." : "These extra sheets unlock when you have reviewing or mastered words that are not due."}</p><Link to="/" className={primary}>Back to the map</Link></div></>;
   if (stage === "learn" && frozen.fresh.length) return <RunPreparation questions={frozen.fresh} title="Tsumiji · new words" learnOnly onStart={() => setStage("intro")} />;
-  if (stage === "intro" || stage === "learn") return <div className="stack-page">
+  if (stage === "intro" || stage === "learn") return <>{hud}<div className="stack-page">
     <span className="font-serif text-6xl text-primary">積み字</span><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">A little recall. A little rhythm.</p>
     <h1 className="font-serif text-3xl font-bold">{kind === "daily" ? "Today’s sheets" : kind === "fluency" ? "Fluency sheet" : "Marathon"}</h1>
     <div className="rounded-2xl border border-border bg-card p-5 text-left text-sm leading-relaxed"><p>Match a falling word with its reading or meaning tile. Matches below or beside it both count.</p><p className="mt-3">Tap a column to move. Tap again or swipe down to drop. Tap the word to hold it once.</p><p className="mt-3">Misses leave ink. Match that word later to wash it away.</p><p className="mt-3 text-muted-foreground">{kind === "marathon" ? "The ink rises every 12 seconds. Each sheet gets a little faster." : `${frozen.sheets.length} ${frozen.sheets.length === 1 ? "sheet" : "sheets"} · no hearts · pause whenever you need`}</p></div>
-    <button className={primary} data-testid="stack-start" onClick={() => { finished.current = false; setStage("play"); }}>Start sheet</button><Link to="/" className="min-h-11 p-3 font-bold text-muted-foreground">Back home</Link>
-  </div>;
+    <button className={primary} data-testid="stack-start" onClick={() => { finished.current = false; setStage("play"); }}>Start sheet</button><Link to="/" className="min-h-11 p-3 font-bold text-muted-foreground">Back to the map</Link>
+  </div></>;
 
   if (stage === "play") return <StackGame key={`${sheet}-${attempt}`} words={words} title={`${kind === "marathon" ? "Marathon" : "Sheet"} ${sheet + 1}${kind === "marathon" ? "" : ` / ${frozen.sheets.length}`}`} seed={7919 + sheet * 104729 + attempt * 65537} tempo={kind === "marathon" ? sheet : 0} forceFast={kind !== "daily"} marathon={kind === "marathon"}
     onPlacement={(e) => {
@@ -87,15 +89,15 @@ function StackSessionContent({ kind }: { kind: StackMode }) {
       }
     }} />;
 
-  if (stage === "between") return <div className="stack-page"><span className="stamp-in font-serif text-6xl text-primary">一枚</span><h1 className="font-serif text-3xl font-bold">Sheet cleared</h1><p>{latest?.correct} matches · {latest?.score.toLocaleString()} points</p><p className="text-sm text-muted-foreground">{rest > 0 ? `Take a breath · ${rest}s` : "Ready when you are."}</p>
+  if (stage === "between") return <>{hud}<div className="stack-page"><span className="stamp-in font-serif text-6xl text-primary">一枚</span><h1 className="font-serif text-3xl font-bold">Sheet cleared</h1><p>{latest?.correct} matches · {latest?.score.toLocaleString()} points</p><p className="text-sm text-muted-foreground">{rest > 0 ? `Take a breath · ${rest}s` : "Ready when you are."}</p>
     {stopSuggested && <p className="rounded-xl bg-secondary p-4 text-sm">Twenty minutes of practice. A good place to rest.</p>}
     {stopSuggested && <Link to="/" className={primary}>Done for today</Link>}
-    <button className={stopSuggested ? secondary : primary} onClick={() => { finished.current = false; missed.current.clear(); setSheet((v) => v + 1); setStage("play"); }}>Next sheet</button><button className={stopSuggested ? "min-h-11 p-3 text-sm" : secondary} onClick={() => setStage("results")}>Finish for now</button></div>;
+    <button className={stopSuggested ? secondary : primary} onClick={() => { finished.current = false; missed.current.clear(); setSheet((v) => v + 1); setStage("play"); }}>Next sheet</button><button className={stopSuggested ? "min-h-11 p-3 text-sm" : secondary} onClick={() => setStage("results")}>Finish for now</button></div></>;
 
   const allDone = kind === "daily" && totals.cleared && sheet + 1 >= frozen.sheets.length;
   const newBest = (kind === "marathon" ? totals.score : latest?.score ?? 0) > frozen.best;
   const stack = stackOf(getSnapshot());
-  return <div className="stack-page" data-testid="stack-results">
+  return <>{hud}<div className="stack-page" data-testid="stack-results">
     <span className="stamp-in font-serif text-5xl text-primary">{allDone ? "御朱印" : latest?.cleared ? "積" : "満"}</span>
     <h1 className="font-serif text-3xl font-bold">{allDone ? "Today’s sheets complete" : latest?.cleared ? "Practice complete" : "Sheet filled"}</h1>
     <p>{totals.wordsCleared} / {frozen.words.length * (kind === "marathon" ? Math.floor(sheet / frozen.sheets.length) + 1 : 1)} words cleared</p>
@@ -109,5 +111,5 @@ function StackSessionContent({ kind }: { kind: StackMode }) {
     {!latest?.cleared && <button className={secondary} onClick={retry}>Retry sheet</button>}
     <Link to="/run" search={{ mode: "stack", practice: "fluency" }} className={secondary}>Fluency sheet</Link>
     <Link to="/run" search={{ mode: "stack", practice: "marathon" }} className={secondary}>Marathon</Link>
-  </div>;
+  </div></>;
 }

@@ -39,7 +39,7 @@ test("the selected road persists across home, searchable collection, dojo, and o
   await page.goto("camp", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("mastery-summary")).toHaveText(`0/${kanjiOfLevel("N4").length} mastered · 0% mastery progress`);
   await expect(page.getByText("1 word is ready to meet you again.", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Kanji", exact: true }).click();
+  await page.goto("collection", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("status")).toHaveText(`${kanjiOfLevel("N4").length} kanji · All regions`);
   await page.getByRole("button", { name: /^1 / }).click();
   await page.getByRole("searchbox").fill("わたし");
@@ -51,7 +51,7 @@ test("the selected road persists across home, searchable collection, dojo, and o
   await page.getByRole("button", { name: /^N4 / }).click();
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: /^N4 / })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("link", { name: "Dojo", exact: true }).click();
+  await page.goto("practice", { waitUntil: "domcontentloaded" });
   await expect(page.getByLabel("Trace 本", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto("run?mode=runner", { waitUntil: "domcontentloaded" });
@@ -82,7 +82,10 @@ test("an N4 checkpoint prepares, grades, stamps its own seal and only rewards th
     await expect(page.getByRole("link", { name: "Prepare next region", exact: true })).toHaveAttribute("href", /gate=26/);
     if (run === 0) await page.reload({ waitUntil: "domcontentloaded" });
   }
-  await page.getByRole("button", { name: "Back to map", exact: true }).click();
+  await page.getByRole("button", { name: "Back to the map", exact: true }).click();
+  // Home is the world map, standing on the region just sealed.
+  await expect(page.getByRole("button", { name: "Show the N4 road, 1 of 36 seals" })).toBeVisible();
+  await page.goto("map", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
   await expect(page.getByText("1 / 36 earned", { exact: true })).toBeVisible();
   await page.goto("run?mode=runner&gate=8", { waitUntil: "domcontentloaded" });
@@ -96,6 +99,8 @@ test("the N5 seal opens the N4 road without resetting either level", async ({ pa
   await expect(page.getByText("JLPT N5 kanji seal earned!", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Start the N4 road →", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The N4 Road", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(6); // Access to the old first N4 theme is preserved.
+  await expect(page.getByRole("link", { name: "Prepare checkpoint" })).toHaveCount(1);
+  // Access to the old first N4 theme is preserved.
+  await expect(page.getByRole("list", { name: "N4 checkpoints" }).locator(':scope > li[data-state="open"]')).toHaveCount(6);
   await expect(page.getByText("0 / 36 earned", { exact: true })).toBeVisible();
 });

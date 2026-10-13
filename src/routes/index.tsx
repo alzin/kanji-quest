@@ -1,120 +1,59 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ForestCanvas } from "@/components/game/forest/ForestCanvas";
-import type { ForestBridge } from "@/components/game/forest/ForestScene";
-import { useSave } from "@/lib/srs";
-import { SoundToggle } from "@/components/SoundToggle";
-import { AccountStatus } from "@/components/AccountStatus";
+import { WorldHub, type HubSearch } from "@/components/hub/WorldHub";
+import { levelOfChapter } from "@/data";
+
+const stopOf = (value: unknown): number | undefined => {
+  const n = typeof value === "number" ? value : typeof value === "string" && /^\d+$/.test(value) ? parseInt(value) : NaN;
+  return levelOfChapter(n) ? n : undefined;
+};
 
 export const Route = createFileRoute("/")({
+  validateSearch: (s: Record<string, unknown>): HubSearch => {
+    const stop = stopOf(s["stop"]);
+    return {
+      ...(s["panel"] === "camp" || s["panel"] === "journey" ? { panel: s["panel"] } : {}),
+      ...(stop !== undefined ? { stop } : {}),
+      ...(s["title"] === true || s["title"] === "true" || s["title"] === 1 || s["title"] === "1" ? { title: true as const } : {}),
+    };
+  },
   head: () => ({
     meta: [
       { title: "Kanji Dash — The Spirit Trail" },
       {
         name: "description",
         content:
-          "A little Japanese. A whole new world. Explore Kodama Woods with Aki, restore forgotten places, and learn kanji through a playable forest adventure.",
+          "A little Japanese. A whole new world. Walk the Kanji Journey from N5 to N1 with Aki: explore forest trails, restore forgotten places, and earn a seal at every checkpoint.",
       },
       { property: "og:title", content: "Kanji Dash — The Spirit Trail" },
       {
         property: "og:description",
-        content:
-          "Walk the woods. Find their words. A playable Japanese learning adventure.",
+        content: "Walk the woods. Find their words. A playable Japanese learning adventure, N5 to N1.",
       },
     ],
   }),
-  component: Home,
+  component: Hub,
 });
 
-function Home() {
-  const save = useSave();
-  const [bridge] = useState<ForestBridge>(() => ({
-    blocked: false,
-    restored: 0,
-    preview: true,
-    reducedMotion: false,
-    onReady: () => {},
-    onNear: () => {},
-    onInteract: () => {},
-    onMote: () => {},
-  }));
-  useEffect(() => {
-    const media = matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => {
-      bridge.reducedMotion = media.matches;
-    };
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, [bridge]);
-  return (
-    <main className="forest-title">
-      <ForestCanvas bridge={bridge} />
-      <div className="forest-title-shade" />
-      <header className="forest-title-header">
-        <Link to="/" className="forest-wordmark">
-          <span className="forest-seal">森</span>
-          <span>
-            KANJI DASH<small>A JAPANESE LEARNING ADVENTURE</small>
-          </span>
-        </Link>
-        <Link to="/camp" className="forest-camp-link">
-          Your camp <span>↗</span>
-        </Link>
-      </header>
-      <section className="forest-title-copy">
-        <span className="forest-eyebrow">
-          <i /> THE SPIRIT TRAIL
-        </span>
-        <h1>
-          A little Japanese.
-          <br />
-          <em>A whole new world.</em>
-        </h1>
-        <p>
-          The forest has forgotten its words.
-          <br />
-          Walk its paths. Wake its lanterns.
-          <br />
-          Bring a little wonder back.
-        </p>
-        <Link
-          to="/run"
-          search={{ mode: "expedition" }}
-          className="forest-primary forest-begin"
-        >
-          {save.runsCompleted ? "Return to the forest" : "Enter the forest"}
-          <span aria-hidden="true">→</span>
-        </Link>
-        <span className="forest-title-note">
-          CHAPTER 01 <i /> KODAMA WOODS <i /> ABOUT 5 MINUTES
-        </span>
-        <div className="forest-title-modes">
-          <Link to="/run" search={{ mode: "stack" }}>
-            Word Weaver
-          </Link>
-          <span>·</span>
-          <Link to="/run" search={{ mode: "runner" }}>
-            Lantern Dash
-          </Link>
-          <span>·</span>
-          <Link to="/practice">Ink Dojo</Link>
+function Hub() {
+  const search = Route.useSearch();
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  // The map is drawn from the saved journey, which only exists in this browser after hydration.
+  // Until then (and for crawlers) a quiet splash names the game and keeps the legal links reachable.
+  if (!ready)
+    return (
+      <main className="forest-game hub-splash">
+        <div className="forest-loading">
+          <span className="forest-seal" aria-hidden="true">森</span>
+          <h1>Kanji Dash — The Spirit Trail</h1>
+          <p>A little Japanese. A whole new world. Unrolling the map…</p>
+          <nav aria-label="Legal" className="hub-splash-links">
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+          </nav>
         </div>
-      </section>
-      <div className="forest-title-caption">
-        <span>木霊の森</span>
-        <small>There’s a story in every word.</small>
-      </div>
-      <footer className="forest-title-footer">
-        <div className="forest-title-account">
-          <AccountStatus />
-        </div>
-        <div>
-          <Link to="/collection">Collection</Link>
-          <Link to="/privacy">Privacy</Link>
-          <SoundToggle variant="hud" />
-        </div>
-      </footer>
-    </main>
-  );
+      </main>
+    );
+  return <WorldHub search={search} />;
 }

@@ -5,6 +5,7 @@ import { StackSession, type StackMode } from "@/components/StackSession";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { GameScreen } from "@/components/GameScreen";
 import { LanternRunnerGame as RunnerGame } from "@/components/game/forest/LanternRunnerGame";
 import { RunPreparation } from "@/components/RunPreparation";
 import { CheckpointSession } from "@/components/CheckpointSession";
@@ -42,9 +43,11 @@ function RunPage() {
   useEffect(() => setReady(true), []);
   // The saved review queue is only available in this browser, after hydration.
   if (!ready) return (
-    <div className="game-viewport flex flex-col items-center justify-center gap-4 bg-paper" role="status">
-      <span aria-hidden="true" className="font-serif text-5xl font-bold text-primary/30">走</span>
-      <span className="text-sm font-bold text-muted-foreground">Preparing your run…</span>
+    <div className="forest-game" role="status">
+      <div className="forest-loading">
+        <span className="forest-seal" aria-hidden="true">走</span>
+        <p>Preparing your adventure…</p>
+      </div>
     </div>
   );
   if (mode === "expedition" && gate === undefined) return <ForestAdventure />;
@@ -99,20 +102,23 @@ function RunSessionContent({ gate }: { gate: number | undefined }) {
   if (blockedGate && !results) {
     const gateLevel = levelOfChapter(gate!)!;
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 py-12 text-center">
+      <GameScreen back={{ stop: gate! }}>
+      <div className="flex min-h-[calc(100dvh-64px)] flex-col items-center justify-center px-4 py-12 text-center">
         <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-border text-muted-foreground">
           <AppIcon name="lock" className="h-8 w-8" />
         </div>
         <h1 className="mt-6 font-serif text-3xl font-bold">This {gateLevel} checkpoint is locked</h1>
         <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">Clear the previous checkpoint or reach 55% mastery progress in that region to continue.</p>
-        <Link to="/map" onClick={() => selectLevel(gateLevel)} className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">View the {gateLevel} road</Link>
+        <Link to="/" search={{ stop: gate! }} onClick={() => selectLevel(gateLevel)} className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Back to the map</Link>
       </div>
+      </GameScreen>
     );
   }
 
   if (questions.length === 0 && !results) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 py-12 text-center">
+      <GameScreen>
+      <div className="flex min-h-[calc(100dvh-64px)] flex-col items-center justify-center px-4 py-12 text-center">
         <div aria-hidden="true" className="flex h-20 w-20 rotate-[-8deg] items-center justify-center rounded-full border-4 border-primary font-serif text-3xl font-bold text-primary opacity-90">完</div>
         <h1 className="mt-6 font-serif text-3xl font-bold">{pendingCheckpoint !== undefined ? "Ready for your checkpoint" : "Nothing to run right now"}</h1>
         <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-muted-foreground">
@@ -124,9 +130,10 @@ function RunSessionContent({ gate }: { gate: number | undefined }) {
             ? <Link to="/run" search={{ gate: pendingCheckpoint }} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Prepare checkpoint</Link>
             : <Link to="/practice" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Practice in the dojo</Link>}
           {pendingCheckpoint !== undefined && <Link to="/practice" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border px-5 py-3 font-bold transition-colors hover:bg-secondary">Stroke dojo</Link>}
-          <Link to="/" className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 py-3 font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">Back home</Link>
+          <Link to="/" className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 py-3 font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">Back to the map</Link>
         </div>
       </div>
+      </GameScreen>
     );
   }
 
@@ -137,6 +144,7 @@ function RunSessionContent({ gate }: { gate: number | undefined }) {
       {!results && (
         <RunnerGame
           key={`${session}-${gate ?? "daily"}`}
+          exitStop={gate}
           questions={questions}
           title={title}
           onAnswer={(q, correct) => {

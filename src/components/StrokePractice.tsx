@@ -98,7 +98,7 @@ export function StrokePractice({ kanji }: { kanji: Kanji }) {
 
   return (
     <div className="min-w-0">
-      <div className="relative mx-auto w-full max-w-[clamp(204px,calc(100svh_-_450px_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px)),320px)] overflow-hidden rounded-xl border-2 border-border bg-paper shadow-inner md:max-w-[320px]">
+      <div className="relative mx-auto w-full max-w-[clamp(204px,calc(100svh_-_450px_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px)),320px)] ink-sheet overflow-hidden rounded-xl border-2 border-border shadow-inner md:max-w-[320px]">
         <canvas
           key={resultCount}
           ref={guideRef}

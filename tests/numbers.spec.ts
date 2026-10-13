@@ -32,17 +32,21 @@ test("keeps due reviews, partial mastery, and exact checkpoint seals consistent 
   await expect(page.getByTestId("mastery-summary")).toBeVisible();
   await expect(page.getByTestId("stat-runs")).toHaveText("4");
 
-  await page.getByRole("link", { name: "Map", exact: true }).click();
+  await page.goto("map", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("1 / 19 earned", { exact: true })).toBeVisible();
-  const regions = page.getByRole("list", { name: "Regions on this road" }).locator(":scope > li");
+  const regions = page.getByRole("list", { name: "N5 checkpoints" }).locator(":scope > li");
   await expect(regions.nth(0).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
   await expect(regions.nth(0).getByText("67% progress · 0/5 mastered", { exact: true })).toBeVisible();
-  await expect(regions.nth(0).getByText("Seal stamped", { exact: true })).toHaveCount(0);
+  await expect(regions.nth(0).getByText("Sealed", { exact: true })).toHaveCount(0);
+  const sealed = regions.nth(LEVEL_CHAPTERS.N5.indexOf(3));
+  await expect(sealed.getByText("Sealed", { exact: true })).toBeVisible();
+  await regions.nth(1).getByRole("button").click();
   await expect(regions.nth(1).getByRole("link", { name: "Prepare checkpoint" })).toBeVisible();
-  await expect(regions.nth(LEVEL_CHAPTERS.N5.indexOf(3)).getByText("Seal stamped", { exact: true })).toBeVisible();
+  await sealed.getByRole("button").click();
+  await expect(sealed.getByText("Seal stamped", { exact: true })).toBeVisible();
   await expect(page.getByText("JLPT N5 kanji seal earned!", { exact: true })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Kanji", exact: true }).click();
+  await page.goto("collection", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("status")).toHaveText(`${allKanji.length} kanji · All regions`);
   await page.getByRole("button", { name: "一 — one · Reviewing", exact: true }).click();
   await expect(page.getByRole("dialog").getByText("Seen 5× · 4 correct · 1 missed", { exact: true })).toBeVisible();
