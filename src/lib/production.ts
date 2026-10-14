@@ -9,8 +9,11 @@ for (const [prefix, base] of Object.entries({ ky: "き", gy: "ぎ", sy: "し", z
   ["a", "u", "o"].forEach((v, i) => { syllables[prefix + v] = base + ["ゃ", "ゅ", "ょ"][i]; });
 }
 
+// Phone keyboards add a full stop after a double space; it is never part of a reading.
+const typed = (value: string) => value.normalize("NFKC").trim().replace(/[\s.,!?。、]+$/, "");
+
 export function readingInput(value: string): string {
-  const text = toHiragana(value.normalize("NFKC").trim().toLowerCase()).replace(/ā/g, "aa").replace(/ī/g, "ii").replace(/ū/g, "uu").replace(/ē/g, "ee").replace(/ō/g, "ou").replace(/[\s’]/g, (v) => v === "’" ? "'" : "");
+  const text = toHiragana(typed(value).toLowerCase()).replace(/ā/g, "aa").replace(/ī/g, "ii").replace(/ū/g, "uu").replace(/ē/g, "ee").replace(/ō/g, "ou").replace(/[\s’]/g, (v) => v === "’" ? "'" : "");
   let result = "", i = 0;
   while (i < text.length) {
     const c = text[i]!, next = text[i + 1];
@@ -48,7 +51,7 @@ export function acceptsReading(vocab: Vocab, input: string): boolean {
   // Some published curriculum spellings omit the n' boundary (honya for
   // hon'ya). Accept that word's own displayed romanization as an alias,
   // without making the general kana parser conflate にゃ with んや.
-  const romanKey = (v: string) => v.normalize("NFKC").toLowerCase().replace(/[\s’']/g, "");
+  const romanKey = (v: string) => typed(v).toLowerCase().replace(/[\s’']/g, "");
   if (/^[a-zāīūēō]+$/.test(romanKey(input)) && romanKey(input) === romanKey(vocab.r)) return true;
   const normalized = readingInput(input);
   if (!normalized) return false;
