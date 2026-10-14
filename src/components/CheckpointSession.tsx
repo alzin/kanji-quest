@@ -19,10 +19,14 @@ import { FireflyAdventure } from "./game/firefly/FireflyAdventure";
 import { CheckpointRail } from "./CheckpointRail";
 import { RunPreparation } from "./RunPreparation";
 import { WordAudio } from "./WordAudio";
+import { AppIcon } from "./AppIcon";
+import { vocabKana } from "@/lib/words";
 import { GameHud } from "./GameScreen";
 
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground shadow-e1";
 const secondary = "min-h-12 rounded-xl border border-border px-5 py-3 text-center font-bold hover:bg-secondary";
+/** Typed readings, of three, that stamp a checkpoint seal. */
+const SEAL_PASS = 2;
 const quiet = "min-h-11 p-3 font-bold text-muted-foreground";
 const EMPTY: StackStats = { correct: 0, wrong: 0, bestCombo: 0, score: 0, redeemed: 0, chains: 0, elapsed: 0, cleared: true, wordsCleared: 0, totalWords: 0 };
 function sum(a: StackStats, b: StackStats): StackStats { return { correct: a.correct + b.correct, wrong: a.wrong + b.wrong, bestCombo: Math.max(a.bestCombo, b.bestCombo), score: a.score + b.score, redeemed: a.redeemed + b.redeemed, chains: a.chains + b.chains, elapsed: a.elapsed + b.elapsed, cleared: a.cleared && b.cleared, wordsCleared: a.wordsCleared + b.wordsCleared, totalWords: a.totalWords + b.totalWords }; }
@@ -83,7 +87,7 @@ function CheckpointJourney({ gate }: { gate: number }) {
 
   if (view === "seal") return <div className="river-session">{hud}<SealCheck questions={frozen.questions} done={done} onComplete={(typed) => {
     recordTypedSeal();
-    if (typed >= 2) {
+    if (typed >= SEAL_PASS) {
       const reward = clearGate(gate);
       const perfect = frozen.wasCleared && typed === 3 && flawless.current.stack && flawless.current.rescue ? perfectGate(gate) : 0;
       // A first seal clears its steps as it is stamped; a repeat visit starts them afresh.
@@ -106,7 +110,7 @@ function CheckpointJourney({ gate }: { gate: number }) {
     <p>{region.name} · {outcome?.typed ?? 0}/3 typed{outcome?.earned ? ` · +${outcome.earned} mon` : ""}</p>
     {outcome?.passed
       ? <p className="text-sm text-muted-foreground">{nextOpen ? `Next region open: ${CHAPTER_NAMES[next]!.name} · ${kanjiOfChapter(next).length} kanji` : `Every step of the ${level} road leads here. Keep revisiting your words.`}</p>
-      : <p className="text-sm text-muted-foreground">Type at least 2 of 3 readings. Carry the words through Firefly Rescue once more, then the seal opens again.</p>}
+      : <p className="text-sm text-muted-foreground">Type at least {SEAL_PASS} of 3 readings correctly. Carry the words through Firefly Rescue once more, then the seal opens again.</p>}
     <p className="text-sm">Day {streakCount(getSnapshot())} of your streak</p>
     {outcome?.passed
       ? nextOpen && <Link to="/run" search={{ gate: next }} className={primary}>Prepare next region</Link>
@@ -201,15 +205,31 @@ function SealCheck({ questions, done, onComplete }: { questions: Question[]; don
   }, [questions]);
   const [index, setIndex] = useState(0), [value, setValue] = useState("");
   const [feedback, setFeedback] = useState<boolean | null>(null);
-  const correct = useRef(0), submitted = useRef(false);
+  const correct = useRef(0), submitted = useRef(false), next = useRef<HTMLButtonElement>(null);
   const q = checks[index]!;
-  return <div className="stack-page"><CheckpointRail done={done} current="seal" /><span className="font-serif text-5xl text-primary">関所</span><h1 className="font-serif text-3xl font-bold">Typed Seal check</h1><p className="text-sm text-muted-foreground">Reading {index + 1} of 3 · hiragana or romaji</p><p className="font-serif text-5xl">{q.vocab.w}</p>
+  // Hand focus to the next step: it closes a phone keyboard that would otherwise hide the verdict.
+  useEffect(() => { if (feedback !== null) next.current?.focus(); }, [feedback]);
+  const left = 2 - index, need = Math.max(0, SEAL_PASS - correct.current);
+  const tally = need === 0 ? `${correct.current} of 3 correct · the seal is yours`
+    : need > left ? `${correct.current} of 3 correct · the seal needs ${SEAL_PASS}, so try again after another Firefly Rescue`
+    : `${correct.current} of 3 correct · ${need} more to earn the seal`;
+  return <div className="stack-page"><CheckpointRail done={done} current="seal" /><span className="font-serif text-5xl text-primary">関所</span><h1 className="font-serif text-3xl font-bold">Typed Seal check</h1><p className="text-sm text-muted-foreground">Reading {index + 1} of 3 · hiragana or romaji · {SEAL_PASS} correct earns the seal</p><p className="font-serif text-5xl">{q.vocab.w}</p>
     <form className="flex flex-col gap-4" onSubmit={(e) => {
       e.preventDefault(); if (submitted.current || !value.trim()) return; submitted.current = true;
       const pass = acceptsReading(q.vocab, value);
       if (pass) { correct.current++; recordProduction(q.kanji.c); }
       setFeedback(pass);
-    }}><label htmlFor="seal-reading" className="text-sm font-bold">Type the reading</label><input id="seal-reading" autoFocus autoComplete="off" autoCapitalize="off" spellCheck={false} className="min-h-12 w-full rounded-xl border border-border bg-card px-4 py-3 text-center text-lg" value={value} disabled={feedback !== null} onChange={(e) => setValue(e.target.value)} /><button className={primary} disabled={feedback !== null || !value.trim()}>Check reading</button></form>
-    {feedback !== null && <div className="flex flex-col gap-3" role="status"><p>{feedback ? "Correct" : "Keep this reading for next time"} · {q.answer}</p><WordAudio reading={q.answer} wordKey={index} /><button className={secondary} onClick={() => { if (index === 2) onComplete(correct.current); else { submitted.current = false; setIndex((v) => v + 1); setValue(""); setFeedback(null); } }}>{index === 2 ? "See my seal" : "Next reading"}</button></div>}
+    }}><label htmlFor="seal-reading" className="text-sm font-bold">Type the reading</label><input id="seal-reading" autoFocus autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} enterKeyHint="done" className="min-h-12 w-full rounded-xl border border-border bg-card px-4 py-3 text-center text-lg" value={value} disabled={feedback !== null} onChange={(e) => setValue(e.target.value)} />
+      {feedback === null && <button className={primary} disabled={!value.trim()}>Check reading</button>}</form>
+    {feedback !== null && <div className="flex flex-col gap-3">
+      <div role="status" data-testid="seal-feedback" className={`flex items-start gap-3 rounded-xl p-4 text-left ${feedback ? "bg-success/10" : "bg-primary/10"}`}>
+        <AppIcon name={feedback ? "check" : "alert"} className={`mt-0.5 h-5 w-5 shrink-0 ${feedback ? "text-success" : "text-primary"}`} />
+        <span className="flex flex-col gap-1">
+          <b className={`text-lg ${feedback ? "text-success" : "text-primary"}`}>{feedback ? "Correct!" : "Not quite."}</b>
+          <span>{feedback ? "" : <>You typed “{value.trim()}”. </>}<b className="font-serif">{q.vocab.w}</b> is read <b>{vocabKana(q.vocab)}</b> ({q.vocab.r}).</span>
+          <span className="text-sm text-muted-foreground">{tally}</span>
+        </span>
+      </div>
+      <WordAudio reading={vocabKana(q.vocab)} wordKey={index} /><button ref={next} className={primary} onClick={() => { if (index === 2) onComplete(correct.current); else { submitted.current = false; setIndex((v) => v + 1); setValue(""); setFeedback(null); } }}>{index === 2 ? "See my seal" : "Next reading"}</button></div>}
   </div>;
 }
