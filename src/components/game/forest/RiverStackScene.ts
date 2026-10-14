@@ -11,6 +11,9 @@ export type RiverView = {
   ready: () => void;
 };
 
+const CONDENSED = 0.82,
+  MIN_FONT = 9;
+
 /** Disposable presentation only. The shared stack simulation owns every placement and reward. */
 class RiverStackScene extends Phaser.Scene {
   private paint!: Phaser.GameObjects.Graphics;
@@ -18,6 +21,8 @@ class RiverStackScene extends Phaser.Scene {
   private labelKeys: string[] = [];
   private riverTime = 0;
   private lastTick = 0;
+  /** The playfield in CSS pixels; the renderer itself is `pixelRatio` times larger. */
+  size = { width: 0, height: 0, pixelRatio: 1 };
   constructor(private view: RiverView) {
     super("river-stones");
   }
@@ -35,8 +40,7 @@ class RiverStackScene extends Phaser.Scene {
             align: "center",
             padding: { top: 0, bottom: 0 },
           })
-          .setOrigin(0.5)
-          .setResolution(Math.min(2, window.devicePixelRatio || 1)),
+          .setOrigin(0.5),
       );
     }
     this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
@@ -53,8 +57,9 @@ class RiverStackScene extends Phaser.Scene {
     if (!this.paint || !this.sys.isActive()) return;
     if (!v.paused && !v.reducedMotion) this.riverTime += delta / 1000;
     const g = this.paint,
-      width = this.scale.width,
-      height = this.scale.height;
+      { width, height, pixelRatio } = this.size;
+    const camera = this.cameras.main;
+    if (camera.zoom !== pixelRatio) camera.setOrigin(0, 0).setZoom(pixelRatio);
     const cw = width / s.cols,
       ch = height / s.rows;
     g.clear();
@@ -115,26 +120,41 @@ class RiverStackScene extends Phaser.Scene {
         label = this.labels[index]!;
       const size = Math.min(kind === "K" ? 29 : 22, ch * 0.54, cw * 0.32);
       const color = falling ? "#283d30" : ink ? "#c7ccc0" : "#f1ebd1";
-      const key = `${text}:${kind}:${size}:${color}:${w}:${h}`;
+      const key = `${text}:${kind}:${size}:${color}:${w}:${h}:${pixelRatio}`;
       // Phaser text styles upload a new texture: only rebuild glyphs when their content or size changes.
       if (this.labelKeys[index] !== key) {
         this.labelKeys[index] = key;
+        const maxW = w - 8,
+          maxH = h - 6;
         label
           .setStyle({
             fontSize: size,
             color,
+            resolution: pixelRatio,
             wordWrap: {
-              width: kind === "M" ? Math.max(20, w - 10) : 0,
+              width: kind === "M" ? Math.max(20, maxW) : 0,
               useAdvancedWrap: false,
             },
           })
-          .setText(text);
-        const fit = Math.min(
+          .setText(text)
+          .setScale(1);
+        // Long words are re-rendered at a smaller font size rather than scaled
+        // down, which would throw away glyph pixels. They may also narrow to a
+        // condensed face (長体) so five-kana words stay legible on a phone.
+        for (let fontSize = size, i = 0; i < 4; i++) {
+          const fit = Math.min(
+            maxW / (Math.max(1, label.width) * CONDENSED),
+            maxH / Math.max(1, label.height),
+          );
+          if (fit >= 1) break;
+          const next = Math.max(MIN_FONT, Math.floor(fontSize * fit));
+          if (next === fontSize) break;
+          label.setFontSize((fontSize = next));
+        }
+        label.setScale(
+          Math.max(CONDENSED, Math.min(1, maxW / Math.max(1, label.width))),
           1,
-          (w - 10) / Math.max(1, label.width),
-          (h - 4) / Math.max(1, label.height),
         );
-        label.setScale(fit);
       }
       label.setPosition(x + w / 2, y + (h - 2) / 2).setVisible(true);
     };
@@ -201,7 +221,16 @@ class RiverStackScene extends Phaser.Scene {
   }
 }
 
+const devicePixels = () =>
+  Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+
 export function mountRiverStack(host: HTMLElement, view: RiverView) {
+  const scene = new RiverStackScene(view);
+  scene.size = {
+    width: host.clientWidth,
+    height: host.clientHeight,
+    pixelRatio: devicePixels(),
+  };
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: host,
@@ -211,24 +240,27 @@ export function mountRiverStack(host: HTMLElement, view: RiverView) {
       // The forest dialog changes size without a window resize. Observe its
       // actual playfield and resize the renderer and cameras together.
       mode: Phaser.Scale.NONE,
-      width: host.clientWidth,
-      height: host.clientHeight,
+      width: Math.round(host.clientWidth * scene.size.pixelRatio),
+      height: Math.round(host.clientHeight * scene.size.pixelRatio),
     },
     fps: { target: 60, limit: 60 },
     audio: { noAudio: true },
     input: { keyboard: false, mouse: false, touch: false },
-    scene: [new RiverStackScene(view)],
+    scene: [scene],
   });
+  // Draw at the screen's real pixel density: a 1x canvas stretched over a
+  // retina phone blurs every glyph. The camera zoom keeps layout in CSS pixels.
   const resize = () => {
     if (!game.isBooted) return;
     const width = host.clientWidth,
-      height = host.clientHeight;
-    if (
-      width > 0 &&
-      height > 0 &&
-      (game.scale.width !== width || game.scale.height !== height)
-    )
-      game.scale.resize(width, height);
+      height = host.clientHeight,
+      pixelRatio = devicePixels();
+    if (width <= 0 || height <= 0) return;
+    scene.size = { width, height, pixelRatio };
+    const pxW = Math.round(width * pixelRatio),
+      pxH = Math.round(height * pixelRatio);
+    if (game.scale.width !== pxW || game.scale.height !== pxH)
+      game.scale.resize(pxW, pxH);
   };
   const observer = new ResizeObserver(resize);
   observer.observe(host);
