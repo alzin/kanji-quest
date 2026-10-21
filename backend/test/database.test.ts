@@ -181,7 +181,7 @@ async function exerciseDatabase(pool: Pool) {
   const deletedSessions = await pool.query("SELECT count(*)::integer AS count FROM sessions WHERE user_id = $1", [user.id]);
   assert.equal(deletedSessions.rows[0].count, 0, "Account deletion cascades to all sessions and progress.");
 
-  await exerciseReminders(new PgReminderRepository(pool));
+  await exerciseReminders(pool, new PgReminderRepository(pool));
 }
 
 test("PostgreSQL migrations, identities, sessions, and optimistic progress writes (PGlite)", async () => {
@@ -212,7 +212,7 @@ test("real PostgreSQL/Neon driver integration in an isolated schema", { skip: !p
   }
 });
 
-async function exerciseReminders(reminders: PgReminderRepository) {
+async function exerciseReminders(pool: Pool, reminders: PgReminderRepository) {
   const endpoint = "https://fcm.googleapis.com/fcm/send/database-test";
   const keys = { p256dh: "B".repeat(87), auth: "A".repeat(22) };
   const base = { endpoint, keys, timeZone: "Asia/Tokyo", hour: 19 };
@@ -235,6 +235,13 @@ async function exerciseReminders(reminders: PgReminderRepository) {
 
   await reminders.save({ ...base, endpoint: `${endpoint}-lapsed`, lastPlayedOn: "2020-01-01", streak: 0 });
   assert.deepEqual((await reminders.candidates()).map(s => s.endpoint), [endpoint], "Long-lapsed players are no longer candidates.");
+  const silent = `${endpoint}-never-played`;
+  await reminders.save({ ...base, endpoint: silent, lastPlayedOn: null, streak: 0 });
+  assert.ok((await reminders.candidates()).some(s => s.endpoint === silent), "A new subscription without a play day is reminded.");
+  await pool.query("UPDATE push_subscriptions SET created_at = CURRENT_TIMESTAMP - interval '40 days' WHERE endpoint = $1", [silent]);
+  await reminders.save({ ...base, endpoint: silent, hour: 8, lastPlayedOn: null, streak: 0 });
+  assert.ok(!(await reminders.candidates()).some(s => s.endpoint === silent), "Without a play day, age counts from subscribing, and a settings change does not reset it.");
+  await reminders.remove(silent);
   await reminders.remove(endpoint);
   await reminders.remove(`${endpoint}-lapsed`);
   assert.deepEqual(await reminders.candidates(), []);

@@ -114,10 +114,12 @@ export class PgReminderRepository implements ReminderRepository {
 
   async candidates(): Promise<ReminderSubscription[]> {
     // Every zone's "today" is within a day of UTC's, so this only skips rows that cannot be due.
+    // A device that never reported a play day ages from when it subscribed; changing the
+    // reminder time must not restart that clock, so this is created_at, not updated_at.
     const result = await this.pool.query<ReminderRow>(`
       SELECT endpoint, p256dh, auth, time_zone, reminder_hour, last_played_on::text, streak_count, last_sent_on::text
       FROM push_subscriptions
-      WHERE last_played_on IS NULL OR last_played_on > CURRENT_DATE - ($1::int + 2)`, [REMINDER_GIVE_UP_DAYS]);
+      WHERE COALESCE(last_played_on, created_at::date) > CURRENT_DATE - ($1::int + 2)`, [REMINDER_GIVE_UP_DAYS]);
     return result.rows.map((row) => ({
       endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth },
       timeZone: row.time_zone, hour: Number(row.reminder_hour),

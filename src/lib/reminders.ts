@@ -186,8 +186,9 @@ export async function disableReminders() {
   try {
     const subscription = await registration.pushManager.getSubscription();
     if (subscription) {
-      // Unsubscribing in the browser alone already stops delivery; the server forgets it too.
-      void fetch(`${API}/reminders/unsubscribe`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: subscription.endpoint }) }).catch(() => {});
+      // Ask the server to forget it first. Unsubscribing the browser happens either way: it
+      // stops delivery at once, and the dispatcher deletes a row whose endpoint has gone.
+      await fetch(`${API}/reminders/unsubscribe`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: subscription.endpoint }) }).catch(() => {});
       await subscription.unsubscribe();
     }
     writePrefs({ synced: "" });

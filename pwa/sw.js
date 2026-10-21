@@ -54,6 +54,9 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let message = {};
   try { message = event.data ? event.data.json() : {}; } catch { /* Fall back to the default text. */ }
+  // Valid JSON that is not an object (such as null) must still show a notification.
+  if (!message || typeof message !== "object") message = {};
+  for (const key of ["title", "body", "tag"]) if (typeof message[key] !== "string") delete message[key];
   event.waitUntil(self.registration.showNotification(message.title || "Your kanji are waiting 🏮", {
     body: message.body || "A few minutes today keeps them fresh.",
     tag: message.tag || "daily-reminder",
