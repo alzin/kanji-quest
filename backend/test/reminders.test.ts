@@ -9,13 +9,15 @@ import { ReminderService } from '../src/application/reminder-service.js';
 import { parseReminderRegistration } from '../src/application/reminder-validation.js';
 import { readConfig, type Config } from '../src/config.js';
 import { AppError } from '../src/domain/errors.js';
-import { localClock, reminderDay, reminderMessage, type PushTarget, type ReminderMessage, type ReminderRegistration, type ReminderSubscription } from '../src/domain/reminders.js';
+import { localClock, rejectedTooLong, reminderDay, reminderMessage, type PushTarget, type ReminderMessage, type ReminderRegistration, type ReminderSubscription } from '../src/domain/reminders.js';
+import { WebPushSender } from '../src/infrastructure/push/web-push-sender.js';
 import { createApp } from '../src/interfaces/http/app.js';
+import webpush from 'web-push';
 
 const endpoint = 'https://fcm.googleapis.com/fcm/send/abc123';
 const keys = { p256dh: 'B'.repeat(87), auth: 'A'.repeat(22) };
 const sub = (patch: Partial<ReminderSubscription> = {}): ReminderSubscription => ({
-  endpoint, keys, timeZone: 'Asia/Tokyo', hour: 19, lastPlayedOn: '2026-10-18', streak: 4, lastSentOn: null, ...patch,
+  endpoint, keys, timeZone: 'Asia/Tokyo', hour: 19, lastPlayedOn: '2026-10-18', streak: 4, freezes: 0, lastSentOn: null, rejectedSince: null, ...patch,
 });
 // 2026-10-19 10:30 UTC is 19:30 in Tokyo and 06:30 in New York.
 const evening = new Date('2026-10-19T10:30:00Z');
@@ -38,7 +40,20 @@ test('the message mentions the streak only while it is still alive', () => {
   assert.match(reminderMessage(sub(), '2026-10-19').title, /4-day streak/);
   assert.doesNotMatch(reminderMessage(sub({ lastPlayedOn: '2026-10-17' }), '2026-10-19').title, /streak/);
   assert.doesNotMatch(reminderMessage(sub({ streak: 1 }), '2026-10-19').title, /streak/);
+  assert.doesNotMatch(reminderMessage(sub({ lastPlayedOn: null }), '2026-10-19').title, /streak/);
+  assert.doesNotMatch(reminderMessage(sub(), '2026-10-19').body, /freeze/, 'Played yesterday: no freeze needed.');
   assert.equal(reminderMessage(sub(), '2026-10-19').tag, 'daily-reminder');
+});
+
+test('streak freezes keep the streak message going across the days they cover', () => {
+  const coveredOne = reminderMessage(sub({ lastPlayedOn: '2026-10-17', freezes: 1 }), '2026-10-19');
+  assert.match(coveredOne.title, /4-day streak/);
+  assert.match(coveredOne.body, /freeze is covering the day you missed/);
+  const coveredTwo = reminderMessage(sub({ lastPlayedOn: '2026-10-16', freezes: 3 }), '2026-10-19');
+  assert.match(coveredTwo.title, /4-day streak/);
+  assert.equal(coveredTwo.body, 'Freezes are covering the 2 days you missed. One short run today keeps the flame lit.');
+  assert.doesNotMatch(reminderMessage(sub({ lastPlayedOn: '2026-10-16', freezes: 1 }), '2026-10-19').title, /streak/, 'Too few freezes: the streak is gone.');
+  assert.doesNotMatch(reminderMessage(sub({ lastPlayedOn: '2026-10-17', freezes: 1, streak: 1 }), '2026-10-19').title, /streak/);
 });
 
 const body = (patch: Record<string, unknown> = {}) => ({
@@ -46,7 +61,8 @@ const body = (patch: Record<string, unknown> = {}) => ({
 });
 
 test('registrations accept real push services only and validate every field', () => {
-  assert.deepEqual(parseReminderRegistration(body()), { endpoint, keys, timeZone: 'Asia/Tokyo', hour: 19, lastPlayedOn: '2026-10-18', streak: 4 });
+  assert.deepEqual(parseReminderRegistration(body()), { endpoint, keys, timeZone: 'Asia/Tokyo', hour: 19, lastPlayedOn: '2026-10-18', streak: 4, freezes: 0 }, 'Older builds send no freezes.');
+  assert.equal(parseReminderRegistration(body({ freezes: 2 })).freezes, 2);
   assert.equal(parseReminderRegistration(body({ lastPlayedOn: '' })).lastPlayedOn, null);
   for (const host of ['web.push.apple.com', 'updates.push.services.mozilla.com', 'wns2-par02p.notify.windows.com']) {
     assert.ok(parseReminderRegistration(body({ subscription: { endpoint: `https://${host}/x`, keys } })));
@@ -59,7 +75,8 @@ test('registrations accept real push services only and validate every field', ()
     body({ subscription: { endpoint, keys: { ...keys, auth: 'short' } } }),
     body({ subscription: { endpoint, keys: { ...keys, p256dh: 'not base64!'.repeat(4) } } }),
     body({ timeZone: 'Mars/Olympus' }), body({ hour: 24 }), body({ hour: 7.5 }),
-    body({ lastPlayedOn: '2026-02-30' }), body({ streak: -1 }), body({ extra: true }), null, [],
+    body({ lastPlayedOn: '2026-02-30' }), body({ streak: -1 }), body({ freezes: -1 }), body({ freezes: 1.5 }), body({ freezes: '1' }),
+    body({ extra: true }), null, [],
   ];
   for (const value of malformed) {
     assert.throws(() => parseReminderRegistration(value), (error: unknown) => error instanceof AppError && error.status === 400);
@@ -71,7 +88,10 @@ class MemoryReminders implements ReminderRepository {
   async save(r: ReminderRegistration) {
     const old = this.rows.get(r.endpoint);
     const newer = !old?.lastPlayedOn || (r.lastPlayedOn !== null && r.lastPlayedOn >= old.lastPlayedOn);
-    this.rows.set(r.endpoint, { ...r, lastPlayedOn: newer ? r.lastPlayedOn ?? null : old!.lastPlayedOn, streak: newer ? r.streak : old!.streak, lastSentOn: old?.lastSentOn ?? null });
+    this.rows.set(r.endpoint, {
+      ...r, lastPlayedOn: newer ? r.lastPlayedOn ?? null : old!.lastPlayedOn, streak: newer ? r.streak : old!.streak, freezes: newer ? r.freezes : old!.freezes,
+      lastSentOn: old?.lastSentOn ?? null, rejectedSince: old?.rejectedSince ?? null,
+    });
   }
   async remove(endpoint: string) { this.rows.delete(endpoint); }
   async candidates() { return [...this.rows.values()].map(row => structuredClone(row)); }
@@ -85,11 +105,19 @@ class MemoryReminders implements ReminderRepository {
     const row = this.rows.get(endpoint);
     if (row?.lastSentOn === day) row.lastSentOn = previous;
   }
+  async markRejected(endpoint: string, day: string) {
+    const row = this.rows.get(endpoint);
+    if (row) row.rejectedSince ??= day;
+  }
+  async markDelivered(endpoint: string) {
+    const row = this.rows.get(endpoint);
+    if (row) row.rejectedSince = null;
+  }
 }
 
 class FakeSender implements PushSender {
   readonly sent: { target: PushTarget; message: ReminderMessage }[] = [];
-  constructor(private readonly results: Record<string, PushResult> = {}) {}
+  constructor(readonly results: Record<string, PushResult> = {}) {}
   async send(target: PushTarget, message: ReminderMessage) {
     this.sent.push({ target, message });
     return this.results[target.endpoint] ?? 'sent';
@@ -127,7 +155,7 @@ test('guests subscribe, update and unsubscribe by endpoint without an account', 
   await request(app).get('/api/reminders').expect(200, { publicKey: 'public-key' });
   await request(app).put('/api/reminders/subscription').send(body()).expect(204);
   await request(app).put('/api/reminders/subscription').send(body({ hour: 8, lastPlayedOn: '2026-10-19', streak: 5 })).expect(204);
-  assert.deepEqual(repository.rows.get(endpoint), { endpoint, keys, timeZone: 'Asia/Tokyo', hour: 8, lastPlayedOn: '2026-10-19', streak: 5, lastSentOn: null });
+  assert.deepEqual(repository.rows.get(endpoint), { endpoint, keys, timeZone: 'Asia/Tokyo', hour: 8, lastPlayedOn: '2026-10-19', streak: 5, freezes: 0, lastSentOn: null, rejectedSince: null });
   await request(app).put('/api/reminders/subscription').send(body({ hour: 25 })).expect(400);
   await request(app).put('/api/reminders/subscription').set('Content-Type', 'text/plain').send('x').expect(400);
   await request(app).post('/api/reminders/unsubscribe').send({ endpoint, other: 1 }).expect(400);
@@ -139,19 +167,80 @@ test('dispatch needs the scheduler secret and sends each due player one reminder
   const gone = 'https://fcm.googleapis.com/fcm/send/gone';
   const flaky = 'https://fcm.googleapis.com/fcm/send/flaky';
   const played = 'https://fcm.googleapis.com/fcm/send/played';
-  const { app, repository, sender } = harness(true, { [gone]: 'gone', [flaky]: 'failed' });
-  for (const [url, lastPlayedOn] of [[endpoint, '2026-10-18'], [gone, '2026-10-18'], [flaky, '2026-10-18'], [played, '2026-10-19']] as const) {
+  const refused = 'https://fcm.googleapis.com/fcm/send/refused';
+  const { app, repository, sender } = harness(true, { [gone]: 'gone', [flaky]: 'failed', [refused]: 'rejected' });
+  for (const [url, lastPlayedOn] of [[endpoint, '2026-10-18'], [gone, '2026-10-18'], [flaky, '2026-10-18'], [refused, '2026-10-18'], [played, '2026-10-19']] as const) {
     await request(app).put('/api/reminders/subscription').send(body({ subscription: { endpoint: url, keys }, lastPlayedOn })).expect(204);
   }
   await request(app).post('/api/reminders/dispatch').expect(404);
   await request(app).post('/api/reminders/dispatch').set('Authorization', 'Bearer wrong').expect(404);
   const first = await request(app).post('/api/reminders/dispatch').set('Authorization', `Bearer ${secret}`).expect(200);
-  assert.deepEqual(first.body, { checked: 3, sent: 1, removed: 1, failed: 1 });
-  assert.deepEqual(sender.sent.map(s => s.target.endpoint).sort(), [endpoint, flaky, gone].sort());
+  assert.deepEqual(first.body, { checked: 4, sent: 1, removed: 1, rejected: 1, failed: 1 });
+  assert.deepEqual(sender.sent.map(s => s.target.endpoint).sort(), [endpoint, flaky, gone, refused].sort());
   assert.match(sender.sent.find(s => s.target.endpoint === endpoint)!.message.title, /4-day streak/);
   assert.ok(!repository.rows.has(gone), 'Expired subscriptions are deleted.');
   const second = await request(app).post('/api/reminders/dispatch').set('Authorization', `Bearer ${secret}`).expect(200);
-  assert.deepEqual(second.body, { checked: 1, sent: 0, removed: 0, failed: 1 }, 'Only the failed delivery is retried.');
+  assert.deepEqual(second.body, { checked: 1, sent: 0, removed: 0, rejected: 0, failed: 1 }, 'Only the failed delivery is retried; a refused one waits for tomorrow.');
+  assert.equal(repository.rows.get(refused)?.rejectedSince, '2026-10-19');
+});
+
+const days = (n: number) => new Date(evening.getTime() + n * 86_400_000);
+
+test('a subscription the push service keeps refusing is tried once a day, then dropped after a week', async () => {
+  const repository = new MemoryReminders();
+  const sender = new FakeSender({ [endpoint]: 'rejected' });
+  let now = evening;
+  const service = new ReminderService(repository, sender, () => now);
+  // Never played, so the 30-day lapse never applies and every evening is due.
+  await repository.save({ endpoint, keys, timeZone: 'Asia/Tokyo', hour: 19, lastPlayedOn: null, streak: 0, freezes: 0 });
+
+  assert.deepEqual(await service.dispatch(), { checked: 1, sent: 0, removed: 0, rejected: 1, failed: 0 });
+  now = new Date(evening.getTime() + 3_600_000);
+  assert.deepEqual(await service.dispatch(), { checked: 0, sent: 0, removed: 0, rejected: 0, failed: 0 }, 'Not again the same day.');
+  for (let day = 1; day < 7; day++) {
+    now = days(day);
+    assert.equal((await service.dispatch()).rejected, 1, `Still kept on day ${day}.`);
+  }
+  assert.equal(repository.rows.get(endpoint)?.rejectedSince, '2026-10-19', 'The run counts from the first refusal.');
+  now = days(7);
+  assert.equal((await service.dispatch()).removed, 1);
+  assert.ok(!repository.rows.has(endpoint), 'A week of refusals drops the subscription.');
+  assert.equal(sender.sent.length, 8);
+});
+
+test('one delivery ends a run of refusals, and passing failures never start one', async () => {
+  const repository = new MemoryReminders();
+  const sender = new FakeSender({ [endpoint]: 'rejected' });
+  let now = evening;
+  const service = new ReminderService(repository, sender, () => now);
+  await repository.save({ endpoint, keys, timeZone: 'Asia/Tokyo', hour: 19, lastPlayedOn: null, streak: 0, freezes: 0 });
+  await service.dispatch();
+  assert.equal(repository.rows.get(endpoint)?.rejectedSince, '2026-10-19');
+  sender.results[endpoint] = 'sent';
+  now = days(1);
+  assert.equal((await service.dispatch()).sent, 1);
+  assert.equal(repository.rows.get(endpoint)?.rejectedSince, null);
+  sender.results[endpoint] = 'failed';
+  now = days(2);
+  assert.equal((await service.dispatch()).failed, 1);
+  assert.equal(repository.rows.get(endpoint)?.rejectedSince, null, 'A timeout or busy service is not a refusal.');
+  assert.ok(!rejectedTooLong(sub({ rejectedSince: '2026-10-13' }), '2026-10-19'));
+  assert.ok(rejectedTooLong(sub({ rejectedSince: '2026-10-12' }), '2026-10-19'));
+});
+
+test('push service answers map to gone, rejected or a retry', async (t) => {
+  const sender = new WebPushSender({ subject: 'mailto:team@example.com', publicKey: 'public', privateKey: 'private' });
+  const answers: [number | undefined, PushResult][] = [
+    [201, 'sent'], [404, 'gone'], [410, 'gone'], [400, 'rejected'], [401, 'rejected'], [403, 'rejected'], [413, 'rejected'],
+    [429, 'failed'], [500, 'failed'], [503, 'failed'], [undefined, 'failed'],
+  ];
+  for (const [status, expected] of answers) {
+    t.mock.method(webpush, 'sendNotification', async () => {
+      if (status === 201) return { statusCode: 201, body: '', headers: {} };
+      throw Object.assign(new Error('push failed'), status === undefined ? {} : { statusCode: status });
+    });
+    assert.equal(await sender.send({ endpoint, keys }, { title: 't', body: 'b', tag: 'daily-reminder' }), expected, `HTTP ${status}`);
+  }
 });
 
 test('reminder settings are all-or-nothing', () => {

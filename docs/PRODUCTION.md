@@ -466,7 +466,9 @@ settings. Shipping the code without them changes nothing for players. To turn th
    gcloud scheduler jobs run kanji-quest-daily-reminders --location="$REGION"
    ```
 
-   A manual run returns `{ checked, sent, removed, failed }` in the job's logs. In
+   A manual run returns `{ checked, sent, removed, rejected, failed }` in the job's logs.
+   A steady `rejected` count across many players points at our VAPID settings, not
+   theirs: refused subscriptions are dropped after a week, so fix it before then. In
    zones with half-hour offsets, such as India, the reminder arrives 30 minutes after the
    chosen hour. The job definition holds the bearer token, so keep Cloud Scheduler access
    to project administrators.

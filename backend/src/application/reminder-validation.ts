@@ -45,7 +45,7 @@ function day(value: unknown): string | null {
 
 export function parseReminderRegistration(value: unknown): ReminderRegistration {
   const raw = record(value, "body");
-  if (Object.keys(raw).some((k) => !["subscription", "timeZone", "hour", "lastPlayedOn", "streak"].includes(k))) invalid("body");
+  if (Object.keys(raw).some((k) => !["subscription", "timeZone", "hour", "lastPlayedOn", "streak", "freezes"].includes(k))) invalid("body");
   // PushSubscription.toJSON() also carries expirationTime, which push services leave null.
   const subscription = record(raw["subscription"], "subscription");
   const keys = record(subscription["keys"], "subscription.keys");
@@ -53,6 +53,9 @@ export function parseReminderRegistration(value: unknown): ReminderRegistration 
   if (typeof hour !== "number" || !Number.isInteger(hour) || hour < 0 || hour > 23) invalid("hour");
   const streak = raw["streak"];
   if (typeof streak !== "number" || !Number.isSafeInteger(streak) || streak < 0) invalid("streak");
+  // Installed apps still on an older build do not send freezes yet.
+  const freezes = raw["freezes"] ?? 0;
+  if (typeof freezes !== "number" || !Number.isSafeInteger(freezes) || freezes < 0) invalid("freezes");
   return {
     endpoint: parseEndpoint(subscription["endpoint"]),
     keys: { p256dh: key(keys["p256dh"], "subscription.keys.p256dh", 256), auth: key(keys["auth"], "subscription.keys.auth", 64) },
@@ -60,5 +63,6 @@ export function parseReminderRegistration(value: unknown): ReminderRegistration 
     hour,
     lastPlayedOn: day(raw["lastPlayedOn"]),
     streak: Math.min(streak, 2_147_483_647),
+    freezes: Math.min(freezes, 32_767),
   };
 }

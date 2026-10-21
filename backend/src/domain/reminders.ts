@@ -6,14 +6,19 @@ export type ReminderRegistration = PushTarget & {
   hour: number;
   lastPlayedOn: string | null;
   streak: number;
+  /** Streak freezes left; each covers one missed day. */
+  freezes: number;
 };
 
-export type ReminderSubscription = ReminderRegistration & { lastSentOn: string | null };
+export type ReminderSubscription = ReminderRegistration & { lastSentOn: string | null; rejectedSince: string | null };
 
 export type ReminderMessage = { title: string; body: string; tag: string };
 
 /** A player who has not played for this long has moved on; stop reminding them. */
 export const REMINDER_GIVE_UP_DAYS = 30;
+
+/** A subscription the push service has refused for this long, without a delivery, is dropped. */
+export const REMINDER_REJECTED_GIVE_UP_DAYS = 7;
 
 /** Calendar day and hour on the player's clock, from the zone their device reported. */
 export function localClock(timeZone: string, now: Date): { day: string; hour: number } {
@@ -41,9 +46,17 @@ export function reminderDay(sub: ReminderSubscription, now: Date): string | null
 }
 
 export function reminderMessage(sub: ReminderSubscription, day: string): ReminderMessage {
-  // Only a streak that played yesterday is still alive today.
-  const alive = sub.lastPlayedOn !== null && daysBetween(sub.lastPlayedOn, day) === 1 && sub.streak >= 2;
-  return alive
-    ? { title: `Keep your ${sub.streak}-day streak alive 🔥`, body: "One short run today keeps the flame lit.", tag: "daily-reminder" }
-    : { title: "Your kanji are waiting 🏮", body: "A few minutes today keeps them fresh. Ready for a quick run?", tag: "daily-reminder" };
+  // As in the game: playing today continues the streak if freezes cover every missed day.
+  const missed = sub.lastPlayedOn === null ? -1 : daysBetween(sub.lastPlayedOn, day) - 1;
+  if (sub.streak >= 2 && missed >= 0 && missed <= sub.freezes) {
+    const cover = missed === 0 ? "" : missed === 1 ? "A freeze is covering the day you missed. " : `Freezes are covering the ${missed} days you missed. `;
+    const body = `${cover}One short run today keeps the flame lit.`;
+    return { title: `Keep your ${sub.streak}-day streak alive 🔥`, body, tag: "daily-reminder" };
+  }
+  return { title: "Your kanji are waiting 🏮", body: "A few minutes today keeps them fresh. Ready for a quick run?", tag: "daily-reminder" };
+}
+
+/** Whether a refusal on `day` ends a run of refusals long enough to stop trying. */
+export function rejectedTooLong(sub: ReminderSubscription, day: string): boolean {
+  return sub.rejectedSince !== null && daysBetween(sub.rejectedSince, day) >= REMINDER_REJECTED_GIVE_UP_DAYS;
 }
