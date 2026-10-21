@@ -32,6 +32,7 @@ import { CrossingEncounter } from "./game/forest/CrossingEncounter";
 import { completeCrossing } from "./game/forest/crossing";
 import { LanternDashEncounter } from "./game/forest/LanternDashEncounter";
 import { completeLanternDash } from "./game/forest/lantern-dash";
+import { ReminderOffer } from "./DailyReminder";
 
 function ForestDialog({
   children,
@@ -781,6 +782,7 @@ export function ForestAdventure() {
               </span>
             ))}
           </div>
+          <ReminderOffer />
           <Link to="/" search={mapSearch} className="forest-primary">
             Back to the map <span aria-hidden="true">→</span>
           </Link>

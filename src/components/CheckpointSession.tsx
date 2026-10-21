@@ -22,6 +22,7 @@ import { WordAudio } from "./WordAudio";
 import { AppIcon } from "./AppIcon";
 import { vocabKana } from "@/lib/words";
 import { GameHud } from "./GameScreen";
+import { ReminderOffer } from "./DailyReminder";
 
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground shadow-e1";
 const secondary = "min-h-12 rounded-xl border border-border px-5 py-3 text-center font-bold hover:bg-secondary";
@@ -112,6 +113,7 @@ function CheckpointJourney({ gate }: { gate: number }) {
       ? <p className="text-sm text-muted-foreground">{nextOpen ? `Next region open: ${CHAPTER_NAMES[next]!.name} · ${kanjiOfChapter(next).length} kanji` : `Every step of the ${level} road leads here. Keep revisiting your words.`}</p>
       : <p className="text-sm text-muted-foreground">Type at least {SEAL_PASS} of 3 readings correctly. Carry the words through Firefly Rescue once more, then the seal opens again.</p>}
     <p className="text-sm">Day {streakCount(getSnapshot())} of your streak</p>
+    <ReminderOffer />
     {outcome?.passed
       ? nextOpen && <Link to="/run" search={{ gate: next }} className={primary}>Prepare next region</Link>
       : <button className={primary} onClick={resume}>Back to Firefly Rescue</button>}

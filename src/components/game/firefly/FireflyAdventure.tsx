@@ -13,6 +13,7 @@ import { MusicToggle } from "../../MusicToggle";
 import { WordAudio, primeSpeech, speakReading } from "../../WordAudio";
 import { advanceWithGates, burst, chooseLane, chooseTrail, createFireflyState, getFireflyResult, multiplierOf, takeGateResults, type FireflyEntity, type FireflyState, type GateResult } from "./simulation";
 import type { FireflyView } from "./FireflyScene";
+import { ReminderOffer } from "../../DailyReminder";
 
 type Ticket = { deck: AdventureDeck; ledger: AdventureLedger; lantern: LanternId; collected: SpiritId[]; tutorial: boolean };
 type Receipt = NonNullable<ReturnType<typeof finishAdventure>>;
@@ -365,6 +366,7 @@ function FireflyRun({ ticket, onAgain, onExit, onSeal }: { ticket: Ticket; onAga
         <p className="ff-words-total"><b>{summary.length}</b> {summary.length === 1 ? "word" : "words"} · <b>{sightings}</b> sightings · <b>{right}/{asked}</b> right{receipt.earned > 0 && <> · +{receipt.earned} mon</>}</p>
         <div className="ff-words-list">{summary.map(w => <div key={w.word} data-testid="ff-word-row"><b lang="ja">{w.word}</b><span><span lang="ja">{w.kana}</span><small>{w.meaning}</small></span><i role="img" aria-label={`${w.attempts.filter(Boolean).length} of ${w.attempts.length} right`}>{w.attempts.map((ok, i) => <em key={i} className={ok ? "ok" : "miss"} />)}</i>{w.introduced && <strong>NEW</strong>}</div>)}</div>
       </section>}
+      <ReminderOffer />
       <p className="ff-collection-progress">{count}/9 friends found{nextMilestone ? ` · ${nextMilestone - count} more for your next lantern` : " · Every lantern unlocked"}</p>
       {receipt.stepCompleted && onSeal ? <>
         <button className="ff-primary" onClick={() => onSeal(receipt)}>Continue to the seal <span aria-hidden="true">→</span></button>

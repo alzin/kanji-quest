@@ -662,3 +662,21 @@ dialog.sheet-up::backdrop { animation: fade-only 200ms ease-out; }
 .checkpoint-rail > .checkpoint-rail-seal[aria-current="step"] { border-style: solid; border-color: var(--rail-now); color: var(--rail-now); }
 .river-session .checkpoint-rail { --rail-on: #ebca84; --rail-off: #97aa7655; --rail-text: #afc2a6; --rail-now: #ebca84; }
 .ff-shell .checkpoint-rail, .ff-dialog .checkpoint-rail { --rail-on: #efcb7e; --rail-off: #f5e9c826; --rail-text: #a9c2b8; --rail-now: #efcb7e; }
+
+/* Daily reminder offer on result screens. Result screens range from paper to night
+   forest, so the card borrows the surrounding text colour instead of a fixed theme. */
+.reminder-offer { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 4px; padding: 14px 16px; border: 1px solid color-mix(in oklab, currentColor 22%, transparent); border-radius: 14px; background: color-mix(in oklab, currentColor 6%, transparent); color: inherit; font-size: 14px; line-height: 1.5; text-align: center; }
+.reminder-offer p { margin: 0; }
+.reminder-offer .reminder-copy { opacity: .8; }
+.reminder-offer-done { font-weight: 700; }
+.reminder-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 4px; }
+.reminder-hour { min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in oklab, currentColor 30%, transparent); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-weight: 700; }
+.reminder-hour option { color: #2a2a22; background: #fbf7ea; }
+.reminder-primary { min-height: 44px; padding: 0 18px; border-radius: 10px; background: var(--primary); color: var(--primary-foreground); font-weight: 700; }
+.reminder-primary:disabled, .reminder-hour:disabled { opacity: .6; }
+.reminder-quiet { min-height: 44px; padding: 0 12px; color: inherit; opacity: .7; font-size: 13px; font-weight: 700; }
+.reminder-quiet:hover { opacity: 1; }
+.reminder-setting { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; }
+.reminder-setting .music-toggle { color: #f4e8cc; }
+.reminder-setting .reminder-hour { min-height: 40px; color: #f4e8cc; }
+.reminder-setting .camp-fine { flex-basis: 100%; margin: 0; }

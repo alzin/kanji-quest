@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AppIcon } from "./AppIcon";
+import { ReminderOffer } from "./DailyReminder";
 import { checkpointPassed, type RunnerStats } from "./game/runner-math";
 import { getSnapshot, selectLevel, streakCount, type Question } from "@/lib/srs";
 import { CHAPTER_NAMES, kanjiOfChapter, levelOfChapter, nextChapter } from "@/data";
@@ -79,6 +80,7 @@ export function RunResults({ gate, questions, results, pendingCheckpoint, restar
                 <div className="text-xs font-bold text-muted-foreground">Mon earned</div>
               </div>
             </div>
+            <div className="mt-4"><ReminderOffer /></div>
             <div className="results-actions mt-6 flex flex-col gap-2">
               {next !== undefined && <Link to="/run" search={{ gate: next, mode: "runner" }} data-sfx="tap" className="breathe-ring min-h-12 rounded-xl bg-primary py-3 text-center font-serif font-bold text-primary-foreground shadow-e1 transition-colors hover:bg-primary-hover">Prepare next region</Link>}
               {pendingCheckpoint !== undefined && (
