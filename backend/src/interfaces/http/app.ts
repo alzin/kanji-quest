@@ -7,6 +7,7 @@ import type { Config } from '../../config.js';
 import type { AuthService } from '../../application/auth-service.js';
 import type { GoogleProvider } from '../../application/auth-ports.js';
 import type { ProgressService } from '../../application/progress-service.js';
+import type { ReminderService } from '../../application/reminder-service.js';
 import { AppError } from '../../domain/errors.js';
 import { OAuthCookie, equalToken, secureTokens } from '../../infrastructure/auth/tokens.js';
 
@@ -15,11 +16,13 @@ export type AppDependencies = {
   auth: AuthService;
   google: GoogleProvider;
   progress: ProgressService;
+  /** Absent when VAPID keys are not configured; the app then hides the reminder offer. */
+  reminders?: { service: ReminderService; publicKey: string; dispatchSecret: string } | null;
   ready: () => Promise<void>;
   reportError?: (error: unknown) => void;
 };
 
-export function createApp({ config, auth, google, progress, ready, reportError = () => {} }: AppDependencies) {
+export function createApp({ config, auth, google, progress, reminders = null, ready, reportError = () => {} }: AppDependencies) {
   const app = express();
   const secure = config.NODE_ENV === 'production';
   const sessionName = secure ? '__Host-kq_session' : 'kq_session';
@@ -112,6 +115,37 @@ export function createApp({ config, auth, google, progress, ready, reportError =
       throw error;
     }
   });
+
+  // Daily reminders. A browser's push endpoint identifies its subscription, so guests
+  // can opt in without an account; no cookie is read, so CSRF does not apply.
+  const reminderLimit = rateLimit({ windowMs: 15 * 60_000, limit: 60, standardHeaders: 'draft-8', legacyHeaders: false,
+    message: { error: { code: 'RATE_LIMITED', message: 'Too many reminder changes. Please try again later.' } } });
+  const reminderService = () => {
+    if (!reminders) throw new AppError('REMINDERS_UNAVAILABLE', 'Daily reminders are not available right now.', 503);
+    return reminders.service;
+  };
+  const jsonObject = (req: Request) => {
+    if (!req.is('application/json') || !req.body || typeof req.body !== 'object' || Array.isArray(req.body)) throw new AppError('INVALID_REQUEST', 'Provide the reminder as JSON.', 400);
+    return req.body as Record<string, unknown>;
+  };
+  app.get('/api/reminders', (_req, res) => { res.json({ publicKey: reminders?.publicKey ?? null }); });
+  app.put('/api/reminders/subscription', reminderLimit, async (req, res) => {
+    await reminderService().save(jsonObject(req));
+    res.sendStatus(204);
+  });
+  app.post('/api/reminders/unsubscribe', reminderLimit, async (req, res) => {
+    const body = jsonObject(req);
+    if (Object.keys(body).some(k => k !== 'endpoint')) throw new AppError('INVALID_REQUEST', 'Provide only the endpoint.', 400);
+    await reminderService().remove(body['endpoint']);
+    res.sendStatus(204);
+  });
+  // Called hourly by Cloud Scheduler with the shared secret as a bearer token.
+  app.post('/api/reminders/dispatch', async (req, res) => {
+    const header = req.get('Authorization') ?? '';
+    if (!reminders || !header.startsWith('Bearer ') || !equalToken(header.slice(7), reminders.dispatchSecret)) throw new AppError('NOT_FOUND', 'Endpoint not found.', 404);
+    res.json(await reminders.service.dispatch());
+  });
+
   app.use((_req, _res, next) => next(new AppError('NOT_FOUND', 'Endpoint not found.', 404)));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof AppError) { res.status(error.status).json({ error: { code: error.code, message: error.message } }); return; }

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import type { ProgressRepository, SessionRecord, SessionRepository, UserRepository } from "../../application/ports.js";
+import type { ProgressRepository, ReminderRepository, SessionRecord, SessionRepository, UserRepository } from "../../application/ports.js";
 import type { GoogleIdentity, ProgressSnapshot, SaveData, User } from "../../domain/models.js";
+import { REMINDER_GIVE_UP_DAYS, type ReminderRegistration, type ReminderSubscription } from "../../domain/reminders.js";
 
 export class PgUserRepository implements UserRepository {
   constructor(private readonly pool: Pool) {}
@@ -80,5 +81,60 @@ export class PgProgressRepository implements ProgressRepository {
           WHERE user_id = $1 AND version = $3
           RETURNING save_data, version`, [userId, JSON.stringify(save), expectedVersion]);
     return result.rows[0] ? snapshot(result.rows[0]) : null;
+  }
+}
+
+type ReminderRow = {
+  endpoint: string; p256dh: string; auth: string; time_zone: string; reminder_hour: number;
+  last_played_on: string | null; streak_count: number; last_sent_on: string | null;
+};
+
+export class PgReminderRepository implements ReminderRepository {
+  constructor(private readonly pool: Pool) {}
+
+  async save(r: ReminderRegistration): Promise<void> {
+    // The newest play day wins, with its streak; an older tab cannot rewind either.
+    await this.pool.query(`
+      INSERT INTO push_subscriptions (endpoint, p256dh, auth, time_zone, reminder_hour, last_played_on, streak_count)
+      VALUES ($1, $2, $3, $4, $5, $6::date, $7)
+      ON CONFLICT (endpoint) DO UPDATE
+        SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth, time_zone = EXCLUDED.time_zone,
+            reminder_hour = EXCLUDED.reminder_hour,
+            streak_count = CASE WHEN EXCLUDED.last_played_on IS NOT NULL
+                                 AND (push_subscriptions.last_played_on IS NULL OR EXCLUDED.last_played_on >= push_subscriptions.last_played_on)
+                               THEN EXCLUDED.streak_count ELSE push_subscriptions.streak_count END,
+            last_played_on = GREATEST(push_subscriptions.last_played_on, EXCLUDED.last_played_on),
+            updated_at = CURRENT_TIMESTAMP`,
+    [r.endpoint, r.keys.p256dh, r.keys.auth, r.timeZone, r.hour, r.lastPlayedOn, r.streak]);
+  }
+
+  async remove(endpoint: string): Promise<void> {
+    await this.pool.query("DELETE FROM push_subscriptions WHERE endpoint = $1", [endpoint]);
+  }
+
+  async candidates(): Promise<ReminderSubscription[]> {
+    // Every zone's "today" is within a day of UTC's, so this only skips rows that cannot be due.
+    const result = await this.pool.query<ReminderRow>(`
+      SELECT endpoint, p256dh, auth, time_zone, reminder_hour, last_played_on::text, streak_count, last_sent_on::text
+      FROM push_subscriptions
+      WHERE last_played_on IS NULL OR last_played_on > CURRENT_DATE - ($1::int + 2)`, [REMINDER_GIVE_UP_DAYS]);
+    return result.rows.map((row) => ({
+      endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth },
+      timeZone: row.time_zone, hour: Number(row.reminder_hour),
+      lastPlayedOn: row.last_played_on, streak: Number(row.streak_count), lastSentOn: row.last_sent_on,
+    }));
+  }
+
+  async claim(endpoint: string, day: string): Promise<boolean> {
+    const result = await this.pool.query(`
+      UPDATE push_subscriptions SET last_sent_on = $2::date
+      WHERE endpoint = $1
+        AND (last_sent_on IS NULL OR last_sent_on < $2::date)
+        AND (last_played_on IS NULL OR last_played_on < $2::date)`, [endpoint, day]);
+    return result.rowCount === 1;
+  }
+
+  async release(endpoint: string, day: string, previous: string | null): Promise<void> {
+    await this.pool.query("UPDATE push_subscriptions SET last_sent_on = $3::date WHERE endpoint = $1 AND last_sent_on = $2::date", [endpoint, day, previous]);
   }
 }

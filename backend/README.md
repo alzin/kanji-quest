@@ -54,7 +54,7 @@ src/server.ts             Dependency wiring, listener, graceful shutdown
 
 Domain and application code do not depend on Express, PostgreSQL drivers, or Google SDKs. The composition root injects the adapters. HTTP controllers derive the account ID from the verified session; a request cannot choose a different owner.
 
-Tables: `users`, `sessions`, `user_progress`, and `schema_migrations`. Saves use JSONB to preserve the existing complete SRS snapshot (kanji schedules, mastery, streaks, currency, runs, seals, unlocks, and selected road). Migrations are transactional, locked, checksummed, and explicitly invoked before deployment.
+Tables: `users`, `sessions`, `user_progress`, `push_subscriptions`, and `schema_migrations`. Saves use JSONB to preserve the existing complete SRS snapshot (kanji schedules, mastery, streaks, currency, runs, seals, unlocks, and selected road). Migrations are transactional, locked, checksummed, and explicitly invoked before deployment.
 
 When the curriculum changes, regenerate the backend validation manifest and commit it:
 
@@ -78,10 +78,20 @@ All paths are relative to the API origin. Responses containing account data use 
 | POST | `/api/auth/logout` | Revoke current session; 204 |
 | GET | `/api/progress` | `{ save: SaveData \| null, version: number }`; 401 for guests |
 | PUT | `/api/progress` | `{ save: SaveData, expectedVersion: number }`; returns saved snapshot/version |
+| GET | `/api/reminders` | `{ publicKey: string \| null }`; null when daily reminders are not configured |
+| PUT | `/api/reminders/subscription` | `{ subscription: PushSubscriptionJSON, timeZone, hour, lastPlayedOn, streak }`; 204. No account needed |
+| POST | `/api/reminders/unsubscribe` | `{ endpoint }`; 204 |
+| POST | `/api/reminders/dispatch` | Hourly from Cloud Scheduler with `Authorization: Bearer REMINDER_DISPATCH_SECRET`; sends due reminders and returns counts |
 
 Use `credentials: "include"`. Mutations require `Origin` matching `FRONTEND_URL` and `X-CSRF-Token` from the session response. The frontend also supplies that token on progress reads to detect an account switch in another tab between identifying the user and loading progress. PUT requires `Content-Type: application/json`. A new save starts at expected version 0; the first stored version is 1. Stale writes return `{ error: { code: "PROGRESS_CONFLICT", message }, current: { save, version } }`. Other errors use `{ error: { code, message } }`; invalid payloads return 400, oversized bodies 413, and missing sessions 401.
 
 OAuth credentials and tokens stay on the server. Session cookies are HttpOnly with absolute expiry; production uses Secure `__Host-` cookies. Only a SHA-256 hash of each random session token is stored. The OAuth transaction cookie is encrypted, authenticated, and expires after ten minutes. Google verification checks signature, issuer, audience, expiration, verified email, and nonce; state and PKCE bind the callback to its browser. No access or refresh tokens are retained.
+
+## Daily reminders
+
+Optional Web Push reminders, for guests and accounts alike. A `push_subscriptions` row belongs to one browser push subscription, keyed by its endpoint. Only endpoints on the browsers' push services (Google, Apple, Mozilla, Microsoft) are accepted, because the dispatcher sends requests to them. The app reports the last local day it was played and the streak whenever they change. An hourly dispatch sends one reminder per local day, at or after the player's chosen hour, only if that device has not reported playing that day, and stops after 30 days without play. Each reminder is claimed atomically before sending, so a repeated dispatch cannot double-send. A failed delivery is released for the next hour; subscriptions the push service reports gone (404/410) are deleted.
+
+The feature is off until `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and `REMINDER_DISPATCH_SECRET` are all set. Until then the API returns `publicKey: null` and the app shows nothing, so the code can ship before the keys. Played days are per device: a phone can still be reminded on a day the player only played on another device. Cloud Run and Cloud Scheduler setup is in [docs/PRODUCTION.md](../docs/PRODUCTION.md#daily-reminders).
 
 ## Deployment
 

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { AppIcon } from "@/components/AppIcon";
+import { ReminderSetting } from "@/components/DailyReminder";
 import { InstallApp } from "@/components/InstallApp";
 import { MusicToggle } from "@/components/MusicToggle";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -109,6 +110,7 @@ export function CampPanel({ onClose, onShowTitle }: { onClose: () => void; onSho
           <SoundToggle variant="inline" />
           <MusicToggle />
         </div>
+        <ReminderSetting />
         <InstallApp />
         <button type="button" className="forest-text-button camp-title-link" onClick={onShowTitle}>
           <AppIcon name="seal" className="h-4 w-4" /> View the title screen

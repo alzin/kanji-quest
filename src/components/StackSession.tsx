@@ -10,6 +10,7 @@ import { composeSheets, type StackWord } from "./game/stack-seed";
 import type { StackStats } from "./game/stack-math";
 import { RunPreparation } from "./RunPreparation";
 import { GameHud } from "./GameScreen";
+import { ReminderOffer } from "./DailyReminder";
 
 export type StackMode = "daily" | "fluency" | "marathon";
 const primary = "min-h-12 rounded-xl bg-primary px-5 py-3 text-center font-bold text-primary-foreground shadow-e1";
@@ -107,6 +108,7 @@ function StackSessionContent({ kind }: { kind: StackMode }) {
     <p className="text-sm">Day {streakCount(getSnapshot())} · {stack.freezes.count} free {stack.freezes.count === 1 ? "freeze" : "freezes"}{stack.freezes.lastUsedDay === localDay() ? " · A freeze kept your streak" : ""}</p>
     {streakCount(getSnapshot()) === 7 && <p className="rounded-xl border border-gold p-4 font-serif text-lg">七日 · A week of words. Your road is taking shape.</p>}
     <ul className="space-y-1 text-left text-xs text-muted-foreground">{dailyQuests(getSnapshot()).map((q) => <li key={q.key}>{q.value === q.target ? "✓" : "○"} {q.label} · {q.value}/{q.target}</li>)}</ul>
+    <ReminderOffer />
     <Link to="/" className={primary}>Done for today · streak safe</Link>
     {!latest?.cleared && <button className={secondary} onClick={retry}>Retry sheet</button>}
     <Link to="/run" search={{ mode: "stack", practice: "fluency" }} className={secondary}>Fluency sheet</Link>

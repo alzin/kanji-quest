@@ -18,7 +18,7 @@ type AccountState = {
   prompt: boolean;
 };
 
-const API = (import.meta.env["VITE_API_URL"] || "/api").replace(/\/$/, "");
+export const API = (import.meta.env["VITE_API_URL"] || "/api").replace(/\/$/, "");
 const initial: AccountState = { user: null, phase: "checking", message: "Checking cloud saves…", legacyAvailable: false, guestAvailable: false, conflict: null, prompt: false };
 
 /** Guests are asked to save after this many finished runs or checkpoints, then every PROMPT_EVERY more. */

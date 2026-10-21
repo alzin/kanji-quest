@@ -412,3 +412,65 @@ gcloud run services update kanji-quest-api-prod --region="$REGION" \
 ```
 
 Rotating `COOKIE_SECRET` signs every user out; rotate it only when necessary.
+
+## Daily reminders
+
+Web Push reminders are optional and stay hidden until the API has all four reminder
+settings. Shipping the code without them changes nothing for players. To turn them on:
+
+1. **Apply migration `002_push_subscriptions.sql`** with step 6. The default
+   privileges from step 2 already give `kq_cloud_run` access to the new table. Do the
+   same on the Pages test database if the test API gets keys as well.
+
+2. **Generate a VAPID key pair** once, from `backend/` after `npm ci`. It prints both
+   keys; keep the private key off disk and out of chat:
+
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+3. **Store the private key and a dispatch secret**, and let the runtime identity read them:
+
+   ```bash
+   read -rsp "VAPID private key: " v && echo
+   printf '%s' "$v" | gcloud secrets create kanji-quest-prod-vapid-private-key --data-file=- --replication-policy=automatic
+   unset v
+   node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))" \
+     | gcloud secrets create kanji-quest-prod-reminder-dispatch-secret --data-file=- --replication-policy=automatic
+   for s in kanji-quest-prod-vapid-private-key kanji-quest-prod-reminder-dispatch-secret; do
+     gcloud secrets add-iam-policy-binding "$s" \
+       --member="serviceAccount:$RUNTIME_SA" --role=roles/secretmanager.secretAccessor
+   done
+   ```
+
+4. **Configure the API.** The public key and subject are not secrets. The subject is
+   a contact push services can use if reminders misbehave:
+
+   ```bash
+   gcloud run services update kanji-quest-api-prod --region="$REGION" \
+     --update-env-vars "VAPID_PUBLIC_KEY=YOUR_PUBLIC_KEY,VAPID_SUBJECT=mailto:YOUR_CONTACT_EMAIL" \
+     --update-secrets "VAPID_PRIVATE_KEY=kanji-quest-prod-vapid-private-key:1,REMINDER_DISPATCH_SECRET=kanji-quest-prod-reminder-dispatch-secret:1"
+   curl -s https://kanji-api.nipporia.com/api/reminders   # publicKey is no longer null
+   ```
+
+5. **Schedule the hourly dispatch.** Each run reminds players whose chosen local hour
+   has arrived and who have not played that day, at most once a day:
+
+   ```bash
+   gcloud services enable cloudscheduler.googleapis.com
+   gcloud scheduler jobs create http kanji-quest-daily-reminders \
+     --location="$REGION" --schedule="0 * * * *" --time-zone="Etc/UTC" \
+     --http-method=POST --uri="https://kanji-api.nipporia.com/api/reminders/dispatch" \
+     --headers="Authorization=Bearer $(gcloud secrets versions access 1 --secret=kanji-quest-prod-reminder-dispatch-secret)" \
+     --attempt-deadline=60s
+   gcloud scheduler jobs run kanji-quest-daily-reminders --location="$REGION"
+   ```
+
+   A manual run returns `{ checked, sent, removed, failed }` in the job's logs. In
+   zones with half-hour offsets, such as India, the reminder arrives 30 minutes after the
+   chosen hour. The job definition holds the bearer token, so keep Cloud Scheduler access
+   to project administrators.
+
+**Do not rotate the VAPID keys casually.** Every subscription is bound to the public key.
+The app re-subscribes when it next opens with a new key, but players who do not open it
+receive nothing until they do.

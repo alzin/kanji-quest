@@ -61,6 +61,22 @@ function PrivacyPage() {
         <p>This is study data only. We do not collect anything you write beyond your answers in the game.</p>
       </Section>
 
+      <Section heading="Daily reminders">
+        <p>
+          Reminders are off unless you turn them on, with or without an account. When you do, your
+          browser creates a push address with its own push service (Google, Apple, Mozilla or
+          Microsoft) and gives it to us with the keys that encrypt each message. Alongside it we
+          store your time zone, the reminder time you chose, the last day you played on that device,
+          and your streak count. That is how we send at most one reminder a day, and only on days you
+          have not played yet. It is not linked to your account.
+        </p>
+        <p>
+          Turn reminders off in Camp → Settings, or block notifications for the app, and the push
+          address stops working; we delete it when you turn reminders off or when the push service
+          tells us it has expired. After 30 days without play we stop sending reminders.
+        </p>
+      </Section>
+
       <Section heading="Cookies">
         <p>
           We use two cookies, and only after you sign in. One holds your session so you stay signed

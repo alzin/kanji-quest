@@ -49,3 +49,26 @@ self.addEventListener("fetch", (event) => {
     return cached || fetch(request);
   })());
 });
+
+// Daily reminders from the API. Browsers require every push to show a notification.
+self.addEventListener("push", (event) => {
+  let message = {};
+  try { message = event.data ? event.data.json() : {}; } catch { /* Fall back to the default text. */ }
+  event.waitUntil(self.registration.showNotification(message.title || "Your kanji are waiting 🏮", {
+    body: message.body || "A few minutes today keeps them fresh.",
+    tag: message.tag || "daily-reminder",
+    icon: `${BASE_PATH}icons/icon-192.png`,
+    lang: "en",
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    // Bring back an open game rather than starting a second one.
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const open = windows.find((client) => new URL(client.url).pathname.startsWith(BASE_PATH));
+    if (open) return open.focus();
+    return self.clients.openWindow(BASE_PATH);
+  })());
+});
