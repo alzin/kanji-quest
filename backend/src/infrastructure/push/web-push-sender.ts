@@ -22,7 +22,10 @@ export class WebPushSender implements PushSender {
       return "sent";
     } catch (error) {
       const status = (error as { statusCode?: unknown }).statusCode;
-      return status === 404 || status === 410 ? "gone" : "failed";
+      if (status === 404 || status === 410) return "gone";
+      // Refused outright, for example a subscription made with another VAPID key (FCM sends 403).
+      if (status === 400 || status === 401 || status === 403 || status === 413) return "rejected";
+      return "failed";
     }
   }
 }

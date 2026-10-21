@@ -29,10 +29,18 @@ export interface ReminderRepository {
   claim(endpoint: string, day: string): Promise<boolean>;
   /** Undo a claim whose delivery failed, so the next dispatch retries it. */
   release(endpoint: string, day: string, previous: string | null): Promise<void>;
+  /** Note the first day of a run of refusals; the claim stands, so it is tried again tomorrow. */
+  markRejected(endpoint: string, day: string): Promise<void>;
+  /** A delivery went through, ending any run of refusals. */
+  markDelivered(endpoint: string): Promise<void>;
 }
 
-/** "gone" means the push service no longer knows this subscription. */
-export type PushResult = "sent" | "gone" | "failed";
+/**
+ * "gone" means the push service no longer knows this subscription. "rejected" means it
+ * refused this one (a bad or mismatched key, say): retrying within the day will not help.
+ * "failed" is anything that may pass on the next try, such as a timeout or a busy service.
+ */
+export type PushResult = "sent" | "gone" | "rejected" | "failed";
 
 export interface PushSender {
   send(target: PushTarget, message: ReminderMessage): Promise<PushResult>;

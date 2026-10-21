@@ -70,7 +70,7 @@ test.describe("on browsers with Web Push", () => {
     expect(api.saved.at(-1)).toEqual({
       subscription: { endpoint: ENDPOINT, expirationTime: null, keys: { p256dh: "B".repeat(87), auth: "A".repeat(22) } },
       timeZone: await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone),
-      hour: 20, lastPlayedOn: today, streak: 1,
+      hour: 20, lastPlayedOn: today, streak: 1, freezes: 0,
     });
 
     // The run froze the clock, which the map's entrance relies on.

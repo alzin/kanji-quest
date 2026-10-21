@@ -86,26 +86,28 @@ export class PgProgressRepository implements ProgressRepository {
 
 type ReminderRow = {
   endpoint: string; p256dh: string; auth: string; time_zone: string; reminder_hour: number;
-  last_played_on: string | null; streak_count: number; last_sent_on: string | null;
+  last_played_on: string | null; streak_count: number; freeze_count: number; last_sent_on: string | null; rejected_since: string | null;
 };
+
+const NEWER_PLAY_DAY = `EXCLUDED.last_played_on IS NOT NULL
+  AND (push_subscriptions.last_played_on IS NULL OR EXCLUDED.last_played_on >= push_subscriptions.last_played_on)`;
 
 export class PgReminderRepository implements ReminderRepository {
   constructor(private readonly pool: Pool) {}
 
   async save(r: ReminderRegistration): Promise<void> {
-    // The newest play day wins, with its streak; an older tab cannot rewind either.
+    // The newest play day wins, with its streak and freezes; an older tab cannot rewind them.
     await this.pool.query(`
-      INSERT INTO push_subscriptions (endpoint, p256dh, auth, time_zone, reminder_hour, last_played_on, streak_count)
-      VALUES ($1, $2, $3, $4, $5, $6::date, $7)
+      INSERT INTO push_subscriptions (endpoint, p256dh, auth, time_zone, reminder_hour, last_played_on, streak_count, freeze_count)
+      VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8)
       ON CONFLICT (endpoint) DO UPDATE
         SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth, time_zone = EXCLUDED.time_zone,
             reminder_hour = EXCLUDED.reminder_hour,
-            streak_count = CASE WHEN EXCLUDED.last_played_on IS NOT NULL
-                                 AND (push_subscriptions.last_played_on IS NULL OR EXCLUDED.last_played_on >= push_subscriptions.last_played_on)
-                               THEN EXCLUDED.streak_count ELSE push_subscriptions.streak_count END,
+            streak_count = CASE WHEN ${NEWER_PLAY_DAY} THEN EXCLUDED.streak_count ELSE push_subscriptions.streak_count END,
+            freeze_count = CASE WHEN ${NEWER_PLAY_DAY} THEN EXCLUDED.freeze_count ELSE push_subscriptions.freeze_count END,
             last_played_on = GREATEST(push_subscriptions.last_played_on, EXCLUDED.last_played_on),
             updated_at = CURRENT_TIMESTAMP`,
-    [r.endpoint, r.keys.p256dh, r.keys.auth, r.timeZone, r.hour, r.lastPlayedOn, r.streak]);
+    [r.endpoint, r.keys.p256dh, r.keys.auth, r.timeZone, r.hour, r.lastPlayedOn, r.streak, r.freezes]);
   }
 
   async remove(endpoint: string): Promise<void> {
@@ -117,13 +119,15 @@ export class PgReminderRepository implements ReminderRepository {
     // A device that never reported a play day ages from when it subscribed; changing the
     // reminder time must not restart that clock, so this is created_at, not updated_at.
     const result = await this.pool.query<ReminderRow>(`
-      SELECT endpoint, p256dh, auth, time_zone, reminder_hour, last_played_on::text, streak_count, last_sent_on::text
+      SELECT endpoint, p256dh, auth, time_zone, reminder_hour, last_played_on::text, streak_count, freeze_count,
+             last_sent_on::text, rejected_since::text
       FROM push_subscriptions
       WHERE COALESCE(last_played_on, created_at::date) > CURRENT_DATE - ($1::int + 2)`, [REMINDER_GIVE_UP_DAYS]);
     return result.rows.map((row) => ({
       endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth },
       timeZone: row.time_zone, hour: Number(row.reminder_hour),
-      lastPlayedOn: row.last_played_on, streak: Number(row.streak_count), lastSentOn: row.last_sent_on,
+      lastPlayedOn: row.last_played_on, streak: Number(row.streak_count), freezes: Number(row.freeze_count),
+      lastSentOn: row.last_sent_on, rejectedSince: row.rejected_since,
     }));
   }
 
@@ -138,5 +142,13 @@ export class PgReminderRepository implements ReminderRepository {
 
   async release(endpoint: string, day: string, previous: string | null): Promise<void> {
     await this.pool.query("UPDATE push_subscriptions SET last_sent_on = $3::date WHERE endpoint = $1 AND last_sent_on = $2::date", [endpoint, day, previous]);
+  }
+
+  async markRejected(endpoint: string, day: string): Promise<void> {
+    await this.pool.query("UPDATE push_subscriptions SET rejected_since = COALESCE(rejected_since, $2::date) WHERE endpoint = $1", [endpoint, day]);
+  }
+
+  async markDelivered(endpoint: string): Promise<void> {
+    await this.pool.query("UPDATE push_subscriptions SET rejected_since = NULL WHERE endpoint = $1", [endpoint]);
   }
 }

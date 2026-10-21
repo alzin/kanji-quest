@@ -89,7 +89,7 @@ test("migration checksums accept Windows/Unix line endings and reject substantiv
 
 async function exerciseDatabase(pool: Pool) {
   const migrations = await readMigrations(new URL("../migrations/", import.meta.url));
-  assert.deepEqual(await runMigrations(pool, migrations), ["001_initial.sql", "002_push_subscriptions.sql"]);
+  assert.deepEqual(await runMigrations(pool, migrations), ["001_initial.sql", "002_push_subscriptions.sql", "003_reminder_freezes_and_rejections.sql"]);
   assert.deepEqual(await runMigrations(pool, migrations), []);
   await assert.rejects(runMigrations(pool, [{ ...migrations[0]!, sql: `${migrations[0]!.sql}\n-- changed` }]), /has changed/);
   await assert.rejects(runMigrations(pool, [{ name: "002_failure.sql", sql: "CREATE TABLE should_rollback (id integer); SELECT missing_column;" }]));
@@ -215,13 +215,14 @@ test("real PostgreSQL/Neon driver integration in an isolated schema", { skip: !p
 async function exerciseReminders(pool: Pool, reminders: PgReminderRepository) {
   const endpoint = "https://fcm.googleapis.com/fcm/send/database-test";
   const keys = { p256dh: "B".repeat(87), auth: "A".repeat(22) };
-  const base = { endpoint, keys, timeZone: "Asia/Tokyo", hour: 19 };
+  const base = { endpoint, keys, timeZone: "Asia/Tokyo", hour: 19, freezes: 0 };
   // Relative to the database clock, which filters lapsed players.
   const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
-  await reminders.save({ ...base, lastPlayedOn: day(-1), streak: 4 });
-  await reminders.save({ ...base, hour: 8, lastPlayedOn: day(-2), streak: 3 });
+  await reminders.save({ ...base, lastPlayedOn: day(-1), streak: 4, freezes: 2 });
+  await reminders.save({ ...base, hour: 8, lastPlayedOn: day(-2), streak: 3, freezes: 3 });
   let [stored] = await reminders.candidates();
-  assert.deepEqual(stored, { ...base, hour: 8, lastPlayedOn: day(-1), streak: 4, lastSentOn: null }, "A stale tab updates settings but never rewinds the play day or its streak.");
+  assert.deepEqual(stored, { ...base, hour: 8, lastPlayedOn: day(-1), streak: 4, freezes: 2, lastSentOn: null, rejectedSince: null },
+    "A stale tab updates settings but never rewinds the play day, its streak or its freezes.");
   await reminders.save({ ...base, lastPlayedOn: null, streak: 0 });
   [stored] = await reminders.candidates();
   assert.equal(stored?.lastPlayedOn, day(-1));
@@ -230,6 +231,11 @@ async function exerciseReminders(pool: Pool, reminders: PgReminderRepository) {
   assert.equal(await reminders.claim(endpoint, day(0)), false, "One reminder per local day, even if dispatch runs twice.");
   await reminders.release(endpoint, day(0), null);
   assert.equal((await reminders.candidates())[0]?.lastSentOn, null, "A failed delivery is released for the next hour.");
+  await reminders.markRejected(endpoint, day(-1));
+  await reminders.markRejected(endpoint, day(0));
+  assert.equal((await reminders.candidates())[0]?.rejectedSince, day(-1), "A run of refusals keeps its first day.");
+  await reminders.markDelivered(endpoint);
+  assert.equal((await reminders.candidates())[0]?.rejectedSince, null, "A delivery ends the run.");
   await reminders.save({ ...base, lastPlayedOn: day(0), streak: 5 });
   assert.equal(await reminders.claim(endpoint, day(0)), false, "Playing today cancels today's reminder.");
 

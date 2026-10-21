@@ -67,7 +67,7 @@ function PrivacyPage() {
           browser creates a push address with its own push service (Google, Apple, Mozilla or
           Microsoft) and gives it to us with the keys that encrypt each message. Alongside it we
           store your time zone, the reminder time you chose, the last day you played on that device,
-          and your streak count. That is how we send at most one reminder a day, and only on days you
+          and your streak and streak-freeze counts. That is how we send at most one reminder a day, and only on days you
           have not played yet. It is not linked to your account.
         </p>
         <p>

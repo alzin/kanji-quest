@@ -79,7 +79,7 @@ All paths are relative to the API origin. Responses containing account data use 
 | GET | `/api/progress` | `{ save: SaveData \| null, version: number }`; 401 for guests |
 | PUT | `/api/progress` | `{ save: SaveData, expectedVersion: number }`; returns saved snapshot/version |
 | GET | `/api/reminders` | `{ publicKey: string \| null }`; null when daily reminders are not configured |
-| PUT | `/api/reminders/subscription` | `{ subscription: PushSubscriptionJSON, timeZone, hour, lastPlayedOn, streak }`; 204. No account needed |
+| PUT | `/api/reminders/subscription` | `{ subscription: PushSubscriptionJSON, timeZone, hour, lastPlayedOn, streak, freezes? }`; 204. No account needed |
 | POST | `/api/reminders/unsubscribe` | `{ endpoint }`; 204 |
 | POST | `/api/reminders/dispatch` | Hourly from Cloud Scheduler with `Authorization: Bearer REMINDER_DISPATCH_SECRET`; sends due reminders and returns counts |
 
@@ -89,7 +89,7 @@ OAuth credentials and tokens stay on the server. Session cookies are HttpOnly wi
 
 ## Daily reminders
 
-Optional Web Push reminders, for guests and accounts alike. A `push_subscriptions` row belongs to one browser push subscription, keyed by its endpoint. Only endpoints on the browsers' push services (Google, Apple, Mozilla, Microsoft) are accepted, because the dispatcher sends requests to them. The app reports the last local day it was played and the streak whenever they change. An hourly dispatch sends one reminder per local day, at or after the player's chosen hour, only if that device has not reported playing that day, and stops after 30 days without play. Each reminder is claimed atomically before sending, so a repeated dispatch cannot double-send. A failed delivery is released for the next hour; subscriptions the push service reports gone (404/410) are deleted.
+Optional Web Push reminders, for guests and accounts alike. A `push_subscriptions` row belongs to one browser push subscription, keyed by its endpoint. Only endpoints on the browsers' push services (Google, Apple, Mozilla, Microsoft) are accepted, because the dispatcher sends requests to them. The app reports the last local day it was played, the streak and its streak freezes whenever they change; a streak whose missed days are covered by freezes still gets the streak message. An hourly dispatch sends one reminder per local day, at or after the player's chosen hour, only if that device has not reported playing that day, and stops after 30 days without play. Each reminder is claimed atomically before sending, so a repeated dispatch cannot double-send. A failed delivery (timeout, 429, 5xx) is released for the next hour; subscriptions the push service reports gone (404/410) are deleted. One it refuses outright (400, 401, 403, 413) is tried again the next day rather than the next hour, and deleted after a week of refusals with no delivery in between.
 
 The feature is off until `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and `REMINDER_DISPATCH_SECRET` are all set. Until then the API returns `publicKey: null` and the app shows nothing, so the code can ship before the keys. Played days are per device: a phone can still be reminded on a day the player only played on another device. Cloud Run and Cloud Scheduler setup is in [docs/PRODUCTION.md](../docs/PRODUCTION.md#daily-reminders).
 

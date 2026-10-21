@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { API } from "./account";
 import { getSnapshot, streakCount, subscribe as subscribeSave } from "./srs";
+import { stackOf } from "./stack-progress";
 
 /**
  * Daily reminders through Web Push. The browser's push subscription is the identity,
@@ -123,11 +124,14 @@ async function detect() {
   void sync();
 }
 
-/** Tell the server this device's current play day, streak, zone and hour. Skips repeats. */
+/** Tell the server this device's current play day, streak, freezes, zone and hour. Skips repeats. */
 async function sync(force = false) {
   if (!snapshot.enabled || !registration) return;
   const save = getSnapshot();
-  const play = { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour: snapshot.hour, lastPlayedOn: save.streak.last, streak: streakCount(save) };
+  const play = {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, hour: snapshot.hour,
+    lastPlayedOn: save.streak.last, streak: streakCount(save), freezes: stackOf(save).freezes.count,
+  };
   const playKey = JSON.stringify(play);
   if (!force && playKey === confirmed) return;
   if (syncing) { syncAgain = true; return; }
