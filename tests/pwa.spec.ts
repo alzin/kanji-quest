@@ -54,6 +54,9 @@ test("serves install metadata and valid Android/iOS icons", async ({ page, reque
 });
 
 test("opens every game screen offline after visiting only home", async ({ page, context, baseURL, browserName }) => {
+  // This walks a dozen screens. WebKit's actionability checks wait for real frames,
+  // and the WebGL map and game canvases render slowly there, so the walk takes ~60s.
+  test.slow(browserName === "webkit", "Long offline walk through every screen");
   await page.clock.install();
   // Use a private origin so shutting its server down doesn't interrupt other tests.
   // Windows WebKit's setOffline(true) fails before invoking service workers, even
@@ -79,7 +82,13 @@ test("opens every game screen offline after visiting only home", async ({ page, 
 
   try {
     const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("pageerror", (error) => {
+      // WebKit logs every failed fetch, even a caught one, as a JavaScript console error,
+      // and Playwright reports it as a page error. An uncaught rejection still arrives
+      // separately as "Unhandled Promise Rejection", so it is still recorded.
+      if (browserName === "webkit" && error.name.startsWith("Fetch API cannot load")) return;
+      errors.push(error.message);
+    });
     await context.route("https://**/*", (route) => route.abort("internetdisconnected"));
     await prepareOfflineCopy(page, `${origin}/`);
     const savedProgress = {

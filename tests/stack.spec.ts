@@ -127,7 +127,10 @@ test("misses correct in place, retry grading is bounded, and holding is ungraded
 
 const read = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("kanji-dash-guest-v1")!));
 
-test("a checkpoint learns and stacks every region word, saves each step, then continues into Firefly Rescue", async ({ page }) => {
+test("a checkpoint learns and stacks every region word, saves each step, then continues into Firefly Rescue", async ({ page, browserName }) => {
+  // Clearing every sheet of a region is ~150 actions. WebKit's actionability checks
+  // wait for real frames, which the WebGL canvases slow down there, so this takes ~50s.
+  test.slow(browserName === "webkit", "Stacks every word of a region");
   await startSheet(page, "run?gate=1");
   expect((await read(page)).checkpointSteps).toEqual(regionSteps([1]));
   await clearSheet(page);
