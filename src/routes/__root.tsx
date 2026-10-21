@@ -14,6 +14,7 @@ import { InstallAppProvider } from "@/components/InstallApp";
 import { GameScreen } from "@/components/GameScreen";
 import { boot } from "@/lib/sfx";
 import { initializeAccount } from "@/lib/account";
+import { initializeReminders } from "@/lib/reminders";
 
 import appCss from "../styles.css?url";
 
@@ -145,6 +146,7 @@ function RootComponent() {
 
   useEffect(() => boot(), []);
   useEffect(() => initializeAccount(), []);
+  useEffect(() => initializeReminders(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

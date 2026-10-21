@@ -12,7 +12,7 @@ import type { SaveData } from "../src/domain/models.js";
 import { readMigrations, runMigrations } from "../src/infrastructure/db/migrate.js";
 import { deleteExpiredSessions } from "../src/infrastructure/db/maintenance.js";
 import { createDatabasePool } from "../src/infrastructure/db/pool.js";
-import { PgProgressRepository, PgSessionRepository, PgUserRepository } from "../src/infrastructure/db/repositories.js";
+import { PgProgressRepository, PgReminderRepository, PgSessionRepository, PgUserRepository } from "../src/infrastructure/db/repositories.js";
 
 const emptySave = (): SaveData => ({
   curriculumVersion: 2, unlockedChapters: [], progress: {},
@@ -89,7 +89,7 @@ test("migration checksums accept Windows/Unix line endings and reject substantiv
 
 async function exerciseDatabase(pool: Pool) {
   const migrations = await readMigrations(new URL("../migrations/", import.meta.url));
-  assert.deepEqual(await runMigrations(pool, migrations), ["001_initial.sql"]);
+  assert.deepEqual(await runMigrations(pool, migrations), ["001_initial.sql", "002_push_subscriptions.sql"]);
   assert.deepEqual(await runMigrations(pool, migrations), []);
   await assert.rejects(runMigrations(pool, [{ ...migrations[0]!, sql: `${migrations[0]!.sql}\n-- changed` }]), /has changed/);
   await assert.rejects(runMigrations(pool, [{ name: "002_failure.sql", sql: "CREATE TABLE should_rollback (id integer); SELECT missing_column;" }]));
@@ -180,6 +180,8 @@ async function exerciseDatabase(pool: Pool) {
   assert.deepEqual(await progress.get(user.id), { save: null, version: 0 });
   const deletedSessions = await pool.query("SELECT count(*)::integer AS count FROM sessions WHERE user_id = $1", [user.id]);
   assert.equal(deletedSessions.rows[0].count, 0, "Account deletion cascades to all sessions and progress.");
+
+  await exerciseReminders(pool, new PgReminderRepository(pool));
 }
 
 test("PostgreSQL migrations, identities, sessions, and optimistic progress writes (PGlite)", async () => {
@@ -209,3 +211,38 @@ test("real PostgreSQL/Neon driver integration in an isolated schema", { skip: !p
     await admin.end();
   }
 });
+
+async function exerciseReminders(pool: Pool, reminders: PgReminderRepository) {
+  const endpoint = "https://fcm.googleapis.com/fcm/send/database-test";
+  const keys = { p256dh: "B".repeat(87), auth: "A".repeat(22) };
+  const base = { endpoint, keys, timeZone: "Asia/Tokyo", hour: 19 };
+  // Relative to the database clock, which filters lapsed players.
+  const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  await reminders.save({ ...base, lastPlayedOn: day(-1), streak: 4 });
+  await reminders.save({ ...base, hour: 8, lastPlayedOn: day(-2), streak: 3 });
+  let [stored] = await reminders.candidates();
+  assert.deepEqual(stored, { ...base, hour: 8, lastPlayedOn: day(-1), streak: 4, lastSentOn: null }, "A stale tab updates settings but never rewinds the play day or its streak.");
+  await reminders.save({ ...base, lastPlayedOn: null, streak: 0 });
+  [stored] = await reminders.candidates();
+  assert.equal(stored?.lastPlayedOn, day(-1));
+
+  assert.equal(await reminders.claim(endpoint, day(0)), true);
+  assert.equal(await reminders.claim(endpoint, day(0)), false, "One reminder per local day, even if dispatch runs twice.");
+  await reminders.release(endpoint, day(0), null);
+  assert.equal((await reminders.candidates())[0]?.lastSentOn, null, "A failed delivery is released for the next hour.");
+  await reminders.save({ ...base, lastPlayedOn: day(0), streak: 5 });
+  assert.equal(await reminders.claim(endpoint, day(0)), false, "Playing today cancels today's reminder.");
+
+  await reminders.save({ ...base, endpoint: `${endpoint}-lapsed`, lastPlayedOn: "2020-01-01", streak: 0 });
+  assert.deepEqual((await reminders.candidates()).map(s => s.endpoint), [endpoint], "Long-lapsed players are no longer candidates.");
+  const silent = `${endpoint}-never-played`;
+  await reminders.save({ ...base, endpoint: silent, lastPlayedOn: null, streak: 0 });
+  assert.ok((await reminders.candidates()).some(s => s.endpoint === silent), "A new subscription without a play day is reminded.");
+  await pool.query("UPDATE push_subscriptions SET created_at = CURRENT_TIMESTAMP - interval '40 days' WHERE endpoint = $1", [silent]);
+  await reminders.save({ ...base, endpoint: silent, hour: 8, lastPlayedOn: null, streak: 0 });
+  assert.ok(!(await reminders.candidates()).some(s => s.endpoint === silent), "Without a play day, age counts from subscribing, and a settings change does not reset it.");
+  await reminders.remove(silent);
+  await reminders.remove(endpoint);
+  await reminders.remove(`${endpoint}-lapsed`);
+  assert.deepEqual(await reminders.candidates(), []);
+}
