@@ -217,7 +217,8 @@ export function dismissReminderOffer() {
   update({ offerDismissed: true });
 }
 
-export const REMINDER_HOURS = [7, 8, 9, 12, 17, 18, 19, 20, 21];
+/** Any hour of the day; the server sends at the start of the chosen hour on the player's clock. */
+export const REMINDER_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
 export function formatHour(hour: number): string {
   return new Date(2000, 0, 1, hour).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
