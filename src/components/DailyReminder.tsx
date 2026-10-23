@@ -4,7 +4,6 @@ import {
 } from "@/lib/reminders";
 
 function HourSelect({ id, hour, onChange, disabled }: { id: string; hour: number; onChange: (hour: number) => void; disabled: boolean }) {
-  const hours = REMINDER_HOURS.includes(hour) ? REMINDER_HOURS : [...REMINDER_HOURS, hour].sort((a, b) => a - b);
   return (
     <select
       id={id}
@@ -13,7 +12,7 @@ function HourSelect({ id, hour, onChange, disabled }: { id: string; hour: number
       onChange={(event) => onChange(Number(event.currentTarget.value))}
       className="reminder-hour"
     >
-      {hours.map((h) => <option key={h} value={h}>{formatHour(h)}</option>)}
+      {REMINDER_HOURS.map((h) => <option key={h} value={h}>{formatHour(h)}</option>)}
     </select>
   );
 }
